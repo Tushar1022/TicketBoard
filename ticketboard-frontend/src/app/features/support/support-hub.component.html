@@ -1,0 +1,157 @@
+<div class="support-page-container">
+
+  <!-- Hero Banner & Search -->
+  <div class="support-hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <mat-icon class="sm-icon">support_agent</mat-icon>
+        <span>Platform Help, Documentation & Support Desk</span>
+      </div>
+      <h1>How can we assist your project delivery today?</h1>
+      <p class="hero-sub">Search knowledge base, explore platform FAQs, or raise a direct support ticket to Super Admins & Admins.</p>
+
+      <div class="hero-search-box">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input
+          type="text"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+          placeholder="Search documentation, FAQs, task guidelines, Jira sync..."
+        />
+        <button class="clear-btn" *ngIf="searchQuery()" (click)="searchQuery.set('')">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Direct Support CTA Cards -->
+  <div class="cta-cards-grid">
+    <div class="cta-card super-admin-cta" (click)="openRaiseTicketDialog('ROLE_SUPER_ADMIN')">
+      <div class="cta-icon bg-purple">
+        <mat-icon>flash_on</mat-icon>
+      </div>
+      <div class="cta-info">
+        <h3>Raise Ticket to Super Admin</h3>
+        <p>Direct priority escalation for system architecture, permission elevation, or production outages.</p>
+        <span class="cta-link">Raise Super Admin Ticket &rarr;</span>
+      </div>
+    </div>
+
+    <div class="cta-card admin-cta" (click)="openRaiseTicketDialog('ROLE_ADMIN')">
+      <div class="cta-icon bg-blue">
+        <mat-icon>shield</mat-icon>
+      </div>
+      <div class="cta-info">
+        <h3>Raise Ticket to System Admin</h3>
+        <p>Submit queries regarding workspace governance, project data, user roles, or Jira sync issues.</p>
+        <span class="cta-link">Raise Admin Ticket &rarr;</span>
+      </div>
+    </div>
+
+    <div class="cta-card tickets-view-cta" routerLink="/support/tickets">
+      <div class="cta-icon bg-amber">
+        <mat-icon>confirmation_number</mat-icon>
+      </div>
+      <div class="cta-info">
+        <h3>My Support Tickets</h3>
+        <p>Track resolution progress and admin responses for your submitted queries.</p>
+        <div class="ticket-status-pill">
+          <span class="dot"></span>
+          <span>{{ openTicketsCount() }} Active Ticket(s)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Knowledge Base Category Grid -->
+  <section class="support-section">
+    <div class="section-header">
+      <h2>Knowledge Base &amp; Delivery Guides</h2>
+      <p>Explore comprehensive guides tailored for Project Managers, Engineers, and Business Analysts.</p>
+    </div>
+
+    <div class="kb-category-grid">
+      <div class="kb-card">
+        <div class="kb-icon text-indigo"><mat-icon>rocket_launch</mat-icon></div>
+        <h4>Getting Started</h4>
+        <p>Learn how to navigate workspace dashboards, project details, and executive delivery stats.</p>
+      </div>
+
+      <div class="kb-card">
+        <div class="kb-icon text-blue"><mat-icon>task</mat-icon></div>
+        <h4>Tasks &amp; Excel Compact Grid</h4>
+        <p>Master multi-column task forms, generic status dropdowns, and dynamic inline cell editing.</p>
+      </div>
+
+      <div class="kb-card">
+        <div class="kb-icon text-gold"><mat-icon>fact_check</mat-icon></div>
+        <h4>SLA Governance &amp; Milestones</h4>
+        <p>Track UAT Exit, SIT Exit, Dev Exit milestones and project delivery health metrics.</p>
+      </div>
+
+      <div class="kb-card">
+        <div class="kb-icon text-green"><mat-icon>schedule</mat-icon></div>
+        <h4>Time Tracking &amp; Approvals</h4>
+        <p>Log effort hours against SBI CR change requests and submit timesheets for PM review.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive FAQ Section -->
+  <section class="support-section">
+    <div class="section-header">
+      <h2>Frequently Asked Questions</h2>
+      <div class="category-pills">
+        <button [class.active]="selectedCategory() === 'ALL'" (click)="selectedCategory.set('ALL')">All FAQs</button>
+        <button [class.active]="selectedCategory() === 'TASKS'" (click)="selectedCategory.set('TASKS')">Tasks &amp; Grid</button>
+        <button [class.active]="selectedCategory() === 'TICKETS'" (click)="selectedCategory.set('TICKETS')">Support Tickets</button>
+        <button [class.active]="selectedCategory() === 'GOVERNANCE'" (click)="selectedCategory.set('GOVERNANCE')">Governance &amp; KPIs</button>
+        <button [class.active]="selectedCategory() === 'TIMELOGS'" (click)="selectedCategory.set('TIMELOGS')">Time Logs</button>
+        <button [class.active]="selectedCategory() === 'SECURITY'" (click)="selectedCategory.set('SECURITY')">RBAC &amp; Security</button>
+      </div>
+    </div>
+
+    <div class="faq-list">
+      <div
+        class="faq-item"
+        *ngFor="let faq of filteredFaqs()"
+        [class.open]="faq.expanded"
+      >
+        <div class="faq-question" (click)="toggleFaq(faq)">
+          <div class="q-title">
+            <mat-icon class="q-icon">help_outline</mat-icon>
+            <span>{{ faq.question }}</span>
+          </div>
+          <mat-icon class="chevron-icon">{{ faq.expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </div>
+
+        <div class="faq-answer" *ngIf="faq.expanded">
+          <p>{{ faq.answer }}</p>
+        </div>
+      </div>
+
+      <div class="empty-faq" *ngIf="filteredFaqs().length === 0">
+        <mat-icon>find_in_page</mat-icon>
+        <p>No matching FAQs found. Try adjusting your search query or raise a support ticket directly to Admin.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live System Health Telemetry Bar -->
+  <div class="system-health-bar">
+    <div class="health-item">
+      <span class="dot green-dot"></span>
+      <span class="health-lbl">API Gateway &amp; Auth Service: <strong>Operational (99.99%)</strong></span>
+    </div>
+    <div class="health-item">
+      <span class="dot green-dot"></span>
+      <span class="health-lbl">Telemetry Pipeline: <strong>Live Real-Time Sync</strong></span>
+    </div>
+    <div class="health-item">
+      <span class="dot green-dot"></span>
+      <span class="health-lbl">Jira Integration Webhook: <strong>Connected</strong></span>
+    </div>
+  </div>
+
+</div>

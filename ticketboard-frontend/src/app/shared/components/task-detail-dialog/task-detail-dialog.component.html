@@ -1,0 +1,729 @@
+<div class="task-drawer-backdrop" (click)="onBackdropClick()">
+  <div class="task-drawer card-panel" (click)="$event.stopPropagation()">
+
+    <!-- Drawer Header Bar -->
+    <div class="drawer-header">
+      <div class="drawer-header-left">
+        <div class="task-headline-row">
+          <span class="task-id-tag">{{ currentTask().ticketNumber }}</span>
+          <span class="project-tag-lg">{{ currentTask().projectName || '—' }}</span>
+          <span class="reporter-label">By {{ currentTask().reporterName || 'Unknown' }}</span>
+        </div>
+
+        <input
+          class="drawer-task-title-input"
+          type="text"
+          [(ngModel)]="editForm().title"
+          (blur)="saveDrawerField('title', editForm().title)"
+          (keydown.enter)="$any($event.target).blur()"
+          matTooltip="Click to edit task title — press Save to persist"
+        />
+
+        <!-- Counts Bar -->
+        <div class="counts-badges-bar">
+          <span class="count-badge" (click)="drawerTab.set('COMMENTS')">
+            <mat-icon class="cb-icon">chat</mat-icon> Comments ({{ taskComments().length }})
+          </span>
+          <span class="count-badge" (click)="drawerTab.set('SUBTASKS')">
+            <mat-icon class="cb-icon">account_tree</mat-icon> Subtasks ({{ currentTask().subtasks?.length || 0 }})
+          </span>
+          <span class="count-badge" (click)="drawerTab.set('TIMELOGS')">
+            <mat-icon class="cb-icon">schedule</mat-icon> Log Hours ({{ currentTask().actualHours || 0 }}h)
+          </span>
+          <span class="count-badge" (click)="drawerTab.set('DOCS')">
+            <mat-icon class="cb-icon">attach_file</mat-icon> Documents ({{ taskDocuments().length }})
+          </span>
+          <span class="count-badge" (click)="drawerTab.set('DEPENDENCIES')">
+            <mat-icon class="cb-icon">link</mat-icon> Dependency ({{ currentTask().dependencies?.length || 0 }})
+          </span>
+          <span class="count-badge" (click)="drawerTab.set('AUDIT')">
+            <mat-icon class="cb-icon">history</mat-icon> Status Timeline ({{ taskAuditLogs().length }})
+          </span>
+        </div>
+      </div>
+
+      <div class="drawer-header-right">
+        <!-- Stopwatch Timer Widget (00:00:00) -->
+        <div class="timer-widget">
+          <span class="timer-digits">{{ timerDisplay() }}</span>
+          <button class="icon-btn-timer" [class.running]="timerRunning()" (click)="toggleTimer()" matTooltip="Start/Pause Timer">
+            <mat-icon>{{ timerRunning() ? 'pause' : 'play_arrow' }}</mat-icon>
+          </button>
+          <button class="icon-btn-timer" (click)="resetTimer()" matTooltip="Reset Timer">
+            <mat-icon>stop</mat-icon>
+          </button>
+        </div>
+
+        <!-- Status Dropdown -->
+        <select
+          [ngModel]="currentTask().status"
+          (ngModelChange)="onStatusChange($event)"
+          class="status-dropdown-header"
+        >
+          <option *ngFor="let c of kanbanColumns" [value]="c.status">{{ c.label }}</option>
+        </select>
+
+        <button class="icon-btn close-drawer-btn" (click)="closeDialog()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Drawer Navigation Tabs -->
+    <div class="drawer-tabs-bar">
+      <button class="d-tab-btn" [class.active]="drawerTab() === 'INFO'" (click)="drawerTab.set('INFO')">
+        <mat-icon class="t-ico">info</mat-icon> Description &amp; Task Info
+      </button>
+      <button class="d-tab-btn" [class.active]="drawerTab() === 'COMMENTS'" (click)="drawerTab.set('COMMENTS')">
+        <mat-icon class="t-ico">chat</mat-icon> Comments
+      </button>
+      <button class="d-tab-btn" [class.active]="drawerTab() === 'SUBTASKS'" (click)="drawerTab.set('SUBTASKS')">
+        <mat-icon class="t-ico">checklist</mat-icon> Subtasks
+      </button>
+      <button class="d-tab-btn" [class.active]="drawerTab() === 'ISSUES'" (click)="drawerTab.set('ISSUES')">
+        <mat-icon class="t-ico">bug_report</mat-icon> Issues / Defects
+      </button>
+      <button class="d-tab-btn" [class.active]="drawerTab() === 'DOCS'" (click)="drawerTab.set('DOCS')">
+        <mat-icon class="t-ico">folder_open</mat-icon> Documents &amp; Files
+      </button>
+      <button class="d-tab-btn" [class.active]="drawerTab() === 'TIMELOGS'" (click)="drawerTab.set('TIMELOGS')">
+        <mat-icon class="t-ico">timer</mat-icon> Timelogs
+      </button>
+      <button class="d-tab-btn" [class.active]="drawerTab() === 'DEPENDENCIES'" (click)="drawerTab.set('DEPENDENCIES'); loadProjectTasks()">
+        <mat-icon class="t-ico">share</mat-icon> Dependencies
+      </button>
+      <button class="d-tab-btn" [class.active]="drawerTab() === 'AUDIT'" (click)="drawerTab.set('AUDIT')">
+        <mat-icon class="t-ico">timeline</mat-icon> Activity Stream
+      </button>
+      <button class="d-tab-btn" [class.active]="drawerTab() === 'JIRA'" (click)="drawerTab.set('JIRA')">
+        <mat-icon class="t-ico">sync_alt</mat-icon> Jira Integration
+      </button>
+    </div>
+
+    <!-- Drawer Tab Bodies -->
+    <div class="drawer-body-scroll">
+
+      <!-- TAB 1: DESCRIPTION & TASK INFORMATION (inline edit, autosaves on blur) -->
+      <div class="tab-pane" *ngIf="drawerTab() === 'INFO'">
+        <div class="info-split-layout">
+          <!-- Left: Description -->
+          <div class="info-left-panel">
+            <div class="section-box description-box">
+              <div class="box-head">
+                <h4 class="box-title">Description</h4>
+                <span class="autosave-hint">Click Save Changes to persist your edits</span>
+              </div>
+              <div class="rte-toolbar">
+                <button type="button" class="rte-btn" matTooltip="Bold" (mousedown)="$event.preventDefault(); execFormat('bold')"><mat-icon>format_bold</mat-icon></button>
+                <button type="button" class="rte-btn" matTooltip="Italic" (mousedown)="$event.preventDefault(); execFormat('italic')"><mat-icon>format_italic</mat-icon></button>
+                <button type="button" class="rte-btn" matTooltip="Underline" (mousedown)="$event.preventDefault(); execFormat('underline')"><mat-icon>format_underlined</mat-icon></button>
+                <span class="rte-sep"></span>
+                <button type="button" class="rte-btn" matTooltip="Bulleted List" (mousedown)="$event.preventDefault(); execFormat('insertUnorderedList')"><mat-icon>format_list_bulleted</mat-icon></button>
+                <button type="button" class="rte-btn" matTooltip="Numbered List" (mousedown)="$event.preventDefault(); execFormat('insertOrderedList')"><mat-icon>format_list_numbered</mat-icon></button>
+                <span class="rte-sep"></span>
+                <button type="button" class="rte-btn" matTooltip="Clear Formatting" (mousedown)="$event.preventDefault(); clearFormatting()"><mat-icon>format_clear</mat-icon></button>
+              </div>
+              <div
+                #descEditor
+                class="rich-editor"
+                contenteditable="true"
+                (input)="onDescInput($event)"
+                (blur)="saveDrawerField('description', editForm().description)"
+                role="textbox"
+                aria-label="Description"
+              ></div>
+            </div>
+
+            <!-- Unblock Banner if Blocked -->
+            <div class="blocker-banner-large" *ngIf="currentTask().status === 'BLOCKED'">
+              <div class="bb-left">
+                <mat-icon class="bb-icon">error</mat-icon>
+                <div>
+                  <strong>Task is currently BLOCKED</strong>
+                  <p>{{ currentTask().blockedReason }} (Owner: {{ currentTask().blockedOwner }})</p>
+                </div>
+              </div>
+              <button class="btn btn-sm btn-primary" (click)="unblockTask()">Unblock Task</button>
+            </div>
+          </div>
+
+          <!-- Right: Enterprise Task Information Metadata Grid (inline editable + autosave) -->
+          <div class="info-right-panel">
+            <div class="box-head">
+              <h4 class="box-title">Task Information</h4>
+              <span class="autosave-hint">Edit any field — press Save Changes</span>
+            </div>
+
+            <div class="meta-field-grid editable-grid">
+              <div class="meta-field">
+                <label class="meta-lbl">Associated Team</label>
+                <input class="meta-control form-control" type="text" [(ngModel)]="editForm().associatedTeam" (blur)="saveDrawerField('associatedTeam', editForm().associatedTeam)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Task Owner / Assignee</label>
+                <select class="meta-control form-control" [(ngModel)]="editForm().assigneeId" (ngModelChange)="saveDrawerField('assigneeId', $event)">
+                  <option [ngValue]="null">Unassigned</option>
+                  <option *ngFor="let u of users" [ngValue]="u.id">{{ u.fullName }}</option>
+                </select>
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Project</label>
+                <select class="meta-control form-control" [(ngModel)]="editForm().projectId" (ngModelChange)="saveDrawerField('projectId', $event)">
+                  <option *ngFor="let p of projects" [ngValue]="p.id">{{ p.name }}</option>
+                </select>
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Work Hours (Planned)</label>
+                <input class="meta-control form-control" type="number" step="0.1" min="0" [(ngModel)]="editForm().estimatedHours" (blur)="saveDrawerField('estimatedHours', editForm().estimatedHours)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Status</label>
+                <select class="meta-control form-control" [(ngModel)]="editForm().status" (ngModelChange)="saveDrawerField('status', $event)">
+                  <option *ngFor="let opt of statusOptions()" [ngValue]="opt.value">{{ opt.label }}</option>
+                </select>
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Start Date</label>
+                <input class="meta-control form-control" type="date" [(ngModel)]="editForm().startDate" (blur)="saveDrawerField('startDate', editForm().startDate)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Due Date</label>
+                <input class="meta-control form-control" [class.date-past]="isPastDate(editForm().dueDate)" type="date" [(ngModel)]="editForm().dueDate" (blur)="saveDrawerField('dueDate', editForm().dueDate)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Dev Exit</label>
+                <input class="meta-control form-control" [class.date-past]="isPastDate(editForm().devExitDate)" type="date" [(ngModel)]="editForm().devExitDate" (blur)="saveDrawerField('devExitDate', editForm().devExitDate)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">SIT Exit</label>
+                <input class="meta-control form-control" [class.date-past]="isPastDate(editForm().sitExitDate)" type="date" [(ngModel)]="editForm().sitExitDate" (blur)="saveDrawerField('sitExitDate', editForm().sitExitDate)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">UAT Exit</label>
+                <input class="meta-control form-control" [class.date-past]="isPastDate(editForm().uatExitDate)" type="date" [(ngModel)]="editForm().uatExitDate" (blur)="saveDrawerField('uatExitDate', editForm().uatExitDate)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">SD Delivery</label>
+                <input class="meta-control form-control" [class.date-past]="isPastDate(editForm().sdDeliveryDate)" type="date" [(ngModel)]="editForm().sdDeliveryDate" (blur)="saveDrawerField('sdDeliveryDate', editForm().sdDeliveryDate)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Go-Live</label>
+                <input class="meta-control form-control" [class.date-past]="isPastDate(editForm().goLiveDate)" type="date" [(ngModel)]="editForm().goLiveDate" (blur)="saveDrawerField('goLiveDate', editForm().goLiveDate)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Dev Efforts</label>
+                <input class="meta-control form-control" type="number" step="0.1" min="0" [(ngModel)]="editForm().devEffortDays" (blur)="saveDrawerField('devEffortDays', editForm().devEffortDays)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">QC Efforts</label>
+                <input class="meta-control form-control" type="number" step="0.1" min="0" [(ngModel)]="editForm().qcEffortDays" (blur)="saveDrawerField('qcEffortDays', editForm().qcEffortDays)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Duration</label>
+                <input class="meta-control form-control" type="number" step="1" min="0" [(ngModel)]="editForm().durationDays" (blur)="saveDrawerField('durationDays', editForm().durationDays)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Priority</label>
+                <select class="meta-control form-control" [(ngModel)]="editForm().priority" (ngModelChange)="saveDrawerField('priority', $event)">
+                  <option [ngValue]="'LOW'">Low</option>
+                  <option [ngValue]="'MEDIUM'">Medium</option>
+                  <option [ngValue]="'HIGH'">High</option>
+                  <option [ngValue]="'CRITICAL'">Critical</option>
+                </select>
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Completion Percentage</label>
+                <input class="meta-control form-control" type="number" step="1" min="0" max="100" [(ngModel)]="editForm().completionPercentage" (blur)="saveDrawerField('completionPercentage', editForm().completionPercentage)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Tags</label>
+                <input class="meta-control form-control" type="text" [(ngModel)]="editForm().tags" (blur)="saveDrawerField('tags', editForm().tags)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Reminder</label>
+                <input class="meta-control form-control" type="text" [(ngModel)]="editForm().reminder" (blur)="saveDrawerField('reminder', editForm().reminder)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Recurrence</label>
+                <input class="meta-control form-control" type="text" [(ngModel)]="editForm().recurrence" (blur)="saveDrawerField('recurrence', editForm().recurrence)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Billing Type</label>
+                <select class="meta-control form-control" [(ngModel)]="editForm().billingType" (ngModelChange)="saveDrawerField('billingType', $event)">
+                  <option [ngValue]="'Billable'">Billable</option>
+                  <option [ngValue]="'Non-Billable'">Non-Billable</option>
+                  <option [ngValue]="'Fixed Cost'">Fixed Cost</option>
+                  <option [ngValue]="'None'">None</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: JIRA INTEGRATION -->
+      <div class="tab-pane" *ngIf="drawerTab() === 'JIRA'">
+        <div class="jira-card card-panel">
+          <div class="jira-card-header">
+            <div class="jira-logo-title">
+              <mat-icon class="jira-icon text-indigo">hub</mat-icon>
+              <div>
+                <h3>Jira Enterprise Synchronizer</h3>
+                <p class="subtitle">Two-way synchronization for task lifecycle, sprint assignments, and status</p>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" (click)="triggerJiraSync()">
+              <mat-icon class="sm-icon">sync</mat-icon>
+              <span>Create / Sync Task in Jira</span>
+            </button>
+          </div>
+
+          <div class="jira-details-grid">
+            <div class="jira-field">
+              <span class="j-lbl">JIRA Task Id</span>
+              <span class="j-val font-bold text-indigo">{{ currentTask().jiraTaskId || 'Not Created' }}</span>
+            </div>
+
+            <div class="jira-field">
+              <span class="j-lbl">Status of Creation Jira</span>
+              <span class="badge" [ngClass]="currentTask().jiraTaskId ? 'badge-green' : 'badge-slate'">
+                {{ currentTask().jiraTaskId ? 'Created' : 'Not Created' }}
+              </span>
+            </div>
+
+            <div class="jira-field">
+              <span class="j-lbl">Task Creation Status</span>
+              <span class="j-val">{{ currentTask().jiraStatus || 'Pending Sync' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: SUBTASKS -->
+      <div class="tab-pane" *ngIf="drawerTab() === 'SUBTASKS'">
+        <div class="subtasks-container">
+          <div class="section-box subtask-form">
+            <div class="box-head">
+              <h4 class="box-title">Create Subtask</h4>
+              <span class="autosave-hint">Parent: {{ currentTask().ticketNumber }}</span>
+            </div>
+
+            <div class="subtask-form-grid">
+              <div class="meta-field form-span-2">
+                <label class="meta-lbl">Title *</label>
+                <input class="meta-control form-control" type="text" [ngModel]="newSubtaskTitle()" (ngModelChange)="newSubtaskTitle.set($event)" placeholder="What should the subtask deliver?" />
+              </div>
+
+              <div class="meta-field form-span-2">
+                <label class="meta-lbl">Description</label>
+                <textarea class="meta-control form-control" rows="2" [ngModel]="newSubtaskDescription()" (ngModelChange)="newSubtaskDescription.set($event)" placeholder="Specification for the child task..."></textarea>
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Estimated Hours</label>
+                <input class="meta-control form-control" type="number" step="0.5" min="0" [ngModel]="newSubtaskHours()" (ngModelChange)="newSubtaskHours.set($event)" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Priority</label>
+                <select class="meta-control form-control" [ngModel]="newSubtaskPriority()" (ngModelChange)="newSubtaskPriority.set($event)">
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="CRITICAL">Critical</option>
+                </select>
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Assignee</label>
+                <select class="meta-control form-control" [ngModel]="newSubtaskAssigneeId()" (ngModelChange)="newSubtaskAssigneeId.set($event)">
+                  <option [ngValue]="null">Unassigned</option>
+                  <option *ngFor="let u of users" [ngValue]="u.id">{{ u.fullName }}</option>
+                </select>
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Due Date</label>
+                <input class="meta-control form-control" type="date" [ngModel]="newSubtaskDueDate()" (ngModelChange)="newSubtaskDueDate.set($event)" />
+              </div>
+
+              <div class="meta-field form-span-2">
+                <button class="btn btn-primary" (click)="addSubtask()" [disabled]="!newSubtaskTitle().trim()">
+                  <mat-icon class="sm-icon">add_task</mat-icon> Create Subtask
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="subtask-list">
+            <div class="subtask-item card-panel" *ngFor="let st of currentTask().subtasks || []">
+              <label class="subtask-check-label">
+                <input type="checkbox" [checked]="st.status === 'COMPLETED' || st.status === 'CLOSED'" />
+                <span class="subtask-title-text">{{ st.ticketNumber }} — {{ st.title }}</span>
+              </label>
+              <span class="badge" [ngClass]="st.status === 'COMPLETED' || st.status === 'CLOSED' ? 'badge-green' : 'badge-blue'">
+                {{ st.actualHours || st.estimatedHours || 0 }}h &middot; {{ st.status }}
+              </span>
+            </div>
+
+            <div class="empty-inline" *ngIf="!currentTask().subtasks || currentTask().subtasks!.length === 0">
+              <mat-icon>account_tree</mat-icon> No subtasks yet — add one above using this task as parent.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: TIMELOGS & LOG HOURS -->
+      <div class="tab-pane" *ngIf="drawerTab() === 'TIMELOGS'">
+        <div class="timelog-pane">
+          <div class="timelog-top">
+            <h4>Effort Logged on {{ currentTask().ticketNumber }}</h4>
+            <span class="total-logged-pill text-indigo font-bold">Total: {{ currentTask().actualHours || 0 }}h</span>
+          </div>
+
+          <div class="empty-inline" *ngIf="taskTimeEntries().length === 0">
+            <mat-icon>schedule</mat-icon> No time entries have been logged for this work item.
+          </div>
+
+          <div class="table-wrap" *ngIf="taskTimeEntries().length > 0">
+            <table class="dashboard-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Engineer</th>
+                <th>Hours</th>
+                <th>Time Range</th>
+                <th>Description</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let entry of taskTimeEntries()">
+                <td class="font-mono">{{ entry.workDate }}</td>
+                <td>{{ entry.userName || '—' }}</td>
+                <td class="font-bold">{{ entry.totalHours || 0 }}h</td>
+                <td class="font-mono">
+                  <span *ngIf="entry.startTime || entry.endTime">{{ entry.startTime || '—' }} &rarr; {{ entry.endTime || '—' }}</span>
+                  <span *ngIf="!entry.startTime && !entry.endTime">—</span>
+                </td>
+                <td>{{ entry.description || '—' }}</td>
+                <td><span class="badge" [ngClass]="entry.status === 'APPROVED' ? 'badge-green' : entry.status === 'SUBMITTED' ? 'badge-blue' : 'badge-slate'">{{ entry.status }}</span></td>
+              </tr>
+            </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: DOCUMENTS & FILE ATTACHMENTS -->
+      <div class="tab-pane" *ngIf="drawerTab() === 'DOCS'">
+        <div class="documents-pane">
+          <div class="upload-box card-panel">
+            <div class="upload-inputs">
+              <input
+                type="file"
+                (change)="onDocFileSelected($event)"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.zip"
+                class="form-control flex-1 file-input"
+              />
+              <button class="btn btn-primary" (click)="uploadDocument()" [disabled]="!selectedDocFile()">
+                Upload Document
+              </button>
+            </div>
+            <div class="upload-hint" *ngIf="selectedDocFile()">
+              {{ selectedDocFile()!.name }} — {{ (selectedDocFile()!.size / 1024).toFixed(1) }} KB ready to upload.
+            </div>
+          </div>
+
+          <div class="documents-grid">
+            <div class="document-card card-panel" *ngFor="let doc of taskDocuments()">
+              <div class="doc-left">
+                <mat-icon class="doc-icon text-indigo">description</mat-icon>
+                <div>
+                  <span class="doc-title font-bold">{{ doc.fileName }}</span>
+                  <span class="doc-meta">
+                    {{ (doc.fileSize / 1024 / 1024) | number:'1.1-2' }} MB &bull; Uploaded by {{ doc.uploadedByName || 'User' }} &bull; {{ doc.uploadedAt ? (doc.uploadedAt | slice:0:10) : '' }}
+                  </span>
+                </div>
+              </div>
+              <div class="doc-actions">
+                <button class="icon-btn-sm" matTooltip="Download" (click)="downloadDoc(doc)"><mat-icon>download</mat-icon></button>
+                <button class="icon-btn-sm" matTooltip="Delete" (click)="deleteDoc(doc.id)"><mat-icon>delete_outline</mat-icon></button>
+              </div>
+            </div>
+
+            <div class="document-card card-panel empty-inline" *ngIf="taskDocuments().length === 0">
+              <mat-icon class="doc-icon text-muted">folder_open</mat-icon>
+              <div>
+                <span class="doc-title font-bold">No documents attached</span>
+                <span class="doc-meta">Upload specification PDFs, test reports or evidence for this work item.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 6: DEPENDENCIES -->
+      <div class="tab-pane" *ngIf="drawerTab() === 'DEPENDENCIES'">
+        <div class="dependencies-pane">
+          <div class="section-box">
+            <div class="box-head">
+              <h4 class="box-title">Add Dependency</h4>
+              <span class="autosave-hint">Source: {{ currentTask().ticketNumber }}</span>
+            </div>
+
+            <div class="dep-form-grid">
+              <div class="meta-field">
+                <label class="meta-lbl">Dependency Type</label>
+                <select class="meta-control form-control" [ngModel]="newDepType()" (ngModelChange)="newDepType.set($event)">
+                  <option *ngFor="let t of dependencyTypes" [ngValue]="t">{{ depTypeLabel(t) }}</option>
+                </select>
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Target Task</label>
+                <select class="meta-control form-control" [ngModel]="newDepTargetId()" (ngModelChange)="newDepTargetId.set($event)">
+                  <option [ngValue]="null">Select a task to link...</option>
+                  <option *ngFor="let t of projectTasks()" [ngValue]="t.id">{{ t.ticketNumber }} — {{ t.title }}</option>
+                </select>
+              </div>
+
+              <div class="meta-field dep-action-cell">
+                <button class="btn btn-primary" (click)="addDependency()" [disabled]="!newDepTargetId()">
+                  <mat-icon class="sm-icon">add_link</mat-icon> Add Dependency
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <p class="subtitle">Existing dependencies</p>
+          <div class="empty-inline" *ngIf="!currentTask().dependencies || currentTask().dependencies!.length === 0">
+            <mat-icon>share</mat-icon> No dependencies defined for this work item.
+          </div>
+
+          <div class="dependency-card card-panel" *ngFor="let dep of currentTask().dependencies || []">
+            <div class="dep-row">
+              <span class="badge" [ngClass]="dep.dependencyType === 'BLOCKED_BY' ? 'badge-red' : dep.dependencyType === 'BLOCKS' ? 'badge-purple' : 'badge-blue'">
+                {{ dep.dependencyType }}
+              </span>
+              <span class="font-bold">{{ dep.sourceTicketNumber }} &rarr; {{ dep.targetTicketNumber }}</span>
+              <span class="text-muted">{{ dep.targetTitle || dep.sourceTitle || '' }}</span>
+              <button class="icon-btn-sm icon-btn-danger" matTooltip="Remove dependency" (click)="removeDependency(dep.id)">
+                <mat-icon>link_off</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 7: ISSUES / DEFECTS ASSOCIATED -->
+      <div class="tab-pane" *ngIf="drawerTab() === 'ISSUES'">
+        <div class="issues-pane">
+          <div class="issues-top-bar">
+            <h4>All Issues Linked to {{ currentTask().ticketNumber }}</h4>
+            <button class="btn btn-primary-accent" (click)="toggleIssueForm()">
+              <mat-icon class="sm-icon">add</mat-icon> Submit Defect / Issue Ticket
+            </button>
+          </div>
+
+          <div class="section-box issue-submit-box" *ngIf="showIssueForm()">
+            <div class="box-head">
+              <h4 class="box-title">New Defect / Issue Ticket</h4>
+              <span class="autosave-hint">Automatically linked to {{ currentTask().ticketNumber }}</span>
+            </div>
+
+            <div class="issue-form-grid">
+              <div class="meta-field issue-span-2">
+                <label class="meta-lbl">Headline / Summary *</label>
+                <input class="meta-control form-control" [(ngModel)]="newIssueForm.title" placeholder="Short summary of the defect..." />
+              </div>
+
+              <div class="meta-field issue-span-2">
+                <label class="meta-lbl">Detailed Description *</label>
+                <textarea class="meta-control form-control" rows="2" [(ngModel)]="newIssueForm.description" placeholder="When / where the defect occurs and its business impact..."></textarea>
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Severity</label>
+                <select class="meta-control form-control" [(ngModel)]="newIssueForm.severity">
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="CRITICAL">Critical</option>
+                </select>
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Classification</label>
+                <select class="meta-control form-control" [(ngModel)]="newIssueForm.classification">
+                  <option value="Functional Defect">Functional Defect</option>
+                  <option value="UI Defect">UI Defect</option>
+                  <option value="Data Integrity">Data Integrity</option>
+                  <option value="Backend Logic">Backend Logic</option>
+                  <option value="Reporting">Reporting</option>
+                </select>
+              </div>
+
+              <div class="meta-field issue-span-2">
+                <label class="meta-lbl">Steps to Reproduce</label>
+                <textarea class="meta-control form-control" rows="2" [(ngModel)]="newIssueForm.stepsToReproduce" placeholder="1. Navigate to module... 2. Click search... 3. Observe error..."></textarea>
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">CR Value (&#8377;)</label>
+                <input class="meta-control form-control" type="number" [(ngModel)]="newIssueForm.crValue" placeholder="150000" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">CR Effort (Man Days)</label>
+                <input class="meta-control form-control" type="number" [(ngModel)]="newIssueForm.crManDays" placeholder="12.5" />
+              </div>
+
+              <div class="meta-field">
+                <label class="meta-lbl">Target Resolution Date</label>
+                <input class="meta-control form-control" type="date" [(ngModel)]="newIssueForm.dueDate" />
+              </div>
+
+              <div class="meta-field issue-submit-actions">
+                <button class="btn btn-secondary" (click)="toggleIssueForm()">Cancel</button>
+                <button class="btn btn-danger" (click)="submitTaskIssue()" [disabled]="!newIssueForm.title.trim() || !newIssueForm.description.trim()">
+                  <mat-icon class="sm-icon">send</mat-icon> Submit Issue
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="empty-inline" *ngIf="taskIssues().length === 0">
+            <mat-icon>bug_report</mat-icon> No issues are linked to this work item.
+          </div>
+
+          <div class="table-wrap" *ngIf="taskIssues().length > 0">
+            <table class="dashboard-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Issue Name</th>
+                <th>Project</th>
+                <th>Reporter</th>
+                <th>Created Time</th>
+                <th>Status</th>
+                <th>Tags</th>
+                <th>Associated Team</th>
+                <th>Assignee</th>
+                <th>Due Date</th>
+                <th>Severity</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let iss of taskIssues()">
+                <td><span class="task-id-badge">{{ iss.issueCode }}</span></td>
+                <td class="font-bold">{{ iss.title || iss.description | slice: 0: 60 }}</td>
+                <td>{{ iss.projectName || '—' }}</td>
+                <td>{{ iss.reporterName || '—' }}</td>
+                <td class="font-mono">{{ iss.createdAt | slice: 0: 10 }}</td>
+                <td><span class="badge" [ngClass]="iss.status === 'OPEN' ? 'badge-red' : iss.status === 'IN_PROGRESS' ? 'badge-blue' : iss.status === 'RESOLVED' ? 'badge-green' : 'badge-slate'">{{ iss.status }}</span></td>
+                <td><span class="tag-pill" *ngIf="iss.tags">{{ iss.tags }}</span><span class="text-muted" *ngIf="!iss.tags">&mdash;</span></td>
+                <td>{{ iss.associatedTeam || '—' }}</td>
+                <td>{{ iss.assigneeName || '—' }}</td>
+                <td class="font-mono">{{ iss.dueDate || '—' }}</td>
+                <td><span class="badge" [ngClass]="iss.severity === 'CRITICAL' || iss.severity === 'HIGH' ? 'badge-red' : iss.severity === 'MEDIUM' ? 'badge-amber' : 'badge-slate'">{{ iss.severity }}</span></td>
+              </tr>
+            </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 8: INTERACTIVE CHATBOX / DISCUSSION STREAM -->
+      <div class="tab-pane" *ngIf="drawerTab() === 'COMMENTS'">
+        <div class="chatbox-container">
+          <div class="chat-messages-stream">
+            <div class="chat-message-item" *ngFor="let c of taskComments()">
+              <div class="msg-avatar">{{ c.authorName ? c.authorName.charAt(0) : 'U' }}</div>
+              <div class="msg-content-wrap">
+                <div class="msg-meta">
+                  <span class="msg-author font-bold">{{ c.authorName || 'Anonymous' }}</span>
+                  <span class="msg-time">{{ c.createdAt }}</span>
+                </div>
+                <div class="msg-bubble">{{ c.content }}</div>
+              </div>
+            </div>
+
+            <div class="chat-message-item" *ngIf="taskComments().length === 0">
+              <div class="empty-inline" style="width: 100%;">
+                <mat-icon>forum</mat-icon> No comments yet — start the discussion below.
+              </div>
+            </div>
+          </div>
+
+          <!-- Comment Input Box -->
+          <div class="chat-input-bar">
+            <input
+              type="text"
+              [ngModel]="newCommentText()"
+              (ngModelChange)="newCommentText.set($event)"
+              placeholder="Write a comment or mention team members (@)..."
+              class="form-control flex-1"
+              (keyup.enter)="postComment()"
+            />
+            <button class="btn btn-primary" (click)="postComment()">
+              <mat-icon class="sm-icon">send</mat-icon>
+              <span>Post</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 9: STATUS TIMELINE & AUDIT STREAM -->
+      <div class="tab-pane" *ngIf="drawerTab() === 'AUDIT'">
+        <div class="audit-stream-container">
+          <div class="audit-item" *ngFor="let log of taskAuditLogs()">
+            <div class="audit-dot"></div>
+            <div class="audit-details">
+              <span class="audit-summary font-bold">{{ log.summary }}</span>
+              <span class="audit-meta">{{ log.performedByName || 'System' }} &bull; {{ log.createdAt }}</span>
+            </div>
+          </div>
+
+          <div class="audit-item audit-empty" *ngIf="taskAuditLogs().length === 0">
+            <div class="audit-dot"></div>
+            <div class="audit-details">
+              <span class="audit-summary">No activity recorded for this work item yet.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="drawer-footer">
+      <span class="save-message" *ngIf="saveMessage()">{{ saveMessage() }}</span>
+      <button class="btn btn-secondary" (click)="closeDialog()">Cancel</button>
+      <button class="btn btn-primary" (click)="saveTaskChanges()" [disabled]="isSavingDrawer()">
+        <mat-icon class="sm-icon">{{ isSavingDrawer() ? 'hourglass_empty' : 'save' }}</mat-icon>
+        <span>{{ isSavingDrawer() ? 'Saving...' : 'Save Changes' }}</span>
+      </button>
+    </div>
+  </div>
+</div>

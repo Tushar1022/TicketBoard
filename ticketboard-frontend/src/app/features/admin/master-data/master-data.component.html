@@ -1,0 +1,231 @@
+<div class="master-data-page">
+  <!-- Compact Top Header Bar -->
+  <div class="header-card">
+    <div class="header-info">
+      <div class="header-icon">
+        <mat-icon>tune</mat-icon>
+      </div>
+      <div class="header-text-group">
+        <h1>Master Data Management</h1>
+        <p class="subtitle">Global picklists, status workflows, priorities, and dropdown configurations</p>
+      </div>
+    </div>
+    <div class="header-actions" *ngIf="selectedCategory()">
+      <button mat-raised-button color="primary" class="add-btn-compact" (click)="openAddForm()" *ngIf="authService.hasPermission('admin:master-data')">
+        <mat-icon>add</mat-icon>
+        <span class="btn-text">Add Entry</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Grid Layout: Sidebar & Content -->
+  <div class="layout-grid">
+    <!-- Left Category Navigation Sidebar (Compact & Adjustable) -->
+    <div class="sidebar-card">
+      <div class="sidebar-header">
+        <div class="sidebar-title">
+          <mat-icon>folder_open</mat-icon>
+          <span>Categories</span>
+        </div>
+        <div class="cat-search-box">
+          <mat-icon>search</mat-icon>
+          <input type="text" placeholder="Filter..." [ngModel]="categorySearchQuery()" (ngModelChange)="categorySearchQuery.set($event)">
+        </div>
+      </div>
+
+      <div class="category-list">
+        <button 
+          *ngFor="let cat of getFilteredCategories()" 
+          class="category-nav-btn" 
+          [class.active]="selectedCategory()?.code === cat.code"
+          (click)="selectCategory(cat)">
+          <mat-icon class="cat-icon">{{ cat.icon }}</mat-icon>
+          <div class="cat-text">
+            <span class="cat-name">{{ cat.name }}</span>
+            <span class="cat-code">{{ cat.code }}</span>
+          </div>
+          <mat-icon class="arrow-icon">chevron_right</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Workspace Content Area -->
+    <div class="content-panel" *ngIf="selectedCategory() as activeCat">
+      <!-- Active Category Header Card (Compact) -->
+      <div class="category-header-card">
+        <div class="cat-badge-info">
+          <div class="cat-small-icon">
+            <mat-icon>{{ activeCat.icon }}</mat-icon>
+          </div>
+          <div>
+            <h2>{{ activeCat.name }}</h2>
+            <p>{{ activeCat.description }}</p>
+          </div>
+        </div>
+
+        <div class="category-meta-stats">
+          <div class="search-input">
+            <mat-icon>search</mat-icon>
+            <input type="text" placeholder="Search entries..." [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)">
+            <button mat-icon-button *ngIf="searchQuery()" (click)="searchQuery.set('')" class="clear-btn">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <span class="count-chip">{{ getFilteredData().length }} entries</span>
+        </div>
+      </div>
+
+      <!-- Add New Entry Card (Compact & Density Reduced) -->
+      <div class="add-entry-card shadow-sm" *ngIf="showAddForm()">
+        <div class="card-header">
+          <h3><mat-icon>add_circle_outline</mat-icon> Add Entry to {{ activeCat.name }}</h3>
+          <button mat-icon-button (click)="cancelAdd()"><mat-icon>close</mat-icon></button>
+        </div>
+
+        <div class="compact-form-grid">
+          <div class="form-field-group">
+            <label>System Code Value</label>
+            <input type="text" class="compact-input" [(ngModel)]="newEntry().value" placeholder="e.g. DEV_IN_PROGRESS" />
+          </div>
+
+          <div class="form-field-group">
+            <label>Display Label</label>
+            <input type="text" class="compact-input" [(ngModel)]="newEntry().label" placeholder="e.g. Dev In Progress" />
+          </div>
+
+          <div class="form-field-group">
+            <label>Color Code</label>
+            <div class="compact-color-picker">
+              <input type="color" [(ngModel)]="newEntry().colorCode" />
+              <code>{{ newEntry().colorCode }}</code>
+            </div>
+          </div>
+
+          <div class="form-field-group">
+            <label>Display Order</label>
+            <input type="number" class="compact-input num" [(ngModel)]="newEntry().displayOrder" />
+          </div>
+        </div>
+
+        <div class="form-actions-row">
+          <button mat-raised-button color="primary" class="compact-btn" (click)="addEntry()">Save Entry</button>
+          <button mat-button class="compact-btn" (click)="cancelAdd()">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div class="loading-box" *ngIf="loading()">
+        <mat-icon class="spin">sync</mat-icon>
+        <span>Loading master data entries...</span>
+      </div>
+
+      <!-- Compact Entries Data Table Card -->
+      <div class="table-card shadow-sm" *ngIf="!loading()">
+        <table mat-table [dataSource]="getFilteredData()" class="compact-table">
+
+          <!-- Code Value Column -->
+          <ng-container matColumnDef="value">
+            <th mat-header-cell *matHeaderCellDef>System Code</th>
+            <td mat-cell *matCellDef="let item">
+              <ng-container *ngIf="!isEditing(item); else editingValue">
+                <span class="compact-code-pill" [style.background-color]="item.colorCode + '15'" [style.color]="item.colorCode" [style.border-color]="item.colorCode + '33'">
+                  <span class="dot" [style.background-color]="item.colorCode"></span>
+                  <code>{{ item.value }}</code>
+                </span>
+              </ng-container>
+              <ng-template #editingValue>
+                <input type="text" class="table-inline-input" [(ngModel)]="editForm().value" />
+              </ng-template>
+            </td>
+          </ng-container>
+
+          <!-- Label Column -->
+          <ng-container matColumnDef="label">
+            <th mat-header-cell *matHeaderCellDef>Display Label</th>
+            <td mat-cell *matCellDef="let item">
+              <ng-container *ngIf="!isEditing(item); else editingLabel">
+                <span class="compact-label-text">{{ item.label }}</span>
+              </ng-container>
+              <ng-template #editingLabel>
+                <input type="text" class="table-inline-input" [(ngModel)]="editForm().label" />
+              </ng-template>
+            </td>
+          </ng-container>
+
+          <!-- Color Column -->
+          <ng-container matColumnDef="color">
+            <th mat-header-cell *matHeaderCellDef>Color</th>
+            <td mat-cell *matCellDef="let item">
+              <ng-container *ngIf="!isEditing(item); else editingColor">
+                <div class="compact-color-cell">
+                  <span class="swatch" [style.background-color]="item.colorCode"></span>
+                  <span class="hex-text">{{ item.colorCode || '#3b82f6' }}</span>
+                </div>
+              </ng-container>
+              <ng-template #editingColor>
+                <input type="color" class="table-inline-color" [(ngModel)]="editForm().colorCode" />
+              </ng-template>
+            </td>
+          </ng-container>
+
+          <!-- Order Column -->
+          <ng-container matColumnDef="order">
+            <th mat-header-cell *matHeaderCellDef>Order</th>
+            <td mat-cell *matCellDef="let item">
+              <ng-container *ngIf="!isEditing(item); else editingOrder">
+                <span class="compact-order-tag">#{{ item.displayOrder }}</span>
+              </ng-container>
+              <ng-template #editingOrder>
+                <input type="number" class="table-inline-input num" [(ngModel)]="editForm().displayOrder" />
+              </ng-template>
+            </td>
+          </ng-container>
+
+          <!-- Active Status Column -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let item">
+              <mat-slide-toggle
+                class="compact-toggle"
+                [checked]="item.isActive"
+                (change)="toggleActive(item)"
+                [disabled]="!authService.hasPermission('admin:master-data')">
+                <span [class.active-txt]="item.isActive" [class.disabled-txt]="!item.isActive">
+                  {{ item.isActive ? 'Active' : 'Disabled' }}
+                </span>
+              </mat-slide-toggle>
+            </td>
+          </ng-container>
+
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let item">
+              <ng-container *ngIf="!isEditing(item); else editingActions">
+                <button mat-icon-button class="icon-btn-compact" color="primary" matTooltip="Edit Entry" (click)="startEdit(item)" *ngIf="authService.hasPermission('admin:master-data')">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button class="icon-btn-compact" color="warn" matTooltip="Remove Entry" (click)="deleteEntry(item)" [disabled]="item.isDefault" *ngIf="authService.hasPermission('admin:master-data')">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </ng-container>
+              <ng-template #editingActions>
+                <button mat-flat-button color="primary" class="xs-btn" (click)="saveEdit(item)">Save</button>
+                <button mat-button class="xs-btn" (click)="cancelEdit()">Cancel</button>
+              </ng-template>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+
+        <!-- Empty Rows Placeholder -->
+        <div class="no-data-box" *ngIf="getFilteredData().length === 0">
+          <mat-icon>inbox</mat-icon>
+          <p>No master lookup entries found in {{ activeCat.name }}.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

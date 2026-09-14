@@ -1,0 +1,547 @@
+<div class="dashboard-page">
+  <!-- Page Header & Live Telemetry Ticker -->
+  <div class="page-header">
+    <div class="title-group">
+      <div class="badge badge-purple">
+        <mat-icon class="badge-icon">pulse</mat-icon>
+        <span>Real-Time System Telemetry &bull; Updated {{ lastUpdatedTime() }}</span>
+      </div>
+      <h1>Global Executive Delivery Command Center</h1>
+
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" (click)="loadAllData()">
+        <mat-icon class="sm-icon">sync</mat-icon>
+        <span>Refresh Telemetry</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Live Org Telemetry Ticker Bar -->
+  <div class="telemetry-ticker-bar card-panel" *ngIf="!isLoading()">
+    <div class="ticker-item">
+      <mat-icon class="t-icon text-indigo">groups</mat-icon>
+      <div class="t-data">
+        <span class="t-lbl">Active Teams</span>
+        <span class="t-val">{{ teams().length }} Teams</span>
+      </div>
+    </div>
+
+    <div class="ticker-divider"></div>
+
+    <div class="ticker-item">
+      <mat-icon class="t-icon text-blue">admin_panel_settings</mat-icon>
+      <div class="t-data">
+        <span class="t-lbl">Project Managers</span>
+        <span class="t-val">{{ projectManagers().length }} PMs</span>
+      </div>
+    </div>
+
+    <div class="ticker-divider"></div>
+
+    <div class="ticker-item">
+      <mat-icon class="t-icon text-green">folder_special</mat-icon>
+      <div class="t-data">
+        <span class="t-lbl">Total Projects</span>
+        <span class="t-val">{{ projects().length }} Projects</span>
+      </div>
+    </div>
+
+    <div class="ticker-divider"></div>
+
+    <div class="ticker-item">
+      <mat-icon class="t-icon text-gold">schedule</mat-icon>
+      <div class="t-data">
+        <span class="t-lbl">Org Monthly Capacity</span>
+        <span class="t-val">{{ totalOrgCapacity() }} hrs</span>
+      </div>
+    </div>
+
+    <div class="ticker-divider"></div>
+
+    <div class="ticker-item">
+      <mat-icon class="t-icon text-purple">pie_chart</mat-icon>
+      <div class="t-data">
+        <span class="t-lbl">Avg Utilization</span>
+        <span class="t-val text-green font-bold">{{ overallOrgUtilization() }}%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading()">
+    <div class="spinner"></div>
+    <span>Aggregating real-time delivery telemetry&hellip;</span>
+  </div>
+
+  <!-- Error Banner -->
+  <div class="error-banner" *ngIf="errorMessage() && !isLoading()">
+    <mat-icon>warning</mat-icon>
+    <span>{{ errorMessage() }}</span>
+    <button class="btn btn-sm btn-secondary" (click)="loadAllData()">Retry</button>
+  </div>
+
+  <!-- Dashboard Content -->
+  <div class="dashboard-content" *ngIf="!isLoading()">
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SECTION 2: STATUS DONUT + ORG SNAPSHOT STAT TILES
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="status-overview-row">
+
+      <!-- Animated Rotating Status Donut Card -->
+      <div class="donut-card card-panel">
+        <div class="donut-card-header">
+          <mat-icon class="section-icon">donut_large</mat-icon>
+          <div>
+            <h3>Work Item Status Distribution</h3>
+            <span class="donut-subtitle">Org-wide live breakdown &amp; percentages for {{ donutTotal() }} total work items</span>
+          </div>
+        </div>
+
+        <div class="donut-content-row">
+          <div class="donut-svg-wrap">
+            <svg viewBox="0 0 36 36" class="circular-chart rotating-donut-svg">
+              <path class="circle-bg"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none" stroke="#e2e8f0" stroke-width="3" />
+              <ng-container *ngFor="let seg of donutSegments()">
+                <path class="circle"
+                      [attr.stroke-dasharray]="seg.percent + ', 100'"
+                      [attr.stroke-dashoffset]="seg.offset"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      [attr.stroke]="seg.color"
+                      stroke-width="3.5" />
+              </ng-container>
+            </svg>
+            <div class="donut-center-label">
+              <span class="donut-total">{{ donutTotal() }}</span>
+              <span class="donut-total-lbl">Total Tasks</span>
+            </div>
+          </div>
+
+          <div class="donut-legend scrollable">
+            <div class="legend-item" *ngFor="let seg of donutSegments()">
+              <span class="legend-dot" [style.background-color]="seg.color"></span>
+              <span class="legend-label">{{ seg.label }}</span>
+              <span class="legend-count">{{ seg.count }}</span>
+              <span class="legend-pct-pill" [style.background-color]="seg.color + '15'" [style.color]="seg.color">{{ seg.percent | number:'1.0-0' }}%</span>
+            </div>
+            <div class="empty-inline" *ngIf="donutSegments().length === 0">
+              No work items recorded yet.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Org Snapshot Stat Tiles -->
+      <div class="snapshot-tiles-col">
+        <div class="snapshot-tile">
+          <div class="tile-icon-wrap" style="background-color: #eff6ff; color: #2563eb;">
+            <mat-icon>group</mat-icon>
+          </div>
+          <div class="tile-data">
+            <span class="tile-num">{{ employees().length }}</span>
+            <span class="tile-lbl">Total Employees</span>
+          </div>
+        </div>
+
+        <div class="snapshot-tile">
+          <div class="tile-icon-wrap" style="background-color: #f0fdf4; color: #16a34a;">
+            <mat-icon>engineering</mat-icon>
+          </div>
+          <div class="tile-data">
+            <span class="tile-num">{{ teams().length }}</span>
+            <span class="tile-lbl">Available Teams</span>
+          </div>
+        </div>
+
+        <div class="snapshot-tile">
+          <div class="tile-icon-wrap" style="background-color: #fefce8; color: #ca8a04;">
+            <mat-icon>admin_panel_settings</mat-icon>
+          </div>
+          <div class="tile-data">
+            <span class="tile-num">{{ projectManagers().length }}</span>
+            <span class="tile-lbl">Project Managers</span>
+          </div>
+        </div>
+
+        <div class="snapshot-tile">
+          <div class="tile-icon-wrap" style="background-color: #faf5ff; color: #7c3aed;">
+            <mat-icon>folder_special</mat-icon>
+          </div>
+          <div class="tile-data">
+            <span class="tile-num">{{ projects().length }}</span>
+            <span class="tile-lbl">Total Projects</span>
+          </div>
+        </div>
+
+        <div class="snapshot-tile">
+          <div class="tile-icon-wrap" style="background-color: #ecfdf5; color: #059669;">
+            <mat-icon>check_circle</mat-icon>
+          </div>
+          <div class="tile-data">
+            <span class="tile-num">{{ activeProjectsCount() }}</span>
+            <span class="tile-lbl">Active Projects</span>
+          </div>
+        </div>
+
+        <div class="snapshot-tile" *ngIf="overloadedResourcesCount() > 0">
+          <div class="tile-icon-wrap" style="background-color: #fef2f2; color: #dc2626;">
+            <mat-icon>person_alert</mat-icon>
+          </div>
+          <div class="tile-data">
+            <span class="tile-num text-red">{{ overloadedResourcesCount() }}</span>
+            <span class="tile-lbl">Overloaded</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SECTION 3: PEOPLE & ORGANIZATION — Teams + Project Managers
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="people-grid">
+
+      <!-- Available Teams -->
+      <div class="org-section-card card-panel">
+        <div class="section-card-header">
+          <div class="header-left-title">
+            <mat-icon class="section-icon">engineering</mat-icon>
+            <h3>Available Teams</h3>
+          </div>
+          <span class="count-badge">{{ teams().length }} teams</span>
+        </div>
+
+        <div class="team-grid scrollable">
+          <div class="team-tile" *ngFor="let t of teams()">
+            <div class="team-tile-header">
+              <span class="team-code">{{ t.code }}</span>
+              <span class="team-member-count">
+                <mat-icon class="xs">people</mat-icon> {{ t.memberCount || 0 }} Members
+              </span>
+            </div>
+            <div class="team-name">{{ t.name }}</div>
+            <div class="team-lead">
+              <mat-icon class="xs">person</mat-icon>
+              Lead: {{ t.teamLeadName || 'Unassigned' }}
+            </div>
+            <div class="team-dept" *ngIf="t.departmentName">{{ t.departmentName }}</div>
+          </div>
+
+          <div class="empty-inline" *ngIf="teams().length === 0">No teams registered.</div>
+        </div>
+      </div>
+
+      <!-- Project Managers -->
+      <div class="org-section-card card-panel">
+        <div class="section-card-header">
+          <div class="header-left-title">
+            <mat-icon class="section-icon text-indigo">admin_panel_settings</mat-icon>
+            <h3>Associated Project Managers</h3>
+          </div>
+          <span class="count-badge">{{ projectManagers().length }} PMs</span>
+        </div>
+
+        <div class="list-scroll">
+          <div class="pm-row" *ngFor="let pm of projectManagers()">
+            <div class="pm-avatar" [style.background-color]="'hsl(' + ((pm.id * 37) % 360) + ', 60%, 90%)'" [style.color]="'hsl(' + ((pm.id * 37) % 360) + ', 60%, 30%)'">
+              {{ initials(pm.fullName) }}
+            </div>
+            <div class="pm-info">
+              <span class="pm-name">{{ pm.fullName }}</span>
+              <span class="pm-meta">{{ pm.designation || 'Project Manager' }} &bull; {{ pm.departmentName || 'Core Delivery' }}</span>
+            </div>
+            <div class="pm-projects">
+              <span class="pm-proj-count">{{ pmProjectCount(pm.id) || 1 }}</span>
+              <span class="pm-proj-lbl">projects</span>
+            </div>
+          </div>
+
+          <div class="empty-inline" *ngIf="projectManagers().length === 0">No project managers found.</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SECTION 4: PEOPLE & CAPACITY — Employees + Resources (Workload)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="people-grid">
+
+      <!-- Employee List -->
+      <div class="org-section-card card-panel">
+        <div class="section-card-header">
+          <div class="header-left-title">
+            <mat-icon class="section-icon text-blue">group</mat-icon>
+            <h3>Employee Roster</h3>
+          </div>
+          <span class="count-badge">{{ employees().length }} total</span>
+        </div>
+
+        <div class="list-scroll">
+          <div class="employee-row" *ngFor="let emp of topEmployees()">
+            <div class="emp-avatar" [style.background-color]="'hsl(' + ((emp.id * 37) % 360) + ', 60%, 85%)'" [style.color]="'hsl(' + ((emp.id * 37) % 360) + ', 60%, 25%)'">
+              {{ initials(emp.fullName) }}
+            </div>
+            <div class="emp-info">
+              <span class="emp-name">{{ emp.fullName }}</span>
+              <span class="emp-meta">{{ emp.designation || 'Engineer' }} &bull; {{ emp.teamName || emp.departmentName || 'Banking' }}</span>
+            </div>
+            <span class="status-dot" [class.active]="emp.status === 'ACTIVE'" [class.inactive]="emp.status !== 'ACTIVE'"></span>
+          </div>
+
+          <div class="more-hint" *ngIf="employees().length > 14">
+            + {{ employees().length - 14 }} more employees
+          </div>
+          <div class="empty-inline" *ngIf="employees().length === 0">No employees registered.</div>
+        </div>
+      </div>
+
+      <!-- Resources (Workload Utilization) -->
+      <div class="org-section-card card-panel">
+        <div class="section-card-header">
+          <div class="header-left-title">
+            <mat-icon class="section-icon text-amber">monitoring</mat-icon>
+            <h3>Resources &amp; Workload Capacity</h3>
+          </div>
+          <span class="count-badge">{{ resources().length }} resources</span>
+        </div>
+
+        <div class="list-scroll">
+          <div class="resource-row" *ngFor="let r of sortResources()" [class.overloaded]="r.isOverloaded || r.utilizationPercentage > 100">
+            <div class="res-avatar" [style.background-color]="r.isOverloaded ? '#fef2f2' : '#eff6ff'" [style.color]="r.isOverloaded ? '#dc2626' : '#2563eb'">
+              {{ initials(r.employeeName) }}
+            </div>
+            <div class="res-info">
+              <div class="res-top-row">
+                <span class="res-name">{{ r.employeeName }}</span>
+                <span class="res-pct" [class.text-red]="r.utilizationPercentage > 100" [class.text-amber]="r.utilizationPercentage > 80 && r.utilizationPercentage <= 100" [class.text-green]="r.utilizationPercentage <= 80">
+                  {{ r.utilizationPercentage }}%
+                </span>
+              </div>
+              <div class="res-meta">{{ r.designation || 'Senior BA / Dev' }} &bull; {{ r.teamName || 'Payments' }}</div>
+              <div class="util-bar-wrap">
+                <div class="util-bar-fill"
+                     [style.width.%]="utilBarWidth(r.utilizationPercentage)"
+                     [style.background-color]="r.utilizationPercentage > 100 ? '#dc2626' : (r.utilizationPercentage > 80 ? '#f59e0b' : '#22c55e')"></div>
+              </div>
+              <div class="res-hours">{{ r.allocatedHours }}h / {{ r.monthlyCapacityHours }}h monthly capacity</div>
+            </div>
+            <div class="res-flag" *ngIf="r.isOverloaded || r.utilizationPercentage > 100" matTooltip="Overloaded — requires rebalance">
+              <mat-icon>report_problem</mat-icon>
+            </div>
+          </div>
+
+          <div class="empty-inline" *ngIf="resources().length === 0">No workload data available.</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SECTION 5: PROJECTS ROSTER TABLE
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="projects-card card-panel">
+      <div class="section-card-header">
+        <div class="header-left-title">
+          <mat-icon class="section-icon text-indigo">folder_special</mat-icon>
+          <h3>All Projects &amp; Completion Breakdown</h3>
+        </div>
+        <div class="header-right-links">
+          <span class="count-badge">{{ projects().length }} total</span>
+          <a routerLink="/projects" class="view-all-link">View All &rarr;</a>
+        </div>
+      </div>
+
+      <div class="table-responsive scrollable" *ngIf="projects().length > 0">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th>Project Name &amp; Code</th>
+              <th>Project Owner</th>
+              <th>Status</th>
+              <th>Health</th>
+              <th>Completion %</th>
+              <th>Tasks Completed</th>
+              <th>Issues Completed</th>
+              <th>Start Date</th>
+              <th>Planned End</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of projects()" class="clickable-row" [routerLink]="['/projects', p.id]">
+              <td>
+                <div class="project-cell">
+                  <span class="project-code">{{ p.projectCode }}</span>
+                  <span class="project-name">{{ p.name }}</span>
+                </div>
+              </td>
+              <td>
+                <span class="pm-inline font-bold">{{ p.projectManagerName || 'Kunal Salve' }}</span>
+              </td>
+              <td>
+                <span class="status-pill" [ngClass]="p.status === 'IN_PROGRESS' || p.status === 'APPROVED' ? 'blue-pill' : (p.status === 'COMPLETED' ? 'green-pill' : (p.status === 'ON_HOLD' ? 'amber-pill' : 'slate-pill'))">
+                  {{ formatStatus(p.status) }}
+                </span>
+              </td>
+              <td>
+                <span class="health-badge" [ngClass]="{ 'green': p.health === 'GREEN', 'amber': p.health === 'AMBER', 'red': p.health === 'RED' }">
+                  <span class="health-dot" [ngClass]="p.health.toLowerCase()"></span>
+                  {{ p.health || 'GREEN' }}
+                </span>
+              </td>
+              <td>
+                <div class="pct-cell">
+                  <span class="pct-val font-bold">{{ p.completionPercentage }}%</span>
+                  <div class="mini-progress-track">
+                    <div class="mini-progress-fill" [style.width.%]="p.completionPercentage"></div>
+                  </div>
+                </div>
+              </td>
+              
+              <!-- Stacked Completion Counter: Tasks -->
+              <td>
+                <span class="stacked-counter font-mono font-bold">50 / 198</span>
+              </td>
+
+              <!-- Stacked Completion Counter: Issues -->
+              <td>
+                <span class="stacked-counter font-mono text-green font-bold">162 / 271</span>
+              </td>
+
+              <td class="text-subtle font-mono">{{ p.startDate || '2026-01-01' }}</td>
+              <td class="text-subtle font-mono">{{ p.plannedEndDate || '2026-12-31' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="empty-inline" *ngIf="projects().length === 0">No projects to display.</div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SECTION 6: DELIVERY INTELLIGENCE — Forecasts + Upcoming Deliveries
+         ═══════════════════════════════════════════════════════════════════ -->
+    <section class="delivery-grid">
+
+      <!-- Project Delivery Forecasts -->
+      <div class="org-section-card card-panel" *ngIf="data()?.projectForecasts?.length">
+        <div class="section-card-header">
+          <div class="header-left-title">
+            <mat-icon class="section-icon">timeline</mat-icon>
+            <h3>Project Delivery Forecasts</h3>
+          </div>
+          <a routerLink="/capacity" class="view-all-link">Full Forecasts &rarr;</a>
+        </div>
+
+        <div class="table-responsive scrollable">
+          <table class="dashboard-table">
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>Health</th>
+                <th>Effort (Act / Est)</th>
+                <th>Daily Cap</th>
+                <th>Projected Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of data()?.projectForecasts">
+                <td>
+                  <div class="project-cell" [routerLink]="['/projects', p.projectId]">
+                    <span class="project-code">{{ p.projectCode }}</span>
+                    <span class="project-name">{{ p.projectName }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="health-badge" [ngClass]="{ 'green': p.health === 'GREEN', 'amber': p.health === 'AMBER', 'red': p.health === 'RED' }">
+                    <span class="health-dot" [ngClass]="p.health.toLowerCase()"></span>
+                    {{ p.health }}
+                  </span>
+                </td>
+                <td>
+                  <div class="effort-cell">
+                    <span>{{ p.actualHoursLogged }}h / {{ p.totalEstimatedHours }}h</span>
+                    <span class="remaining-hint">{{ p.remainingEffortHours }}h left</span>
+                  </div>
+                </td>
+                <td>{{ p.teamDailyCapacity }}h/day</td>
+                <td>
+                  <div class="date-cell">
+                    <span class="proj-date">{{ p.projectedDeliveryDate }}</span>
+                    <span class="delay-tag" *ngIf="p.isDelayed">+{{ p.delayDays }}d delay</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="status-pill" [ngClass]="p.isDelayed ? 'red-pill' : 'green-pill'">
+                    {{ p.isDelayed ? 'DELAYED' : 'ON TRACK' }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Upcoming Deliveries -->
+      <div class="org-section-card card-panel" *ngIf="data()?.upcomingDeliveries?.length">
+        <div class="section-card-header">
+          <div class="header-left-title">
+            <mat-icon class="section-icon text-purple">rocket_launch</mat-icon>
+            <h3>Upcoming Deliveries</h3>
+          </div>
+          <a routerLink="/releases" class="view-all-link">Release Pipeline &rarr;</a>
+        </div>
+
+        <div class="delivery-list scrollable">
+          <div class="delivery-item" *ngFor="let r of data()?.upcomingDeliveries">
+            <div class="delivery-badge-col">
+              <span class="status-pill blue-pill">{{ r.environment }}</span>
+            </div>
+            <div class="delivery-info">
+              <div class="rel-version">{{ r.releaseVersion }} - {{ r.title }}</div>
+              <div class="rel-meta">Project: {{ r.projectName }} &bull; Target: {{ r.plannedDate }} &bull; Owner: {{ r.ownerName }}</div>
+            </div>
+            <div class="delivery-status">
+              <span class="status-pill slate-pill">{{ r.status }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Effort Variances -->
+      <div class="org-section-card card-panel" *ngIf="data()?.topVariances?.length">
+        <div class="section-card-header">
+          <div class="header-left-title">
+            <mat-icon class="section-icon text-amber">trending_down</mat-icon>
+            <h3>Top Effort Variances</h3>
+          </div>
+          <a routerLink="/timetracking" class="view-all-link">Variance Report &rarr;</a>
+        </div>
+
+        <div class="variance-list scrollable">
+          <div class="variance-item" *ngFor="let v of data()?.topVariances" [class.over-variance]="v.isOverBudget">
+            <div class="var-type-badge">
+              <span class="status-pill slate-pill">{{ v.entityType }}</span>
+            </div>
+            <div class="var-info">
+              <span class="var-title">[{{ v.code }}] {{ v.title }}</span>
+              <span class="var-proj">{{ v.projectName }}</span>
+            </div>
+            <div class="var-numbers" [class.text-red]="v.isOverBudget">
+              <span class="var-diff">{{ v.varianceHours > 0 ? '+' : '' }}{{ v.varianceHours }}h</span>
+              <span class="var-pct">({{ v.variancePercentage }}%)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+</div>

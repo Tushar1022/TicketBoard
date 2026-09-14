@@ -1,0 +1,295 @@
+<div class="app-shell" [class.rail-collapsed]="sidebarCollapsed()">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       EXECUTIVE TOP HEADER BAR
+       ═══════════════════════════════════════════════════════════ -->
+  <header class="app-topbar">
+    <!-- LEFT — Brand & Workspace Switcher -->
+    <div class="topbar-left">
+      <a class="brand-logo" routerLink="/dashboard/executive">
+        <div class="brand-icon-wrap">
+          <mat-icon>fact_check</mat-icon>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">TicketBoard</span>
+          <span class="brand-edition">Enterprise</span>
+        </div>
+      </a>
+
+      <span class="brand-sep"></span>
+
+      <button class="workspace-chip" [matMenuTriggerFor]="workspaceMenu" matTooltip="Switch active workspace / project">
+        <mat-icon class="chip-icon text-indigo">business</mat-icon>
+        <div class="chip-text">
+          <span class="chip-tenant">{{ workspaceName() }}</span>
+          <span class="chip-project">{{ activeProjectContext() }}</span>
+        </div>
+        <mat-icon class="chip-chevron">expand_more</mat-icon>
+      </button>
+    </div>
+
+    <!-- CENTER — Real-Time Search & Telemetry -->
+    <div class="topbar-center">
+      <div class="search-box">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input type="text" placeholder="Search tasks, SBI requirements, team members, support tickets..." />
+        <kbd class="shortcut-kbd">⌘K</kbd>
+      </div>
+    </div>
+
+    <!-- RIGHT — Actions & User Profile -->
+    <div class="topbar-right">
+
+      <!-- Log Time Quick Button -->
+      <button class="btn-topbar-action btn-time" (click)="openLogTimeDialog()" matTooltip="Log Effort Hours">
+        <mat-icon>schedule</mat-icon>
+        <span class="action-lbl">Log Time</span>
+      </button>
+
+      <!-- Raise Support Ticket Quick Button -->
+      <button class="btn-topbar-action btn-ticket" (click)="openRaiseTicketDialog('ROLE_SUPER_ADMIN')" matTooltip="Raise Ticket to Super Admin / Admin">
+        <mat-icon class="text-purple">confirmation_number</mat-icon>
+        <span class="action-lbl">Raise Ticket</span>
+      </button>
+
+      <!-- Notifications Bell -->
+      <button class="action-btn notif-trigger" [matMenuTriggerFor]="notifMenu" matTooltip="Live Notifications">
+        <mat-icon>notifications</mat-icon>
+        <span class="notif-badge" *ngIf="unreadCount() > 0">{{ unreadCount() }}</span>
+      </button>
+
+      <!-- User Profile Chip -->
+      <button class="user-chip" [matMenuTriggerFor]="userMenu">
+        @if (currentUser(); as user) {
+          <div class="avatar" [attr.data-role]="primaryRole()">
+            {{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}
+          </div>
+          <div class="user-meta">
+            <span class="user-name">{{ user.fullName }}</span>
+            <span class="user-role-badge" [attr.data-role]="primaryRole()">{{ displayRole() }}</span>
+          </div>
+        }
+        <mat-icon class="chevron">expand_more</mat-icon>
+      </button>
+
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       DROPDOWN MENUS
+       ═══════════════════════════════════════════════════════════ -->
+  <mat-menu #workspaceMenu="matMenu" xPosition="before" class="dropdown-panel">
+    <div class="menu-section-title">Active Workspace &amp; Project Context</div>
+    <button mat-menu-item class="active-item">
+      <mat-icon class="text-indigo">business</mat-icon>
+      <div class="menu-item-text">
+        <strong>{{ workspaceName() }} &mdash; Primary Tenant</strong>
+        <span>Project: {{ activeProjectContext() }}</span>
+      </div>
+      <mat-icon class="check-icon">check</mat-icon>
+    </button>
+  </mat-menu>
+
+  <mat-menu #notifMenu="matMenu" xPosition="before" class="dropdown-panel notif-panel">
+    <div class="notif-header">
+      <strong>Live Telemetry Notifications</strong>
+      <button mat-button class="link-btn" (click)="markAllRead()">Mark all read</button>
+    </div>
+    <mat-divider></mat-divider>
+    <div class="notif-scroll">
+      <div
+        class="notif-item"
+        *ngFor="let n of notifications()"
+        [class.unread]="!n.read"
+      >
+        <div class="notif-dot" *ngIf="!n.read"></div>
+        <div class="notif-icon-wrap" [ngClass]="n.color">
+          <mat-icon>{{ n.icon }}</mat-icon>
+        </div>
+        <div class="notif-body">
+          <p>{{ n.text }}</p>
+          <span class="notif-time">{{ n.time }}</span>
+        </div>
+      </div>
+    </div>
+  </mat-menu>
+
+  <mat-menu #userMenu="matMenu" xPosition="before" class="dropdown-panel user-panel">
+    <div class="user-menu-head">
+      @if (currentUser(); as user) {
+        <div class="avatar large" [attr.data-role]="primaryRole()">
+          {{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}
+        </div>
+        <div class="user-detail">
+          <strong>{{ user.fullName }}</strong>
+          <span class="email">{{ user.email }}</span>
+          <span class="role-tag" [attr.data-role]="primaryRole()">
+            {{ displayRole() }}
+          </span>
+        </div>
+      }
+    </div>
+    <mat-divider></mat-divider>
+    <button mat-menu-item routerLink="/my-workspace">
+      <mat-icon>dashboard</mat-icon>
+      <span>My Workspace</span>
+    </button>
+    <button mat-menu-item routerLink="/support">
+      <mat-icon>support_agent</mat-icon>
+      <span>Help &amp; Support Hub</span>
+    </button>
+    <button mat-menu-item routerLink="/support/tickets">
+      <mat-icon>confirmation_number</mat-icon>
+      <span>My Support Tickets</span>
+    </button>
+    <mat-divider></mat-divider>
+    <button mat-menu-item (click)="logout()" class="logout-action">
+      <mat-icon>logout</mat-icon>
+      <span>Sign Out</span>
+    </button>
+  </mat-menu>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       SHELL BODY: SIDEBAR & MAIN CANVAS
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="app-shell-body" [class.rail-collapsed]="sidebarCollapsed()">
+
+    <!-- Executive Navigation Rail Sidebar -->
+    <aside class="app-nav-rail">
+      <div class="rail-scroll">
+
+        <!-- CORE COMMAND HEADER WITH SIDEBAR TOGGLE BUTTON -->
+        <div class="nav-section core-command-header">
+          <span class="section-title" *ngIf="!sidebarCollapsed()">Dashboard</span>
+          <button class="rail-toggle-sidebar-btn" (click)="toggleSidebar()" [matTooltip]="sidebarCollapsed() ? 'Expand Sidebar Rail' : 'Collapse Sidebar Rail'">
+            <mat-icon>{{ sidebarCollapsed() ? 'menu' : 'menu_open' }}</mat-icon>
+          </button>
+        </div>
+
+        <nav class="nav-group primary">
+          <a routerLink="/dashboard/executive" routerLinkActive="active" class="nav-item">
+            <mat-icon>home</mat-icon>
+            <span class="nav-label">Home</span>
+          </a>
+          <a routerLink="/projects" routerLinkActive="active" class="nav-item" *ngIf="authService.hasPermission('project:view')">
+            <mat-icon>folder_special</mat-icon>
+            <span class="nav-label">Projects</span>
+          </a>
+          <a routerLink="/reports" routerLinkActive="active" class="nav-item" *ngIf="authService.hasPermission('report:view')">
+            <mat-icon>analytics</mat-icon>
+            <span class="nav-label">Reports</span>
+          </a>
+          <a routerLink="/my-workspace" routerLinkActive="active" class="nav-item">
+            <mat-icon>space_dashboard</mat-icon>
+            <span class="nav-label">My Workspace</span>
+          </a>
+        </nav>
+
+        <div class="rail-divider"></div>
+
+        <!-- WORK MANAGEMENT -->
+        <div class="nav-section" *ngIf="!sidebarCollapsed()">
+          <span class="section-title">Work Management</span>
+        </div>
+
+        <nav class="nav-group secondary">
+          <a routerLink="/tasks" routerLinkActive="active" class="nav-item sub" *ngIf="authService.hasPermission('workitem:view')">
+            <mat-icon>check_circle</mat-icon>
+            <span class="nav-label">Tasks</span>
+            <span class="nav-pill-badge" *ngIf="!sidebarCollapsed()">198</span>
+          </a>
+          <a routerLink="/risks" routerLinkActive="active" class="nav-item sub" *ngIf="authService.hasPermission('risk:view')">
+            <mat-icon>gpp_maybe</mat-icon>
+            <span class="nav-label">Issues</span>
+            <span class="nav-pill-badge red" *ngIf="!sidebarCollapsed()">271</span>
+          </a>
+          <a routerLink="/releases" routerLinkActive="active" class="nav-item sub" *ngIf="authService.hasPermission('release:view')">
+            <mat-icon>flag</mat-icon>
+            <span class="nav-label">Milestones</span>
+          </a>
+          <a routerLink="/timetracking" routerLinkActive="active" class="nav-item sub" *ngIf="authService.hasPermission('timelog:view')">
+            <mat-icon>timer</mat-icon>
+            <span class="nav-label">Time Logs</span>
+          </a>
+        </nav>
+
+        <div class="rail-divider"></div>
+
+        <!-- SUPPORT & GOVERNANCE -->
+        <div class="nav-section" *ngIf="!sidebarCollapsed()">
+          <span class="section-title">Support &amp; Governance</span>
+        </div>
+
+        <nav class="nav-group secondary">
+          <a routerLink="/support" routerLinkActive="active" class="nav-item sub">
+            <mat-icon class="text-indigo">help_outline</mat-icon>
+            <span class="nav-label">Help &amp; Support</span>
+          </a>
+          <a routerLink="/support/tickets" routerLinkActive="active" class="nav-item sub">
+            <mat-icon class="text-purple">confirmation_number</mat-icon>
+            <span class="nav-label">Support Tickets</span>
+            <span class="nav-pill-badge purple" *ngIf="!sidebarCollapsed() && openSupportTicketsCount() > 0">
+              {{ openSupportTicketsCount() }}
+            </span>
+          </a>
+        </nav>
+
+        <!-- ADMIN SECTION -->
+        <ng-container *ngIf="canShowAdmin()">
+          <div class="rail-divider"></div>
+          <div class="nav-section" *ngIf="!sidebarCollapsed()">
+            <span class="section-title">Administration</span>
+          </div>
+
+          <nav class="nav-group secondary">
+            <a routerLink="/support/tickets" [queryParams]="{ view: 'admin' }" routerLinkActive="active" class="nav-item sub admin-highlight">
+              <mat-icon class="text-purple">headset_mic</mat-icon>
+              <span class="nav-label">Admin Ticket Queue</span>
+              <span class="nav-pill-badge red" *ngIf="!sidebarCollapsed() && openSupportTicketsCount() > 0">
+                {{ openSupportTicketsCount() }}
+              </span>
+            </a>
+            <a routerLink="/admin/users" routerLinkActive="active" class="nav-item sub" *ngIf="authService.hasPermission('user:view')">
+              <mat-icon>people</mat-icon>
+              <span class="nav-label">Users &amp; Access</span>
+            </a>
+            <a routerLink="/admin/master-data" routerLinkActive="active" class="nav-item sub" *ngIf="authService.hasPermission('admin:master-data')">
+              <mat-icon>settings</mat-icon>
+              <span class="nav-label">Master Data</span>
+            </a>
+            <a routerLink="/admin/roles" routerLinkActive="active" class="nav-item sub" *ngIf="authService.hasPermission('admin:roles-permissions')">
+              <mat-icon>admin_panel_settings</mat-icon>
+              <span class="nav-label">Roles &amp; Security</span>
+            </a>
+          </nav>
+        </ng-container>
+
+      </div>
+    </aside>
+
+    <!-- Main Content Canvas -->
+    <main class="app-main-canvas">
+      <div class="canvas-content">
+        <router-outlet></router-outlet>
+      </div>
+
+      <!-- Stable Enterprise App Footer -->
+      <footer class="app-footer">
+        <div class="footer-left">
+          <span class="footer-brand">TicketBoard Enterprise</span>
+          <span class="footer-dot">&bull;</span>
+          <span class="footer-version">v2.4.0</span>
+          <span class="footer-dot">&bull;</span>
+          <span class="footer-copy">&copy; 2026 Aurionpro Solutions. All rights reserved.</span>
+        </div>
+        <div class="footer-right">
+          <span class="status-indicator">
+            <span class="status-dot"></span>
+            <span>All Systems Operational</span>
+          </span>
+        </div>
+      </footer>
+    </main>
+
+  </div>
+</div>

@@ -1,0 +1,135 @@
+<div class="user-management">
+  <div class="page-header">
+    <div>
+      <h1>User Management</h1>
+      <p class="subtitle">Manage users, roles and access across the organisation</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="openCreateDialog()" *ngIf="authService.hasPermission('user:create')">
+      <mat-icon>person_add</mat-icon>
+      New User
+    </button>
+  </div>
+
+  <div class="filter-bar">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input matInput placeholder="Name, email, designation…" [value]="searchTerm()" (input)="onSearchChange($any($event.target).value)" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Role</mat-label>
+      <mat-select [value]="roleFilter()" (selectionChange)="onRoleChange($event.value)">
+        <mat-option value="">All Roles</mat-option>
+        <mat-option *ngFor="let r of ['ROLE_SUPER_ADMIN','ROLE_ADMIN','ROLE_PROJECT_OWNER','ROLE_PROJECT_MANAGER','ROLE_BUSINESS_ANALYST','ROLE_DEVELOPER','ROLE_QA_TESTER','ROLE_TEAM_LEAD','ROLE_MANAGEMENT']" [value]="r">
+          {{ formatRole(r) }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Status</mat-label>
+      <mat-select [value]="statusFilter()" (selectionChange)="onStatusChange($event.value)">
+        <mat-option value="">All Status</mat-option>
+        <mat-option value="ACTIVE">Active</mat-option>
+        <mat-option value="INACTIVE">Inactive</mat-option>
+        <mat-option value="LOCKED">Locked</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Department</mat-label>
+      <mat-select [value]="departmentFilter()" (selectionChange)="onDepartmentChange($event.value)">
+        <mat-option [value]="null">All Departments</mat-option>
+        <mat-option *ngFor="let d of departments()" [value]="d.id">{{ d.name }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <div class="table-card" *ngIf="!loading(); else loadingSpinner">
+    <table mat-table [dataSource]="filteredUsers()" class="users-table">
+
+      <ng-container matColumnDef="avatar">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let user">
+          <div class="user-avatar" [class.inactive]="user.status !== 'ACTIVE'">
+            {{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}
+          </div>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Name</th>
+        <td mat-cell *matCellDef="let user">
+          <div class="user-name">
+            {{ user.fullName }}
+            <span class="employee-id">{{ user.employeeId }}</span>
+          </div>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="email">
+        <th mat-header-cell *matHeaderCellDef>Email</th>
+        <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="department">
+        <th mat-header-cell *matHeaderCellDef>Department</th>
+        <td mat-cell *matCellDef="let user">{{ user.departmentName || '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="team">
+        <th mat-header-cell *matHeaderCellDef>Team</th>
+        <td mat-cell *matCellDef="let user">{{ user.teamName || '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="roles">
+        <th mat-header-cell *matHeaderCellDef>Roles</th>
+        <td mat-cell *matCellDef="let user">
+          <span *ngFor="let role of user.roles" class="role-chip" [ngClass]="roleClass(role)">
+            {{ roleChips([role])[0] }}
+          </span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let user">
+          <span class="status-badge" [class.active]="user.status === 'ACTIVE'" [class.locked]="user.status === 'LOCKED'">
+            {{ user.status }}
+          </span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let user">
+          <div class="action-buttons" *ngIf="authService.currentUser()?.id !== user.id">
+            <button mat-icon-button matTooltip="Edit" (click)="openEditDialog(user)" *ngIf="authService.hasPermission('user:edit')">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button [matTooltip]="user.status === 'ACTIVE' ? 'Deactivate' : 'Activate'" (click)="toggleStatus(user)" *ngIf="authService.hasPermission('user:manage-status')">
+              <mat-icon>{{ user.status === 'ACTIVE' ? 'block' : 'check_circle' }}</mat-icon>
+            </button>
+          </div>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+
+      <tr class="mat-row" *matNoDataRow>
+        <td class="mat-cell empty-state">
+          <mat-icon>no_accounts</mat-icon>
+          <span>No users found matching your filters</span>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <ng-template #loadingSpinner>
+    <div class="loading-state">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  </ng-template>
+</div>

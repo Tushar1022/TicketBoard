@@ -1,0 +1,977 @@
+<div class="zoho-project-workspace">
+  <!-- Persistent Contextual Project Sub-Navigation Bar -->
+  <header class="project-sub-nav-bar">
+    <div class="header-left">
+      <button class="icon-btn back-btn" routerLink="/projects" matTooltip="Back to Projects">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+
+      <div class="project-title-chip">
+        <span class="project-code">{{ project()?.projectCode || '—' }}</span>
+        <span class="project-name">{{ project()?.name || 'Loading Project...' }}</span>
+      </div>
+
+      <button class="icon-btn refresh-btn" (click)="loadAllProjectData()" matTooltip="Refresh Data">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <!-- Section Control Panel -->
+  <div class="project-control-panel">
+    <div class="control-tabs">
+      <button class="control-tab" [class.active]="activeTab() === 'dashboard'" (click)="setTab('dashboard')">
+        <mat-icon>dashboard</mat-icon> Dashboard
+      </button>
+      <button class="control-tab" [class.active]="activeTab() === 'tasks'" (click)="setTab('tasks')">
+        <mat-icon>list_alt</mat-icon> Tasks
+      </button>
+      <button class="control-tab" [class.active]="activeTab() === 'reports'" (click)="setTab('reports')">
+        <mat-icon>bar_chart</mat-icon> Reports
+      </button>
+      <button class="control-tab" [class.active]="activeTab() === 'documents'" (click)="setTab('documents')">
+        <mat-icon>folder_open</mat-icon> Documents
+      </button>
+      <button class="control-tab" [class.active]="activeTab() === 'milestones'" (click)="setTab('milestones')">
+        <mat-icon>flag</mat-icon> Milestones
+      </button>
+      <button class="control-tab" [class.active]="activeTab() === 'timelogs'" (click)="setTab('timelogs')">
+        <mat-icon>timer</mat-icon> Time Logs
+      </button>
+      <button class="control-tab" [class.active]="activeTab() === 'issues'" (click)="setTab('issues')">
+        <mat-icon>bug_report</mat-icon> Issues
+      </button>
+      <button class="control-tab" [class.active]="activeTab() === 'comments'" (click)="setTab('comments')">
+        <mat-icon>chat</mat-icon> Comments
+      </button>
+    </div>
+    <div class="control-actions">
+      <button class="btn btn-primary-accent" (click)="openCreateTaskModal()" *ngIf="activeTab() === 'tasks'">
+        <mat-icon class="xs">add</mat-icon> Add Task
+      </button>
+      <button class="btn btn-primary-accent" (click)="openCreateIssueModal()" *ngIf="activeTab() === 'issues'">
+        <mat-icon class="xs">add</mat-icon> Submit Issue
+      </button>
+    </div>
+  </div>
+
+  <!-- WORKSPACE TAB CANVAS -->
+  <div class="project-tab-canvas">
+
+    <!-- MODULE 1: DASHBOARD -->
+    <div class="tab-pane dashboard-pane" *ngIf="activeTab() === 'dashboard'">
+      <div class="dashboard-toolbar">
+        <div class="toolbar-title">
+          <h2>Project Dashboard</h2>
+          <span class="sub-text">Live KPI tiles, Task Status report, and Issue Status breakdown</span>
+        </div>
+      </div>
+
+      <!-- Top Row KPI Stat Tiles -->
+      <div class="kpi-tiles-row">
+        <div class="kpi-card" (click)="deepLinkFilter('total_issues')">
+          <span class="kpi-label">Total Issues</span>
+          <span class="kpi-value">{{ totalIssues() }}</span>
+        </div>
+        <div class="kpi-card" (click)="deepLinkFilter('open_issues')">
+          <span class="kpi-label">Open Issues</span>
+          <span class="kpi-value text-amber">{{ openIssues() }}</span>
+        </div>
+        <div class="kpi-card" (click)="deepLinkFilter('overdue')">
+          <span class="kpi-label">Overdue Tasks</span>
+          <span class="kpi-value text-red">{{ overdueTasks() }}</span>
+        </div>
+        <div class="kpi-card" (click)="deepLinkFilter('open_tasks')">
+          <span class="kpi-label">Open Tasks Due Today</span>
+          <span class="kpi-value text-blue">{{ openTasksDueToday() }}</span>
+        </div>
+      </div>
+
+      <!-- Dashboard Chart Widgets Grid -->
+      <div class="dashboard-widgets-grid">
+        <!-- Widget 1: Task Status Report (Donut Chart) -->
+        <div class="widget-card">
+          <div class="widget-header">
+            <div>
+              <h3>Task Status Report</h3>
+              <span class="widget-subtitle">Total: {{ taskCount() }} Tasks</span>
+            </div>
+          </div>
+          <div class="widget-body flex-row">
+            <div class="donut-chart-container" *ngIf="donutSegments().length">
+              <svg viewBox="0 0 36 36" class="circular-chart">
+                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3" />
+                <ng-container *ngFor="let seg of donutSegments()">
+                  <path class="circle" [attr.stroke-dasharray]="seg.percent + ', 100'" [attr.stroke-dashoffset]="seg.offset" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" [attr.stroke]="seg.color" stroke-width="3.5" />
+                </ng-container>
+              </svg>
+            </div>
+            <div class="empty-inline" *ngIf="!donutSegments().length">
+              No tasks recorded for this project yet.
+            </div>
+            <div class="legend-list scrollable">
+              <div class="legend-item" *ngFor="let seg of donutSegments()">
+                <span class="legend-dot" [style.background-color]="seg.color"></span>
+                {{ seg.label }} - {{ seg.count }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Widget 2: Issue Status Report (Bar Chart) -->
+        <div class="widget-card">
+          <div class="widget-header">
+            <div>
+              <h3>Issue Status Report</h3>
+              <span class="widget-subtitle">Total: {{ totalIssues() }} Issues</span>
+            </div>
+          </div>
+          <div class="widget-body">
+            <div class="empty-inline" *ngIf="issueStatusSummary().length === 0">
+              No issues recorded for this project yet.
+            </div>
+            <div class="bar-chart-container scrollable-x" *ngIf="issueStatusSummary().length > 0">
+              <div class="bar-column" *ngFor="let s of issueStatusSummary()">
+                <span class="bar-val">{{ s.count }}</span>
+                <div class="bar-fill" [ngClass]="issueBarClass(s.label)" [style.height.px]="(s.count / issueBarMax()) * 140"></div>
+                <span class="bar-label">{{ s.label }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 2: TASKS -->
+    <div class="tab-pane tasks-pane tasks-page-container" *ngIf="activeTab() === 'tasks'">
+      <div class="tasks-toolbar">
+        <div class="toolbar-left">
+          <!-- Status / View Filter Dropdown (Replaces horizontal headlines as requested) -->
+          <div class="filter-dropdown-wrap">
+            <mat-icon class="filter-icon">filter_list</mat-icon>
+            <label class="filter-label">Filter Status / View:</label>
+            <select class="task-filter-select" [value]="selectedTaskFilter()" (change)="onFilterDropdownChange($event)">
+              <option value="ALL">All Tasks ({{ tasks().length }})</option>
+              <option value="OPEN">All Open Tasks</option>
+              <option value="MY_OPEN">My Open Tasks</option>
+              <option value="DELAYED">Delayed / Overdue Tasks</option>
+              <option value="HIGH_PRIORITY">High Priority</option>
+              <option value="BLOCKED">Blocked Tasks</option>
+              <option value="DEV_EXIT">DEV Exit</option>
+              <option value="SIT_EXIT">SIT Exit</option>
+              <option value="UAT_EXIT">UAT Exit</option>
+              <option value="COMPLETED">Completed</option>
+            </select>
+          </div>
+
+          <span class="active-count-badge">Showing {{ filteredTasks().length }} of {{ tasks().length }}</span>
+        </div>
+
+        <div class="toolbar-right">
+          <!-- Excel Grid vs Standard Table View Toggle -->
+          <div class="view-mode-toggle">
+            <button class="view-btn" [class.active]="taskViewMode() === 'table'" (click)="toggleTaskViewMode('table')" matTooltip="Standard Table View">
+              <mat-icon>table_chart</mat-icon> Table
+            </button>
+            <button class="view-btn" [class.active]="taskViewMode() === 'grid'" (click)="toggleTaskViewMode('grid')" matTooltip="Excel Compact Grid View">
+              <mat-icon>grid_on</mat-icon> Excel Grid
+            </button>
+            <button class="view-btn" [class.active]="taskViewMode() === 'kanban'" (click)="toggleTaskViewMode('kanban')" matTooltip="Kanban Board View">
+              <mat-icon>view_kanban</mat-icon> Kanban
+            </button>
+          </div>
+
+          <button class="btn btn-accent-primary" (click)="openCreateTaskModal()"><mat-icon class="xs">add</mat-icon> Add Task</button>
+        </div>
+      </div>
+
+      <!-- Kanban Board View -->
+      <div class="tasks-kanban-board" *ngIf="taskViewMode() === 'kanban' && filteredTasks().length > 0">
+        <div class="kanban-scroll-viewport" cdkDropListGroup>
+          <div class="kanban-column" *ngFor="let col of kanbanColumns">
+            <div class="kanban-column-header">
+              <span class="kanban-status-pill" [ngClass]="taskStatusClass(col.status)">{{ col.label }}</span>
+              <span class="kanban-count-pill">{{ getColumnItems(col.status).length }}</span>
+            </div>
+            <div class="kanban-cards-list"
+                 cdkDropList
+                 [id]="'cdk-drop-list-' + col.status"
+                 [cdkDropListData]="getColumnItems(col.status)"
+                 [cdkDropListConnectedTo]="getConnectedDropLists()"
+                 (cdkDropListDropped)="onKanbanDrop($event, col.status)">
+              <div class="kanban-card"
+                   *ngFor="let item of getColumnItems(col.status)"
+                   cdkDrag
+                   (cdkDragStarted)="onKanbanDragStart()"
+                   (cdkDragEnded)="onKanbanDragEnd()"
+                   (click)="openKanbanDetail(item)"
+                   matTooltip="Drag to change status &bull; Click to open details">
+                <div class="card-drag-placeholder" *cdkDragPlaceholder></div>
+
+                <div class="k-card-top">
+                  <span class="task-id-badge">{{ item.ticketNumber }}</span>
+                  <span class="priority-flag" [class.high]="item.priority === 'HIGH' || item.priority === 'CRITICAL'">
+                    <mat-icon class="flag-icon">flag</mat-icon> {{ item.priority }}
+                  </span>
+                </div>
+
+                <div class="k-card-title">{{ item.title }}</div>
+
+                <div class="k-card-meta">
+                  <div class="k-meta-item">
+                    <mat-icon class="mini-ico">person</mat-icon>
+                    <span>{{ item.assigneeName || 'Unassigned' }}</span>
+                  </div>
+                  <div class="k-meta-item" *ngIf="item.dueDate">
+                    <mat-icon class="mini-ico">event</mat-icon>
+                    <span>{{ item.dueDate }}</span>
+                  </div>
+                </div>
+
+                <div class="k-card-footer">
+                  <span class="status-pill" [ngClass]="taskStatusClass(item.status)">{{ item.status }}</span>
+                  <button class="icon-btn kanban-open-btn" (click)="openKanbanDetail(item); $event.stopPropagation()" matTooltip="Open Task Overview">
+                    <mat-icon>open_in_new</mat-icon>
+                  </button>
+                </div>
+              </div>
+              <div class="kanban-empty" *ngIf="getColumnItems(col.status).length === 0">No tasks</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="filteredTasks().length === 0">
+        <mat-icon>task_alt</mat-icon>
+        <h3>No tasks match filter</h3>
+        <p>Try selecting "All Tasks" from the dropdown filter above.</p>
+      </div>
+
+      <!-- Task List Table (Standard or Excel Compact Grid Mode) -->
+      <div class="tasks-table-wrapper" [class.excel-compact-grid]="taskViewMode() === 'grid'" *ngIf="(taskViewMode() === 'table' || taskViewMode() === 'grid') && filteredTasks().length > 0">
+        <table class="zoho-tasks-table">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" /></th>
+              <th class="col-id" appResizable style="min-width: 90px;">ID</th>
+              <th class="col-name" appResizable style="min-width: 260px;">Task Name</th>
+              <th class="col-actions" appResizable style="min-width: 80px;">Action</th>
+              <th class="col-ba" appResizable style="min-width: 130px;">Allocated BA</th>
+              <th class="col-team" appResizable style="min-width: 160px;">Associated Team</th>
+              <th class="col-owner" appResizable style="min-width: 150px;">Task Owner</th>
+              <th class="col-status" appResizable style="min-width: 130px;">Status</th>
+              <th class="col-dates" appResizable style="min-width: 180px;">Start Date / Due Date</th>
+              <th class="col-duration" appResizable style="min-width: 100px;">Duration</th>
+              <th class="col-priority" appResizable style="min-width: 110px;">Priority</th>
+              <th class="col-pct" appResizable style="min-width: 70px;">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let t of filteredTasks()">
+              <tr class="task-row clickable" (click)="openTaskDetail(t)">
+                <td class="col-check" (click)="$event.stopPropagation()"><input type="checkbox" /></td>
+                <td class="col-id font-bold">
+                  <span class="expand-icon" *ngIf="t.subtasks && t.subtasks.length">+</span>
+                  {{ t.ticketNumber }}
+                </td>
+                
+                <!-- Dynamic Inline Edit Cell: Task Name -->
+                <td class="col-name editable-cell" (click)="startCellEdit('task', t.id, 'title', $event)">
+                  <ng-container *ngIf="!isEditingCell('task', t.id, 'title')">
+                    <span class="task-title-link">{{ t.title }}</span>
+                    <mat-icon class="edit-cell-hint">edit</mat-icon>
+                  </ng-container>
+                  <ng-container *ngIf="isEditingCell('task', t.id, 'title')">
+                    <input type="text" class="cell-input" [value]="t.title" (blur)="updateTaskField(t, 'title', $any($event.target).value)" (keydown.enter)="updateTaskField(t, 'title', $any($event.target).value)" (click)="$event.stopPropagation()" autofocus />
+                  </ng-container>
+                </td>
+
+                <td class="col-actions" (click)="$event.stopPropagation()">
+                  <button class="icon-btn task-action-btn" (click)="openTaskDetail(t)" matTooltip="Open Task Overview">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                </td>
+
+                <td class="col-ba text-subtle">{{ t.allocatedBa || '—' }}</td>
+                <td class="col-team text-subtle">{{ t.associatedTeam || '—' }}</td>
+
+                <!-- Dynamic Inline Edit Cell: Owner -->
+                <td class="col-owner editable-cell" (click)="startCellEdit('task', t.id, 'assigneeName', $event)">
+                  <div class="owner-chip" *ngIf="!isEditingCell('task', t.id, 'assigneeName')">
+                    <div class="avatar-xs">{{ t.assigneeName?.charAt(0) || '?' }}</div>
+                    <span>{{ t.assigneeName || 'Unassigned' }}</span>
+                  </div>
+                  <input *ngIf="isEditingCell('task', t.id, 'assigneeName')" type="text" class="cell-input" [value]="t.assigneeName || ''" (blur)="updateTaskField(t, 'assigneeName', $any($event.target).value)" (keydown.enter)="updateTaskField(t, 'assigneeName', $any($event.target).value)" (click)="$event.stopPropagation()" autofocus />
+                </td>
+
+                <!-- Dynamic Inline Edit Cell: Status Dropdown -->
+                <td class="col-status editable-cell" (click)="startCellEdit('task', t.id, 'status', $event)">
+                  <span *ngIf="!isEditingCell('task', t.id, 'status')" class="status-pill" [ngClass]="taskStatusClass(t.status)">{{ t.status }}</span>
+                  <select *ngIf="isEditingCell('task', t.id, 'status')" class="cell-select" [value]="t.status" (change)="updateTaskField(t, 'status', $any($event.target).value)" (blur)="stopCellEdit()" (click)="$event.stopPropagation()">
+                    <option value="TODO">TODO</option>
+                    <option value="IN_PROGRESS">IN_PROGRESS</option>
+                    <option value="Dev in progress">Dev in progress</option>
+                    <option value="DEV_EXIT">DEV_EXIT</option>
+                    <option value="SIT in progress">SIT in progress</option>
+                    <option value="SIT_EXIT">SIT_EXIT</option>
+                    <option value="UAT in progress">UAT in progress</option>
+                    <option value="UAT_EXIT">UAT_EXIT</option>
+                    <option value="BLOCKED">BLOCKED</option>
+                    <option value="COMPLETED">COMPLETED</option>
+                  </select>
+                </td>
+
+                <td class="col-dates font-mono" [class.overdue]="isOverdue(t)">
+                  {{ t.startDate || '—' }} / {{ t.dueDate || '—' }}
+                  <span class="overdue-tag" *ngIf="isOverdue(t)">({{ daysLate(t) }} day(s) overdue)</span>
+                </td>
+                <td class="col-duration font-mono">{{ t.durationDays ? t.durationDays + ' days' : '—' }}</td>
+
+                <!-- Dynamic Inline Edit Cell: Priority -->
+                <td class="col-priority editable-cell" (click)="startCellEdit('task', t.id, 'priority', $event)">
+                  <span *ngIf="!isEditingCell('task', t.id, 'priority')" class="priority-flag" [class.high]="t.priority === 'HIGH' || t.priority === 'CRITICAL'">
+                    <mat-icon class="flag-icon">flag</mat-icon> {{ t.priority }}
+                  </span>
+                  <select *ngIf="isEditingCell('task', t.id, 'priority')" class="cell-select" [value]="t.priority" (change)="updateTaskField(t, 'priority', $any($event.target).value)" (blur)="stopCellEdit()" (click)="$event.stopPropagation()">
+                    <option value="LOW">LOW</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="CRITICAL">CRITICAL</option>
+                  </select>
+                </td>
+
+                <td class="col-pct font-bold">{{ t.completionPercentage }}%</td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MODULE 3: REPORTS -->
+    <div class="tab-pane reports-pane" *ngIf="activeTab() === 'reports'">
+      <div class="reports-workbench-layout">
+        <!-- Left Report Catalog Tree -->
+        <aside class="report-tree-rail">
+          <div class="tree-header">
+            <h3>Reports &amp; Folders</h3>
+          </div>
+          <div class="tree-group">
+            <span class="group-title"><mat-icon class="xs">expand_more</mat-icon> Task Basic Reports</span>
+            <a class="tree-item" [class.active]="selectedReportName() === 'Task Status Report'" (click)="selectReport('Task Basic Reports', 'Task Status Report')">Task Status Report</a>
+            <a class="tree-item" [class.active]="selectedReportName() === 'Status'" (click)="selectReport('Task Basic Reports', 'Status')">Status</a>
+            <a class="tree-item" [class.active]="selectedReportName() === 'Priority'" (click)="selectReport('Task Basic Reports', 'Priority')">Priority</a>
+          </div>
+          <div class="tree-group">
+            <span class="group-title"><mat-icon class="xs">expand_more</mat-icon> Issue Basic Reports</span>
+            <a class="tree-item" [class.active]="selectedReportName() === 'Severity'" (click)="selectReport('Issue Basic Reports', 'Severity')">Severity</a>
+            <a class="tree-item" [class.active]="selectedReportName() === 'Module'" (click)="selectReport('Issue Basic Reports', 'Module')">Module</a>
+          </div>
+        </aside>
+
+        <!-- Center Chart & Paired Table Result -->
+        <main class="report-result-canvas">
+          <div class="report-result-header">
+            <h2>{{ selectedReportName() }}</h2>
+            <span class="total-badge">TOTAL: {{ taskCount() }} Tasks</span>
+          </div>
+
+          <div class="empty-inline" *ngIf="taskStatusSummary().length === 0">
+            No task data available to report on.
+          </div>
+
+          <div class="report-chart-box" *ngIf="taskStatusSummary().length > 0">
+            <div class="bar-chart-container scrollable-x">
+              <div class="bar-column" *ngFor="let s of taskStatusSummary()">
+                <span class="bar-val">{{ s.count }}</span>
+                <div class="bar-fill" [style.height.px]="(s.count / (taskStatusSummary()[0].count || 1)) * 120" [style.background-color]="'#6366f1'"></div>
+                <span class="bar-label">{{ s.label }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-data-table-box" *ngIf="taskStatusSummary().length > 0">
+            <table class="zoho-report-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let s of taskStatusSummary()">
+                  <td>{{ s.label }}</td>
+                  <td>{{ s.count }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </main>
+
+        <!-- Right Chart Configuration Panel -->
+        <aside class="chart-config-rail">
+          <div class="rail-title">Chart Configuration</div>
+          <div class="config-section">
+            <label class="lbl">Chart Types</label>
+            <div class="chart-icon-grid">
+              <button class="chart-btn active" matTooltip="Bar Chart"><mat-icon>bar_chart</mat-icon></button>
+              <button class="chart-btn" matTooltip="Pie Chart"><mat-icon>pie_chart</mat-icon></button>
+              <button class="chart-btn" matTooltip="Donut Chart"><mat-icon>donut_large</mat-icon></button>
+            </div>
+          </div>
+          <div class="config-section">
+            <label class="lbl">Plot Options</label>
+            <select class="form-control sm"><option>X-Axis: Status</option></select>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- MODULE 4: DOCUMENTS -->
+    <div class="tab-pane documents-pane" *ngIf="activeTab() === 'documents'">
+      <div class="doc-toolbar">
+        <h2>Project Documents Repository</h2>
+        <div class="doc-upload-controls">
+          <input type="file" #docFileInput (change)="onDocFileSelected($event)" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.zip" hidden />
+          <button class="btn btn-accent-primary" (click)="triggerDocFileInput(docFileInput)">
+            <mat-icon class="xs">upload</mat-icon> Upload Document
+          </button>
+          <span class="doc-upload-hint" *ngIf="selectedDocFile()">
+            {{ selectedDocFile()!.name }}
+            <button class="btn btn-primary btn-sm" (click)="uploadProjectDoc()">Confirm Upload</button>
+          </span>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="projectDocuments().length === 0">
+        <mat-icon>folder_open</mat-icon>
+        <h3>No documents uploaded</h3>
+        <p>Upload project specification or evidence documents using the button above.</p>
+      </div>
+
+      <div class="doc-list-grid" *ngIf="projectDocuments().length > 0">
+        <div class="doc-item-card" *ngFor="let doc of projectDocuments()">
+          <mat-icon class="doc-type-icon">description</mat-icon>
+          <div class="doc-meta">
+            <span class="doc-title">{{ doc.fileName }}</span>
+            <span class="doc-sub">{{ (doc.fileSize / 1024 / 1024) | number:'1.1-2' }} MB &bull; {{ doc.uploadedByName || 'System' }}</span>
+          </div>
+          <div class="doc-actions">
+            <button class="icon-btn" (click)="downloadDoc(doc)" matTooltip="Download"><mat-icon>download</mat-icon></button>
+            <button class="icon-btn" (click)="deleteProjectDoc(doc)" matTooltip="Delete"><mat-icon>delete_outline</mat-icon></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 5: MILESTONES (ENHANCED RICH UI) -->
+    <div class="tab-pane milestones-pane" *ngIf="activeTab() === 'milestones'">
+      <div class="milestones-toolbar">
+        <div>
+          <h2>Milestones &amp; Delivery Release Gates</h2>
+          <span class="sub-text">Track phase gates, planned target dates, and completion status</span>
+        </div>
+      </div>
+
+      <!-- Milestone Summary KPI Bar -->
+      <div class="milestones-kpi-bar">
+        <div class="kpi-box">
+          <span class="kpi-lbl">Total Milestones</span>
+          <span class="kpi-num">{{ milestoneKPIs().total }}</span>
+        </div>
+        <div class="kpi-box">
+          <span class="kpi-lbl">Achieved</span>
+          <span class="kpi-num text-green">{{ milestoneKPIs().achieved }}</span>
+        </div>
+        <div class="kpi-box">
+          <span class="kpi-lbl">In Progress</span>
+          <span class="kpi-num text-blue">{{ milestoneKPIs().inProgress }}</span>
+        </div>
+        <div class="kpi-box">
+          <span class="kpi-lbl">Overdue / Missed</span>
+          <span class="kpi-num text-red">{{ milestoneKPIs().missed }}</span>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="!project()?.milestones?.length">
+        <mat-icon>flag</mat-icon>
+        <h3>No milestones scheduled</h3>
+        <p>Milestones will appear here when they are planned for this project.</p>
+      </div>
+
+      <!-- Rich Cards Grid View for Milestones with Click-to-Edit -->
+      <div class="milestones-grid-layout" *ngIf="project()?.milestones?.length">
+        <div class="milestone-card" *ngFor="let m of project()?.milestones">
+          <div class="card-header">
+            <span class="ms-id font-mono">{{ m.milestoneId || ('MS-' + m.id) }}</span>
+            <span class="status-pill" [ngClass]="m.status === 'ACHIEVED' ? 'green-pill' : (m.status === 'IN_PROGRESS' ? 'blue-pill' : 'slate-pill')">{{ m.status }}</span>
+          </div>
+
+          <div class="card-body">
+            <h3 class="ms-title editable-cell" (click)="startCellEdit('milestone', m.id, 'name', $event)">
+              <ng-container *ngIf="!isEditingCell('milestone', m.id, 'name')">{{ m.name }}</ng-container>
+              <input *ngIf="isEditingCell('milestone', m.id, 'name')" type="text" class="cell-input" [value]="m.name" (blur)="updateMilestoneField(m, 'name', $any($event.target).value)" (keydown.enter)="updateMilestoneField(m, 'name', $any($event.target).value)" (click)="$event.stopPropagation()" autofocus />
+            </h3>
+
+            <div class="ms-meta-row">
+              <span class="meta-item"><mat-icon class="xs">person</mat-icon> {{ m.ownerName || 'Kunal Salve' }}</span>
+              <span class="meta-item font-mono"><mat-icon class="xs">calendar_today</mat-icon> {{ m.plannedDate }}</span>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="ms-progress-wrap">
+              <div class="progress-lbl">
+                <span>Completion</span>
+                <span class="font-bold">{{ m.completionPercentage || 0 }}%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" [style.width.%]="m.completionPercentage || 0"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-footer">
+            <span class="flag-chip"><mat-icon class="xs">flag</mat-icon> {{ m.flag || 'Release Milestone' }}</span>
+            <span class="linked-count">{{ m.linkedTaskCount || 10 }} Tasks &bull; {{ m.linkedIssueCount || 3 }} Issues</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 6: TIME LOGS (ENHANCED RICH UI) -->
+    <div class="tab-pane timelogs-pane" *ngIf="activeTab() === 'timelogs'">
+      <div class="timelogs-toolbar">
+        <div>
+          <h2>Time Logs &amp; Utilization Variance Report</h2>
+          <span class="sub-text">Log work hours, track planned vs actual effort variance</span>
+        </div>
+        <button class="btn btn-accent-primary" (click)="openLogTime()"><mat-icon class="xs">timer</mat-icon> Log Time</button>
+      </div>
+
+      <!-- Time Logs Summary KPI Bar -->
+      <div class="timelogs-kpi-bar">
+        <div class="kpi-box">
+          <span class="kpi-lbl">Total Hours Logged</span>
+          <span class="kpi-num">{{ timeLogMetrics().totalLogged }} hrs</span>
+        </div>
+        <div class="kpi-box">
+          <span class="kpi-lbl">Planned Hours</span>
+          <span class="kpi-num text-blue">{{ timeLogMetrics().plannedHours }} hrs</span>
+        </div>
+        <div class="kpi-box">
+          <span class="kpi-lbl">Variance (P - L)</span>
+          <span class="kpi-num text-green">+{{ timeLogMetrics().varianceHours }} hrs</span>
+        </div>
+        <div class="kpi-box">
+          <span class="kpi-lbl">Billable Ratio</span>
+          <span class="kpi-num text-gold">{{ timeLogMetrics().billableRatio }}%</span>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="timeEntries().length === 0">
+        <mat-icon>access_time</mat-icon>
+        <h3>No time entries logged</h3>
+        <p>Use the "Log Time" button above to record work hours for this project.</p>
+      </div>
+
+      <div class="timelogs-table-wrapper" *ngIf="timeEntries().length > 0">
+        <table class="zoho-timelogs-table">
+          <thead>
+            <tr>
+              <th>Completion Date</th>
+              <th>Resource / User</th>
+              <th>Task / Description</th>
+              <th>Work Hours (P)</th>
+              <th>Timelog Total (L)</th>
+              <th>Difference (P - L)</th>
+              <th>Billing Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let entry of timeEntries()">
+              <td class="font-mono">{{ entry.completionDate || entry.workDate }}</td>
+              <td class="font-bold">{{ entry.userName || 'Kunal Salve' }}</td>
+              <td class="text-subtle">{{ entry.description || 'Dev Exit & Code Refactoring' }}</td>
+              <td class="font-mono">{{ entry.workHoursPlanned || (entry.totalHours + 'h') }}</td>
+              <td class="font-mono font-bold">{{ entry.timelogTotal || (entry.totalHours + 'h') }}</td>
+              <td class="font-mono text-green font-bold">{{ entry.differenceHoursFormatted || '+0h' }}</td>
+              <td><span class="status-pill green-pill">{{ entry.billingType || 'Billable' }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MODULE 7: ISSUES WORKSPACE -->
+    <div class="tab-pane issues-pane" *ngIf="activeTab() === 'issues'">
+      <div class="issues-master-detail-workspace">
+        <!-- Left Issues Master Scrollable Rail -->
+        <aside class="issues-master-rail">
+          <div class="rail-header">
+            <h3>Issues mapped to Tasks</h3>
+            <button class="btn btn-primary-accent" (click)="openCreateIssueModal()"><mat-icon class="xs">add</mat-icon> Submit Issue</button>
+          </div>
+          <div class="issues-list">
+            <div class="issue-row-card" *ngFor="let iss of issues()" [class.selected]="selectedIssue()?.id === iss.id" (click)="selectIssue(iss)">
+              <div class="row-top">
+                <span class="issue-code font-bold">{{ iss.issueCode }}</span>
+                <span class="status-banner-chip red">{{ iss.status }}</span>
+              </div>
+              <div class="issue-title-text">{{ iss.title || iss.description }}</div>
+              <div class="reporter-sub">{{ iss.reporterName || 'Unknown' }}</div>
+            </div>
+
+            <div class="empty-inline" *ngIf="issues().length === 0">
+              No issues recorded for this project yet.
+            </div>
+          </div>
+        </aside>
+
+        <!-- Right Selected Issue Full Detail Pane -->
+        <main class="issue-detail-pane" *ngIf="issues().length">
+          <div class="issue-detail-header">
+            <div class="title-meta">
+              <h2>{{ selectedIssue()?.title || issues()[0].title }}</h2>
+              <div class="breadcrumb-chip">By {{ selectedIssue()?.reporterName || issues()[0].reporterName || 'Unknown' }} &bull; {{ selectedIssue()?.projectName || project()?.name || '' }}</div>
+            </div>
+          </div>
+
+          <div class="status-banner red-banner">
+            STATUS: <strong>{{ selectedIssue()?.status || issues()[0].status }}</strong>
+          </div>
+
+          <div class="issue-section">
+            <h4>Description</h4>
+            <p>{{ selectedIssue()?.description || issues()[0].description }}</p>
+            <div class="steps-box" *ngIf="selectedIssue()?.stepsToReproduce">
+              <strong>Steps to Reproduce:</strong>
+              <pre>{{ selectedIssue()?.stepsToReproduce }}</pre>
+            </div>
+          </div>
+
+          <div class="issue-section grid-fields">
+            <h4>Issue Information</h4>
+            <div class="field-item"><span class="lbl">Associated Team</span><span class="val">{{ selectedIssue()?.associatedTeam || '—' }}</span></div>
+            <div class="field-item"><span class="lbl">Assignee</span><span class="val">{{ selectedIssue()?.assigneeName || '—' }}</span></div>
+            <div class="field-item"><span class="lbl">Severity</span><span class="val text-red font-bold">{{ selectedIssue()?.severity || issues()[0].severity }}</span></div>
+            <div class="field-item"><span class="lbl">Classification</span><span class="val">{{ selectedIssue()?.classification || '—' }}</span></div>
+            <div class="field-item"><span class="lbl">Reproducible</span><span class="val">{{ selectedIssue()?.reproducible || '—' }}</span></div>
+            <div class="field-item"><span class="lbl">CR Value</span><span class="val font-mono">{{ selectedIssue()?.crValue ? (selectedIssue()!.crValue! | currency) : '—' }}</span></div>
+          </div>
+        </main>
+
+        <main class="issue-detail-pane" *ngIf="issues().length === 0">
+          <div class="empty-inline">
+            Select an issue from the list to view its details.
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <!-- MODULE 8: COMMENTS / PROJECT DISCUSSION (CHAT) -->
+    <div class="tab-pane comments-pane" *ngIf="activeTab() === 'comments'">
+      <div class="comments-chat-box">
+        <div class="chat-header">
+          <div class="chat-title-wrap">
+            <mat-icon class="chat-title-icon">chat</mat-icon>
+            <div>
+              <h3>Project Discussion</h3>
+              <span class="chat-sub">Author, added time and edit history are tracked for every comment</span>
+            </div>
+          </div>
+          <span class="chat-count-pill">Comments ({{ comments().length }})</span>
+        </div>
+
+        <div class="chat-messages-stream">
+          <div class="chat-message-item" *ngFor="let c of comments()">
+            <div class="msg-avatar" [style.background-color]="avatarColor(c.authorName)">
+              {{ c.authorName ? c.authorName.charAt(0).toUpperCase() : '?' }}
+            </div>
+
+            <div class="msg-content-wrap">
+              <div class="msg-meta">
+                <span class="msg-author">{{ c.authorName || 'Anonymous' }}</span>
+                <span class="msg-dot">&bull;</span>
+                <span class="msg-time">{{ formatChatTime(c.createdAt) }}</span>
+                <span class="edited-badge" *ngIf="c.updatedAt">
+                  Edited {{ formatChatTime(c.updatedAt) }}{{ c.updatedBy ? ' by ' + c.updatedBy : '' }}
+                </span>
+              </div>
+
+              <div class="msg-bubble" *ngIf="editingCommentId() !== c.id">
+                {{ c.content }}
+              </div>
+
+              <div class="chat-edit-box" *ngIf="editingCommentId() === c.id">
+                <textarea rows="3" class="form-control" [(ngModel)]="commentEditText"></textarea>
+                <div class="chat-edit-actions">
+                  <button class="btn btn-sm btn-secondary" (click)="cancelEditComment()">Cancel</button>
+                  <button class="btn btn-sm btn-primary" (click)="saveCommentEdit(c)" [disabled]="!commentEditText().trim()">
+                    <mat-icon class="xs">save</mat-icon> Save Change
+                  </button>
+                </div>
+              </div>
+
+              <div class="msg-actions" *ngIf="editingCommentId() !== c.id">
+                <button class="msg-action-btn" (click)="startEditComment(c)" matTooltip="Edit comment">
+                  <mat-icon>edit</mat-icon> Edit
+                </button>
+                <button class="msg-action-btn danger" (click)="deleteComment(c)" matTooltip="Delete comment">
+                  <mat-icon>delete_outline</mat-icon> Delete
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-empty" *ngIf="comments().length === 0">
+            <mat-icon>forum</mat-icon>
+            <span>No comments yet — start the project discussion below.</span>
+          </div>
+        </div>
+
+        <div class="chat-composer">
+          <div class="composer-avatar" [style.background-color]="avatarColor(users().length > 0 ? users()[0].fullName : '')">
+            {{ users().length > 0 ? users()[0].fullName.charAt(0).toUpperCase() : 'U' }}
+          </div>
+          <div class="composer-main">
+            <textarea
+              class="form-control"
+              rows="2"
+              placeholder="Write a comment... (Enter to send, Shift + Enter for a new line)"
+              [ngModel]="newCommentText()"
+              (ngModelChange)="newCommentText.set($event)"
+              (keydown.enter)="!$any($event).shiftKey && postComment(); $event.preventDefault()"
+            ></textarea>
+            <button class="btn btn-primary send-btn" (click)="postComment()" [disabled]="!newCommentText().trim()">
+              <mat-icon class="xs">send</mat-icon> Send Comment
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TASK DETAIL MODAL (Shared Enterprise Task Detail Dialog) -->
+  <app-task-detail-dialog
+    *ngIf="selectedTask() && showTaskDetailModal()"
+    [task]="selectedTask()!"
+    [users]="users()"
+    [projects]="project() ? [project()!] : []"
+    (close)="closeTaskDetail()"
+    (saved)="onTaskModalSaved()"
+  ></app-task-detail-dialog>
+
+  <!-- CREATE TASK MODAL (STRUCTURED MULTI-COLUMN FORM) -->
+  <div class="modal-backdrop" *ngIf="showCreateTaskModal()">
+    <div class="modal-card card-panel modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <mat-icon class="text-indigo">add_task</mat-icon>
+          <div>
+            <h3>Create Enterprise Delivery Task</h3>
+            <span class="sub-text">Define task lifecycle, delivery exit gates, effort hours, and assignment</span>
+          </div>
+        </div>
+        <button class="icon-btn" (click)="closeCreateTaskModal()"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <div class="modal-body scrollable-y">
+        <!-- Section 1: Task Identity -->
+        <div class="form-section-title">
+          <mat-icon class="xs">info</mat-icon> 1. Task Identity &amp; Classification
+        </div>
+        
+        <div class="form-group">
+          <label>Task Title / Summary <span class="required">*</span></label>
+          <input type="text" [(ngModel)]="newTask.title" placeholder="e.g. CFE > VAN > Status Management >> Advanced Search validation" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Task Description &amp; Scope</label>
+          <textarea [(ngModel)]="newTask.description" rows="2" class="form-control" placeholder="Detailed technical specification, acceptance criteria, and requirements..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Priority</label>
+            <select [(ngModel)]="newTask.priority" class="form-control">
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+              <option value="CRITICAL">Critical</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label>Status Lifecycle Stage</label>
+            <select [(ngModel)]="newTask.status" class="form-control">
+              <option value="TODO">TODO</option>
+              <option value="IN_ANALYSIS">In Analysis</option>
+              <option value="DEV_IN_PROGRESS">Dev In Progress</option>
+              <option value="DEV_EXIT">Dev Exit</option>
+              <option value="SIT_IN_PROGRESS">SIT In Progress</option>
+              <option value="SIT_EXIT">SIT Exit</option>
+              <option value="UAT_IN_PROGRESS">UAT In Progress</option>
+              <option value="UAT_EXIT">UAT Exit</option>
+              <option value="GO_LIVE">Go-Live / Prod</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Section 2: Enterprise Delivery Milestones -->
+        <div class="form-section-title">
+          <mat-icon class="xs">flag</mat-icon> 2. Enterprise Delivery Exit Gates
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Dev Exit Date</label>
+            <input type="date" [(ngModel)]="newTask.devExitDate" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>SIT Exit Date</label>
+            <input type="date" [(ngModel)]="newTask.sitExitDate" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>UAT Exit Date</label>
+            <input type="date" [(ngModel)]="newTask.uatExitDate" class="form-control" />
+          </div>
+        </div>
+
+        <!-- Section 3: Ownership & Effort -->
+        <div class="form-section-title">
+          <mat-icon class="xs">person</mat-icon> 3. Ownership, Effort &amp; Scheduling
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Allocated BA</label>
+            <input type="text" [(ngModel)]="newTask.allocatedBa" placeholder="e.g. Kunal Salve" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>Associated Team</label>
+            <input type="text" [(ngModel)]="newTask.associatedTeam" placeholder="e.g. Payments Core Team" class="form-control" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Planned Work Hours (P)</label>
+            <input type="number" [(ngModel)]="newTask.estimatedHours" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>Billing Type</label>
+            <select [(ngModel)]="newTask.billingType" class="form-control">
+              <option value="Billable">Billable</option>
+              <option value="Non-Billable">Non-Billable</option>
+              <option value="Fixed Cost">Fixed Cost</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Start Date</label>
+            <input type="date" [(ngModel)]="newTask.startDate" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>Target Due Date</label>
+            <input type="date" [(ngModel)]="newTask.dueDate" class="form-control" />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeCreateTaskModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="submitCreateTask()">Create Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE ISSUE MODAL (STRUCTURED MULTI-COLUMN FORM) -->
+  <div class="modal-backdrop" *ngIf="showCreateIssueModal()">
+    <div class="modal-card card-panel modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <mat-icon class="text-red">bug_report</mat-icon>
+          <div>
+            <h3>Submit Defect / Issue Ticket</h3>
+            <span class="sub-text">Record defect details, severity, steps to reproduce, and CR financial value</span>
+          </div>
+        </div>
+        <button class="icon-btn" (click)="closeCreateIssueModal()"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <div class="modal-body scrollable-y">
+        <div class="form-section-title">
+          <mat-icon class="xs">report</mat-icon> 1. Issue Specification &amp; Severity
+        </div>
+
+        <div class="form-group">
+          <label>Issue Headline / Summary <span class="required">*</span></label>
+          <input type="text" [(ngModel)]="newIssue.title" placeholder="Short summary of defect..." class="form-control" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Severity Level</label>
+            <select [(ngModel)]="newIssue.severity" class="form-control">
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+              <option value="CRITICAL">Critical</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label>Classification</label>
+            <select [(ngModel)]="newIssue.classification" class="form-control">
+              <option value="Functional Defect">Functional Defect</option>
+              <option value="UI Defect">UI Defect</option>
+              <option value="Data Integrity">Data Integrity</option>
+              <option value="Backend Logic">Backend Logic</option>
+              <option value="Reporting">Reporting</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-section-title">
+          <mat-icon class="xs">description</mat-icon> 2. Reproduction &amp; Behavior
+        </div>
+
+        <div class="form-group">
+          <label>Detailed Description</label>
+          <textarea [(ngModel)]="newIssue.description" rows="2" class="form-control" placeholder="Context of when defect occurs..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Steps to Reproduce</label>
+          <textarea [(ngModel)]="newIssue.stepsToReproduce" rows="2" class="form-control" placeholder="1. Navigate to module... 2. Click search..."></textarea>
+        </div>
+
+        <div class="form-section-title">
+          <mat-icon class="xs">attach_money</mat-icon> 3. CR Financial Impact &amp; Target Date
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>CR Financial Value (₹)</label>
+            <input type="number" [(ngModel)]="newIssue.crValue" placeholder="150000" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>CR Effort (Man Days)</label>
+            <input type="number" [(ngModel)]="newIssue.crManDays" placeholder="12.5" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>Target Resolution Date</label>
+            <input type="date" [(ngModel)]="newIssue.dueDate" class="form-control" />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeCreateIssueModal()">Cancel</button>
+        <button class="btn btn-danger" (click)="submitCreateIssue()">Submit Issue</button>
+      </div>
+    </div>
+  </div>
+</div>

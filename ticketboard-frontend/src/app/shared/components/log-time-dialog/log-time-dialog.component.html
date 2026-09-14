@@ -1,0 +1,87 @@
+<div class="dialog-header">
+  <div class="dialog-title-group">
+    <mat-icon class="title-icon">timer</mat-icon>
+    <h3>Log Daily Effort</h3>
+  </div>
+  <button class="icon-close-btn" (click)="close()">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<div class="dialog-body">
+  <div class="alert-box error" *ngIf="errorMessage()">
+    <mat-icon>error_outline</mat-icon>
+    <span>{{ errorMessage() }}</span>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group flex-1">
+      <label>Project <span class="required">*</span></label>
+      <select [(ngModel)]="selectedProjectId" (change)="onProjectChange()" class="form-control">
+        <option *ngFor="let p of projects()" [ngValue]="p.id">
+          [{{ p.projectCode }}] {{ p.name }}
+        </option>
+      </select>
+    </div>
+
+    <div class="form-group flex-1">
+      <label>Work Item / Task</label>
+      <select [(ngModel)]="selectedWorkItemId" class="form-control">
+        <option [ngValue]="null">-- Select Task / Bug --</option>
+        <option *ngFor="let w of workItems()" [ngValue]="w.id">
+          [{{ w.ticketNumber }}] {{ w.title }}
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group flex-1">
+      <label>Work Date <span class="required">*</span></label>
+      <input type="date" [(ngModel)]="workDate" class="form-control" />
+    </div>
+
+    <div class="form-group flex-1">
+      <label>Start Time</label>
+      <input type="time" [(ngModel)]="startTime" (change)="recalculateHours()" class="form-control" />
+    </div>
+
+    <div class="form-group flex-1">
+      <label>End Time</label>
+      <input type="time" [(ngModel)]="endTime" (change)="recalculateHours()" class="form-control" />
+    </div>
+
+    <div class="form-group flex-1">
+      <label>Break (Mins)</label>
+      <input type="number" [(ngModel)]="breakMinutes" (change)="recalculateHours()" min="0" step="15" class="form-control" />
+    </div>
+  </div>
+
+  <!-- Auto Calculated Hours Banner -->
+  <div class="calculation-banner">
+    <div class="calc-label">Calculated Working Effort:</div>
+    <div class="calc-value">
+      <span class="hours-badge">{{ calculatedHours }} Hours</span>
+      <span class="calc-hint">({{ startTime }} to {{ endTime }} minus {{ breakMinutes }}m break)</span>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Effort Description & Notes <span class="required">*</span></label>
+    <textarea
+      [(ngModel)]="description"
+      rows="3"
+      placeholder="Describe the tasks, tickets, or bug fixes worked on..."
+      class="form-control"
+    ></textarea>
+  </div>
+</div>
+
+<div class="dialog-footer">
+  <button class="btn btn-secondary" (click)="close()" [disabled]="isSubmitting()">Cancel</button>
+  <button class="btn btn-primary" (click)="submit()" [disabled]="isSubmitting()">
+    <mat-icon *ngIf="!isSubmitting()">check</mat-icon>
+    <span *ngIf="!isSubmitting()">Save Time Entry</span>
+    <span *ngIf="isSubmitting()">Saving...</span>
+  </button>
+</div>

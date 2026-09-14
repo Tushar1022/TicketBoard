@@ -1,0 +1,36 @@
+<div class="preview-shell">
+  <header class="preview-toolbar">
+    <div class="preview-title">
+      <mat-icon>visibility</mat-icon>
+      <div>
+        <h2>{{ data.title }}</h2>
+        <p *ngIf="data.subtitle">{{ data.subtitle }}</p>
+      </div>
+    </div>
+    <div class="preview-actions">
+      <button mat-stroked-button (click)="print()"><mat-icon>print</mat-icon> Print</button>
+      <button mat-flat-button color="primary" (click)="download()">
+        <mat-icon>download</mat-icon> {{ data.downloadLabel || 'Download' }}
+      </button>
+      <button mat-icon-button aria-label="Close preview" (click)="dialogRef.close()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <div class="preview-stage">
+    <iframe
+      *ngIf="pdfUrl; else htmlPreview"
+      id="preview-frame"
+      class="preview-iframe"
+      [src]="pdfUrl"
+      title="Document preview"></iframe>
+    <ng-template #htmlPreview>
+      <iframe
+        id="preview-frame"
+        class="preview-iframe"
+        [srcdoc]="data.html || ''"
+        title="Document preview"></iframe>
+    </ng-template>
+  </div>
+</div>

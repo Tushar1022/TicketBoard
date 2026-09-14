@@ -1,0 +1,199 @@
+<div class="risks-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="title-group">
+      <div class="badge badge-purple">
+        <mat-icon class="badge-icon">warning</mat-icon>
+        <span>Risk &amp; Blocker Matrix</span>
+      </div>
+      <h1>Risk Management &amp; Operational Issue Triage</h1>
+      <p class="subtitle">Probability &times; Impact scoring matrix (1&ndash;25) with automated critical risk alert thresholds</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="openCreateRiskModal()">
+        <mat-icon class="sm-icon">add</mat-icon>
+        <span>Identify New Risk</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters Toolbar -->
+  <div class="filters-bar card-panel">
+    <div class="filter-item">
+      <label>Project Scope:</label>
+      <select [ngModel]="selectedProjectId()" (ngModelChange)="selectedProjectId.set($event); loadRisksAndIssues()" class="form-control">
+        <option [ngValue]="null">All Projects</option>
+        <option *ngFor="let p of projects()" [ngValue]="p.id">[{{ p.projectCode }}] {{ p.name }}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading()">
+    <div class="spinner"></div>
+    <span>Evaluating project risk matrix and active issues...</span>
+  </div>
+
+  <div class="risks-main-grid" *ngIf="!isLoading()">
+    
+    <!-- 5x5 Probability vs Impact Risk Matrix -->
+    <div class="card-panel section-card">
+      <div class="section-card-header">
+        <div class="header-left-title">
+          <mat-icon class="section-icon text-amber">grid_on</mat-icon>
+          <h3>5x5 Probability &times; Impact Heatmap</h3>
+        </div>
+        <span class="score-legend">Score = Probability (1-5) &times; Impact (1-5)</span>
+      </div>
+
+      <div class="matrix-heatmap-container">
+        <div class="y-axis-label">IMPACT &rarr;</div>
+
+        <div class="matrix-table-wrap">
+          <div class="matrix-row" *ngFor="let imp of [5, 4, 3, 2, 1]">
+            <div class="row-label">I{{ imp }}</div>
+            <div
+              class="matrix-cell"
+              *ngFor="let prob of [1, 2, 3, 4, 5]"
+              [class.cell-red]="(prob * imp) >= 15"
+              [class.cell-amber]="(prob * imp) >= 8 && (prob * imp) < 15"
+              [class.cell-green]="(prob * imp) < 8"
+            >
+              <span class="cell-score">{{ prob * imp }}</span>
+              <div class="cell-chips" *ngIf="getRisksByCell(prob, imp).length > 0">
+                <span class="risk-chip" *ngFor="let r of getRisksByCell(prob, imp)" [matTooltip]="r.description">
+                  {{ r.riskCode }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- X-Axis Labels -->
+          <div class="matrix-x-labels">
+            <div class="row-label"></div>
+            <div class="x-lbl" *ngFor="let prob of [1, 2, 3, 4, 5]">P{{ prob }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="x-axis-bottom-label">PROBABILITY &rarr;</div>
+    </div>
+
+    <!-- Active Risks Catalog -->
+    <div class="card-panel section-card">
+      <div class="section-card-header">
+        <div class="header-left-title">
+          <mat-icon class="section-icon text-indigo">checklist</mat-icon>
+          <h3>Identified Project Risks ({{ risks().length }})</h3>
+        </div>
+      </div>
+
+      <div class="risk-cards-stack">
+        <div class="risk-item-box card-panel" *ngFor="let r of risks()">
+          <div class="r-top">
+            <span class="r-code font-bold">{{ r.riskCode }}</span>
+            <span class="badge" [ngClass]="r.riskScore >= 15 ? 'badge-red' : 'badge-amber'">
+              Risk Score: {{ r.riskScore }} (P{{ r.probability }} &times; I{{ r.impact }})
+            </span>
+          </div>
+
+          <div class="r-desc">{{ r.description }}</div>
+
+          <div class="r-plan-box" *ngIf="r.mitigationPlan">
+            <mat-icon class="mini-icon">shield</mat-icon>
+            <span><strong>Mitigation Plan:</strong> {{ r.mitigationPlan }}</span>
+          </div>
+
+          <div class="r-footer">
+            <span>Project: {{ r.projectName }}</span>
+            <span>Target: {{ r.targetDate }}</span>
+            <span class="badge badge-slate">{{ r.status }}</span>
+          </div>
+        </div>
+
+        <div class="empty-hint" *ngIf="!risks().length">
+          No risks logged for the selected project.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Create Risk Modal -->
+  <div class="modal-backdrop" *ngIf="showCreateRiskModal()">
+    <div class="modal-card card-panel">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <mat-icon class="text-amber">warning</mat-icon>
+          <h3>Identify &amp; Log Project Risk</h3>
+        </div>
+        <button class="icon-btn" (click)="closeCreateRiskModal()"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Risk Code <span class="required">*</span></label>
+            <input type="text" [(ngModel)]="newRisk.riskCode" placeholder="e.g. RSK-104" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>Project</label>
+            <select [(ngModel)]="newRisk.projectId" class="form-control">
+              <option *ngFor="let p of projects()" [ngValue]="p.id">[{{ p.projectCode }}] {{ p.name }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Risk Description &amp; Potential Delay <span class="required">*</span></label>
+          <textarea [(ngModel)]="newRisk.description" rows="3" placeholder="Describe the risk scenario (e.g. third-party API downtime, dependency delay)..." class="form-control"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Probability (1=Rare, 5=Almost Certain)</label>
+            <select [(ngModel)]="newRisk.probability" class="form-control">
+              <option [ngValue]="1">1 - Very Low</option>
+              <option [ngValue]="2">2 - Low</option>
+              <option [ngValue]="3">3 - Medium</option>
+              <option [ngValue]="4">4 - High</option>
+              <option [ngValue]="5">5 - Critical / Imminent</option>
+            </select>
+          </div>
+
+          <div class="form-group flex-1">
+            <label>Impact (1=Negligible, 5=Catastrophic)</label>
+            <select [(ngModel)]="newRisk.impact" class="form-control">
+              <option [ngValue]="1">1 - Negligible</option>
+              <option [ngValue]="2">2 - Minor</option>
+              <option [ngValue]="3">3 - Moderate</option>
+              <option [ngValue]="4">4 - Major</option>
+              <option [ngValue]="5">5 - Critical / Showstopper</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Calculated Risk Score Preview -->
+        <div class="calc-score-box" [class.danger]="(newRisk.probability * newRisk.impact) >= 15">
+          <span>Calculated Risk Score: <strong>{{ newRisk.probability * newRisk.impact }} / 25</strong></span>
+          <span class="crit-tag" *ngIf="(newRisk.probability * newRisk.impact) >= 15">CRITICAL RISK THRESHOLD REACHED</span>
+        </div>
+
+        <div class="form-group">
+          <label>Mitigation Plan &amp; Contingency Strategy</label>
+          <textarea [(ngModel)]="newRisk.mitigationPlan" rows="2" placeholder="Action steps to eliminate or reduce the impact..." class="form-control"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Target Resolution Date</label>
+          <input type="date" [(ngModel)]="newRisk.targetDate" class="form-control" />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeCreateRiskModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="submitCreateRisk()">Save Risk</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,229 @@
+<div class="reports-hub-container">
+
+  <!-- Toast Notification Bar -->
+  <div class="toast-banner" *ngIf="toast()">
+    <mat-icon>info</mat-icon>
+    <span>{{ toast() }}</span>
+    <button class="toast-close" (click)="toast.set('')"><mat-icon>close</mat-icon></button>
+  </div>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="title-group">
+      <div class="badge badge-purple">
+        <mat-icon class="sm-icon">analytics</mat-icon>
+        <span>Real-Time Database Telemetry &bull; Custom Report Builder</span>
+      </div>
+      <h1>Enterprise Reports &amp; Interactive Analytics</h1>
+      <p class="subtitle">Generate custom database reports, opt-in specific fields, and export colorful PDFs, Excel spreadsheets, and clean CSV data.</p>
+    </div>
+
+    <!-- Tab Switcher -->
+    <div class="tab-switcher">
+      <button
+        class="tab-btn"
+        [class.active]="activeTab() === 'PORTFOLIO'"
+        (click)="activeTab.set('PORTFOLIO')"
+      >
+        <mat-icon>grid_view</mat-icon>
+        <span>Standard Report Cards</span>
+      </button>
+
+      <button
+        class="tab-btn"
+        [class.active]="activeTab() === 'CUSTOM_BUILDER'"
+        (click)="activeTab.set('CUSTOM_BUILDER')"
+      >
+        <mat-icon>tune</mat-icon>
+        <span>Custom Report Builder &amp; Field Selector</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       TAB 1: STANDARD REPORTS PORTFOLIO
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div class="portfolio-grid" *ngIf="activeTab() === 'PORTFOLIO'">
+    <div class="report-card" *ngFor="let card of cards">
+      <div class="card-head">
+        <div class="icon-wrap">
+          <mat-icon>{{ card.icon }}</mat-icon>
+        </div>
+        <div class="card-titles">
+          <h3>{{ card.title }}</h3>
+          <p>{{ card.description }}</p>
+        </div>
+      </div>
+
+      <div class="card-actions">
+        <button class="btn btn-secondary btn-sm" (click)="previewCard(card.id, 'pdf')">
+          <mat-icon class="sm-icon">tune</mat-icon>
+          <span>Custom Reports</span>
+        </button>
+
+        <div class="export-dropdown-group">
+          <button class="btn btn-primary btn-sm" (click)="previewCard(card.id, 'pdf')">
+            <mat-icon class="sm-icon">picture_as_pdf</mat-icon>
+            <span>PDF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       TAB 2: CUSTOM INTERACTIVE REPORT BUILDER (FIELD OPT-IN & LIVE PREVIEW)
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div class="custom-builder-layout" *ngIf="activeTab() === 'CUSTOM_BUILDER'">
+
+    <!-- Step 1: Category & Filter Control Panel -->
+    <div class="builder-control-panel card-panel">
+      <div class="control-header">
+        <div class="step-badge">STEP 1</div>
+        <h3>Select Report Category &amp; Filters</h3>
+      </div>
+
+      <div class="category-pills-row">
+        <button
+          class="cat-pill"
+          *ngFor="let cat of categories"
+          [class.active]="selectedCategory() === cat.id"
+          (click)="onCategoryChange(cat.id)"
+        >
+          <mat-icon>{{ cat.icon }}</mat-icon>
+          <span>{{ cat.name }}</span>
+        </button>
+      </div>
+
+      <div class="filter-controls-row">
+        <div class="filter-group">
+          <label>Status Filter</label>
+          <select [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event); fetchCustomReportData()" class="form-control">
+            <option value="ALL">All Statuses</option>
+            <option value="IN_PROGRESS">IN_PROGRESS</option>
+            <option value="COMPLETED">COMPLETED</option>
+            <option value="UAT_EXIT">UAT_EXIT</option>
+            <option value="BLOCKED">BLOCKED</option>
+            <option value="OPEN">OPEN</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Project Context</label>
+          <select [ngModel]="filterProject()" (ngModelChange)="filterProject.set($event); fetchCustomReportData()" class="form-control">
+            <option value="ALL">All Projects (Aurionpro Workspace)</option>
+            <option value="CR91">CR91 IFSC Routing Engine</option>
+            <option value="IPM-2026">IPM-2026 Instant Payments</option>
+            <option value="DCB-100">DCB-100 Core Banking</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Interactive Field Selector (Opt-In Checkboxes) -->
+    <div class="field-selector-panel card-panel">
+      <div class="field-selector-header">
+        <div class="title-with-badge">
+          <div class="step-badge purple">STEP 2</div>
+          <h3>Custom Field Opt-In Selector (Checkboxes)</h3>
+          <span class="sub-hint">Check or uncheck fields to customize exported table columns.</span>
+        </div>
+
+        <div class="field-quick-actions">
+          <button class="link-btn" (click)="selectAllColumns(true)">Select All</button>
+          <span class="sep">&bull;</span>
+          <button class="link-btn" (click)="selectAllColumns(false)">Clear All</button>
+        </div>
+      </div>
+
+      <div class="field-checkboxes-grid">
+        <label
+          class="field-checkbox-pill"
+          *ngFor="let col of categoryColumns()"
+          [class.checked]="col.selected"
+        >
+          <input
+            type="checkbox"
+            [checked]="col.selected"
+            (change)="toggleColumn(col.key)"
+          />
+          <span>{{ col.label }}</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Step 3: Live Real-Time Data Preview Table & Export Actions -->
+    <div class="preview-table-panel card-panel">
+      <div class="preview-header">
+        <div class="preview-title-group">
+          <div class="step-badge green">STEP 3</div>
+          <h3>Live Database Preview &amp; Export Actions</h3>
+          <span class="records-count-pill">{{ totalRecordCount() }} Records Found</span>
+        </div>
+
+        <!-- Export Buttons Group -->
+        <div class="export-actions-group">
+          <button class="btn btn-pdf" (click)="exportCustomReport('pdf')">
+            <mat-icon>picture_as_pdf</mat-icon>
+            <span>Download Colourful PDF</span>
+          </button>
+          <button class="btn btn-excel" (click)="exportCustomReport('excel')">
+            <mat-icon>table_view</mat-icon>
+            <span>Download Excel (.xlsx)</span>
+          </button>
+          <button class="btn btn-csv" (click)="exportCustomReport('csv')">
+            <mat-icon>text_snippet</mat-icon>
+            <span>Download CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Summary KPI Tiles -->
+      <div class="summary-kpis-row" *ngIf="liveSummaryKpis().length > 0">
+        <div class="kpi-tile" *ngFor="let kpi of liveSummaryKpis()">
+          <span class="kpi-lbl">{{ kpi.label }}</span>
+          <span class="kpi-val">{{ kpi.value }}</span>
+        </div>
+      </div>
+
+      <!-- Live Preview Data Table -->
+      <div class="table-responsive">
+        <div class="loading-overlay" *ngIf="isLoadingPreview()">
+          <div class="spinner"></div>
+          <span>Fetching real-time database records...</span>
+        </div>
+
+        <table class="preview-table" *ngIf="!isLoadingPreview() && livePreviewRows().length > 0">
+          <thead>
+            <tr>
+              <th *ngFor="let col of selectedColumnsList()">{{ col.label }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of livePreviewRows()">
+              <td *ngFor="let col of selectedColumnsList()">
+                <span
+                  [ngClass]="{
+                    'status-pill green': row[col.key] === 'COMPLETED' || row[col.key] === 'RESOLVED' || row[col.key] === 'UAT_EXIT',
+                    'status-pill blue': row[col.key] === 'IN_PROGRESS' || row[col.key] === 'APPROVED',
+                    'status-pill red': row[col.key] === 'BLOCKED' || row[col.key] === 'URGENT' || row[col.key] === 'HIGH',
+                    'status-pill amber': row[col.key] === 'OPEN' || row[col.key] === 'IN_REVIEW'
+                  }"
+                >
+                  {{ row[col.key] }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="empty-preview" *ngIf="!isLoadingPreview() && livePreviewRows().length === 0">
+          <mat-icon>find_in_page</mat-icon>
+          <p>No matching database records found for the selected category and filters.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

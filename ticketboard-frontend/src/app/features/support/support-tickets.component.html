@@ -1,0 +1,276 @@
+<div class="support-tickets-container">
+
+  <!-- Header & Page Actions -->
+  <div class="page-header">
+    <div class="title-group">
+      <div class="badge badge-indigo">
+        <mat-icon class="sm-icon">confirmation_number</mat-icon>
+        <span>Real-Time Support Desk &bull; Live Admin Queue</span>
+      </div>
+      <h1>Support Tickets &amp; Query Center</h1>
+      <p class="subtitle">Raise issues, track ticket resolution, and communicate with Super Admins &amp; Admins in real-time.</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-secondary" routerLink="/support">
+        <mat-icon>help_outline</mat-icon>
+        <span>Help &amp; Knowledge Base</span>
+      </button>
+      <button class="btn btn-primary" (click)="openRaiseTicketDialog('ROLE_SUPER_ADMIN')">
+        <mat-icon>add</mat-icon>
+        <span>Raise Support Ticket</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab Selector & Search Filters -->
+  <div class="control-toolbar">
+    <div class="tab-group">
+      <button
+        class="tab-btn"
+        [class.active]="activeTab() === 'MY_TICKETS'"
+        (click)="activeTab.set('MY_TICKETS')"
+      >
+        <mat-icon>person</mat-icon>
+        <span>My Raised Tickets</span>
+      </button>
+
+      <button
+        class="tab-btn"
+        *ngIf="isAdminUser()"
+        [class.active]="activeTab() === 'ADMIN_QUEUE'"
+        (click)="activeTab.set('ADMIN_QUEUE')"
+      >
+        <mat-icon>admin_panel_settings</mat-icon>
+        <span>Super Admin &amp; Admin Queue</span>
+        <span class="badge-count" *ngIf="supportTicketService.openTicketsCount() > 0">
+          {{ supportTicketService.openTicketsCount() }}
+        </span>
+      </button>
+    </div>
+
+    <div class="filter-group">
+      <div class="search-input-wrap">
+        <mat-icon>search</mat-icon>
+        <input
+          type="text"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+          placeholder="Filter tickets by code, subject, user..."
+        />
+      </div>
+
+      <select
+        [ngModel]="selectedStatus()"
+        (ngModelChange)="selectedStatus.set($event)"
+        class="status-select"
+      >
+        <option value="ALL">All Statuses</option>
+        <option value="OPEN">Open</option>
+        <option value="IN_REVIEW">In Review</option>
+        <option value="RESOLVED">Resolved</option>
+        <option value="CLOSED">Closed</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Master / Detail Grid Split View -->
+  <div class="tickets-workspace">
+
+    <!-- Left Column: Tickets List -->
+    <div class="tickets-list-col">
+      <div
+        class="ticket-card"
+        *ngFor="let t of filteredTickets()"
+        [class.selected]="selectedTicket()?.id === t.id"
+        (click)="selectTicket(t)"
+      >
+        <div class="card-top">
+          <div class="code-and-category">
+            <span class="ticket-code">{{ t.ticketCode }}</span>
+            <span class="target-badge" [class.super-admin]="t.targetRole === 'ROLE_SUPER_ADMIN'">
+              {{ t.targetRole === 'ROLE_SUPER_ADMIN' ? '⚡ Super Admin' : '🛡️ Admin' }}
+            </span>
+          </div>
+
+          <span
+            class="status-pill"
+            [ngClass]="{
+              'status-open': t.status === 'OPEN',
+              'status-review': t.status === 'IN_REVIEW',
+              'status-resolved': t.status === 'RESOLVED',
+              'status-closed': t.status === 'CLOSED'
+            }"
+          >
+            {{ t.status.replace('_', ' ') }}
+          </span>
+        </div>
+
+        <h4 class="ticket-subject">{{ t.subject }}</h4>
+
+        <div class="card-meta">
+          <span class="user-name">{{ t.createdByName }}</span>
+          <span class="meta-sep">&bull;</span>
+          <span class="priority-tag" [attr.data-priority]="t.priority">{{ t.priority }}</span>
+          <span class="meta-sep">&bull;</span>
+          <span class="time-ago">{{ t.createdAt }}</span>
+        </div>
+      </div>
+
+      <div class="empty-list" *ngIf="filteredTickets().length === 0">
+        <mat-icon>inbox</mat-icon>
+        <p>No support tickets match your selected filters.</p>
+        <button class="btn btn-sm btn-secondary" (click)="openRaiseTicketDialog()">Raise New Ticket</button>
+      </div>
+    </div>
+
+    <!-- Right Column: Ticket Details & Admin Resolution Actions -->
+    <div class="ticket-detail-col" *ngIf="selectedTicket() as t">
+      <div class="detail-header-panel">
+        <div class="detail-top-row">
+          <div class="code-group">
+            <span class="detail-code">{{ t.ticketCode }}</span>
+            <span class="cat-pill">{{ t.category }}</span>
+            <span class="target-pill" [class.super-admin]="t.targetRole === 'ROLE_SUPER_ADMIN'">
+              {{ t.targetRole === 'ROLE_SUPER_ADMIN' ? '⚡ Super Admin Queue' : '🛡️ Admin Queue' }}
+            </span>
+          </div>
+
+          <span
+            class="status-pill large"
+            [ngClass]="{
+              'status-open': t.status === 'OPEN',
+              'status-review': t.status === 'IN_REVIEW',
+              'status-resolved': t.status === 'RESOLVED',
+              'status-closed': t.status === 'CLOSED'
+            }"
+          >
+            {{ t.status.replace('_', ' ') }}
+          </span>
+        </div>
+
+        <h2 class="detail-subject">{{ t.subject }}</h2>
+
+        <div class="detail-meta-bar">
+          <div class="meta-item">
+            <mat-icon>person</mat-icon>
+            <span>Raised by: <strong>{{ t.createdByName }}</strong> ({{ t.createdByEmail }})</span>
+          </div>
+          <div class="meta-item">
+            <mat-icon>schedule</mat-icon>
+            <span>Created: {{ t.createdAt }}</span>
+          </div>
+          <div class="meta-item" *ngIf="t.assignedToName">
+            <mat-icon>admin_panel_settings</mat-icon>
+            <span>Assigned Admin: <strong>{{ t.assignedToName }}</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-scroll-content">
+
+        <!-- Description Box -->
+        <div class="detail-section">
+          <h3>Issue Description</h3>
+          <div class="desc-box">
+            <p>{{ t.description }}</p>
+          </div>
+        </div>
+
+        <!-- System Diagnostics Bar -->
+        <div class="detail-section" *ngIf="t.systemDiagnostics">
+          <h3>System Diagnostics Telemetry</h3>
+          <div class="diag-box">
+            <mat-icon>memory</mat-icon>
+            <code>{{ t.systemDiagnostics }}</code>
+          </div>
+        </div>
+
+        <!-- Resolution Notes (if present or when Admin) -->
+        <div class="detail-section" *ngIf="t.resolutionNotes || isAdminUser()">
+          <h3>Admin Resolution &amp; Solution Notes</h3>
+
+          <!-- View Mode for standard users -->
+          <div class="resolution-box" *ngIf="t.resolutionNotes && !isAdminUser()">
+            <mat-icon class="res-icon">check_circle</mat-icon>
+            <div class="res-text">
+              <p>{{ t.resolutionNotes }}</p>
+              <span class="res-admin">&mdash; Resolved by {{ t.assignedToName || 'Admin Team' }}</span>
+            </div>
+          </div>
+
+          <!-- Edit / Resolve Mode for Super Admin / Admin -->
+          <div class="admin-action-box" *ngIf="isAdminUser()">
+            <div class="action-form-row">
+              <div class="form-group">
+                <label>Update Status</label>
+                <select [(ngModel)]="statusUpdateInput" class="form-control">
+                  <option value="OPEN">OPEN — Queued for review</option>
+                  <option value="IN_REVIEW">IN REVIEW — Admin working on issue</option>
+                  <option value="RESOLVED">RESOLVED — Issue solved &amp; verified</option>
+                  <option value="CLOSED">CLOSED — Ticket archived</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Resolution Notes / Instructions</label>
+              <textarea
+                [(ngModel)]="resolutionNotesInput"
+                rows="3"
+                placeholder="Enter details on how the issue was resolved or instructions for the user..."
+                class="form-control"
+              ></textarea>
+            </div>
+
+            <div class="action-btns">
+              <button class="btn btn-primary" (click)="updateTicketStatus()">
+                <mat-icon>save</mat-icon>
+                <span>Save Status &amp; Resolution Notes</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comment Thread -->
+        <div class="detail-section">
+          <h3>Communication History &amp; Comments</h3>
+
+          <div class="comments-thread">
+            <div class="comment-item" *ngFor="let c of t.comments">
+              <div class="comment-avatar">{{ c.authorName.charAt(0) }}</div>
+              <div class="comment-body">
+                <div class="comment-head">
+                  <strong class="author-name">{{ c.authorName }}</strong>
+                  <span class="author-role">{{ c.authorRole }}</span>
+                  <span class="comment-time">{{ c.createdAt }}</span>
+                </div>
+                <p class="comment-text">{{ c.commentText }}</p>
+              </div>
+            </div>
+
+            <div class="empty-comments" *ngIf="!t.comments || t.comments.length === 0">
+              <p>No comments added yet.</p>
+            </div>
+          </div>
+
+          <!-- Add Comment Input -->
+          <div class="add-comment-box">
+            <input
+              type="text"
+              [(ngModel)]="commentInput"
+              placeholder="Write a message or follow-up note..."
+              (keyup.enter)="addComment()"
+            />
+            <button class="btn btn-sm btn-primary" (click)="addComment()" [disabled]="!commentInput.trim()">
+              <mat-icon>send</mat-icon>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+</div>

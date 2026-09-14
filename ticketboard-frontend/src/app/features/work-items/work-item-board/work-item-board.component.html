@@ -1,0 +1,544 @@
+<div class="tasks-page-container">
+  <!-- Page Header & Action Bar -->
+  <div class="tasks-page-header">
+    <div class="header-left-group">
+      <h1>SBI CR TASKS &amp; Delivery Management</h1>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" (click)="loadWorkItems()">
+        <mat-icon class="sm-icon">refresh</mat-icon>
+        <span>Refresh</span>
+      </button>
+
+      <button class="btn btn-primary" (click)="openCreateModal()">
+        <mat-icon class="sm-icon">add</mat-icon>
+        <span>Add Task</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Controls Toolbar (Views, Compact Toggle, Search, Dropdown Filters) -->
+  <div class="tasks-controls-toolbar card-panel">
+    <!-- View Switcher -->
+    <div class="view-switcher-group">
+      <button
+        class="view-btn"
+        [class.active]="viewMode() === 'LIST'"
+        (click)="setViewMode('LIST')"
+        matTooltip="List View"
+      >
+        <mat-icon class="v-icon">format_list_bulleted</mat-icon>
+        <span>List</span>
+      </button>
+
+      <button
+        class="view-btn"
+        [class.active]="viewMode() === 'KANBAN'"
+        (click)="setViewMode('KANBAN')"
+        matTooltip="Interactive Kanban Board (Drag & Drop)"
+      >
+        <mat-icon class="v-icon">view_kanban</mat-icon>
+        <span>Kanban</span>
+      </button>
+
+      <button
+        class="view-btn"
+        [class.active]="viewMode() === 'GANTT'"
+        (click)="setViewMode('GANTT')"
+        matTooltip="Milestone Timeline / Gantt"
+      >
+        <mat-icon class="v-icon">timeline</mat-icon>
+        <span>Gantt</span>
+      </button>
+    </div>
+
+    <!-- Group By Selector -->
+    <div class="control-select-wrap">
+      <label class="control-lbl">Group By:</label>
+      <select
+        [ngModel]="groupBy()"
+        (ngModelChange)="setGroupBy($event)"
+        class="control-select"
+      >
+        <option value="NONE">None</option>
+        <option value="STATUS">Status</option>
+        <option value="PROJECT">Project</option>
+        <option value="ASSIGNEE">Assignee / Owner</option>
+        <option value="PRIORITY">Priority</option>
+        <option value="BILLING">Billing Type</option>
+      </select>
+    </div>
+
+    <!-- Global Search Input -->
+    <div class="search-input-wrap">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input
+        type="text"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event); applyFilters()"
+        placeholder="Global Search by Task Name, ID, Tag, Owner..."
+        class="search-field"
+      />
+    </div>
+
+    <!-- Unified Dropdown Filters (Replaces Header Filter Pills) -->
+    <div class="dropdown-filters-group">
+      <select
+        [ngModel]="selectedProjectId()"
+        (ngModelChange)="selectedProjectId.set($event); applyFilters()"
+        class="control-select"
+      >
+        <option [ngValue]="null">All Projects</option>
+        <option *ngFor="let p of projects()" [ngValue]="p.id">[{{ p.projectCode }}] {{ p.name }}</option>
+      </select>
+
+      <select
+        [ngModel]="selectedStatus()"
+        (ngModelChange)="selectedStatus.set($event); applyFilters()"
+        class="control-select status-select-filter"
+      >
+        <option value="ALL">All Statuses (Dropdown Filter)</option>
+        <option *ngFor="let c of kanbanColumns" [value]="c.status">{{ c.label }}</option>
+      </select>
+
+      <select
+        [ngModel]="selectedPriority()"
+        (ngModelChange)="selectedPriority.set($event); applyFilters()"
+        class="control-select"
+      >
+        <option value="ALL">All Priorities</option>
+        <option value="LOW">Low</option>
+        <option value="MEDIUM">Medium</option>
+        <option value="HIGH">High</option>
+        <option value="CRITICAL">Critical</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading()">
+    <div class="spinner"></div>
+    <span>Loading delivery tasks...</span>
+  </div>
+
+  <!-- 1. LIST VIEW (Full Standard Table) -->
+  <div class="tasks-table-view card-panel" *ngIf="!isLoading() && viewMode() === 'LIST'">
+    <div class="table-responsive">
+      <table class="tasks-table">
+        <thead>
+          <tr>
+            <th appResizable style="width: 80px; min-width: 80px;">ID</th>
+            <th appResizable style="min-width: 260px;">Task Name</th>
+            <th appResizable style="min-width: 110px;">Project</th>
+            <th appResizable style="min-width: 150px;">Owner / Assignee</th>
+            <th appResizable style="min-width: 130px;">Status</th>
+            <th appResizable style="min-width: 110px;">Priority</th>
+            <th appResizable style="min-width: 110px;">Completion %</th>
+            <th appResizable style="min-width: 110px;">Due Date</th>
+            <th appResizable style="min-width: 90px;">Hours (P)</th>
+            <th appResizable style="min-width: 90px;">Logged (T)</th>
+            <th appResizable style="min-width: 120px;">Billing Type</th>
+            <th appResizable style="min-width: 110px; text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <ng-container *ngFor="let group of getGroupGroups()">
+            <tr class="group-header-row" *ngIf="groupBy() !== 'NONE'">
+              <td [attr.colspan]="12">
+                <div class="group-header-inner">
+                  <span class="group-indicator-dot"></span>
+                  <span class="group-key font-bold">{{ group.key }}</span>
+                  <span class="group-count badge badge-slate">{{ group.items.length }}</span>
+                </div>
+              </td>
+            </tr>
+            <tr *ngFor="let item of group.items" class="task-row clickable" (click)="openTaskDrawer(item)">
+              <td>
+                <span class="task-id-badge">{{ item.ticketNumber }}</span>
+              </td>
+              
+              <!-- Dynamic Cell Edit: Title -->
+              <td class="col-name editable-cell" (click)="startInlineEdit(item.id, 'title', $event)">
+                <div class="task-name-cell" *ngIf="!isEditingCell(item.id, 'title')">
+                  <span class="task-title font-bold">{{ item.title }}</span>
+                  <span class="task-desc-snippet" *ngIf="item.description">{{ item.description | slice: 0: 65 }}...</span>
+                </div>
+                <input *ngIf="isEditingCell(item.id, 'title')" type="text" class="cell-input" [value]="item.title" (blur)="updateField(item, 'title', $any($event.target).value)" (keydown.enter)="updateField(item, 'title', $any($event.target).value)" (click)="$event.stopPropagation()" autofocus />
+              </td>
+
+              <td>
+                <span class="project-pill">{{ item.projectCode || 'PROJ' }}</span>
+              </td>
+
+              <!-- Dynamic Cell Edit: Owner -->
+              <td class="editable-cell" (click)="startInlineEdit(item.id, 'assigneeName', $event)">
+                <div class="assignee-cell" *ngIf="!isEditingCell(item.id, 'assigneeName')">
+                  <div class="user-avatar-sm">
+                    {{ item.assigneeName ? item.assigneeName.charAt(0) : 'U' }}
+                  </div>
+                  <span class="assignee-name">{{ item.assigneeName || 'Unassigned' }}</span>
+                </div>
+                <input *ngIf="isEditingCell(item.id, 'assigneeName')" type="text" class="cell-input" [value]="item.assigneeName || ''" (blur)="updateField(item, 'assigneeName', $any($event.target).value)" (keydown.enter)="updateField(item, 'assigneeName', $any($event.target).value)" (click)="$event.stopPropagation()" autofocus />
+              </td>
+
+              <!-- Dynamic Cell Edit: Status -->
+              <td class="editable-cell" (click)="startInlineEdit(item.id, 'status', $event)">
+                <span *ngIf="!isEditingCell(item.id, 'status')" class="badge" [ngClass]="{
+                  'badge-slate': item.status === 'TODO',
+                  'badge-blue': item.status === 'IN_ANALYSIS',
+                  'badge-indigo': item.status === 'DEV_IN_PROGRESS',
+                  'badge-purple': item.status === 'DEV_EXIT',
+                  'badge-amber': item.status === 'SIT_IN_PROGRESS',
+                  'badge-orange': item.status === 'SIT_EXIT',
+                  'badge-cyan': item.status === 'UAT_IN_PROGRESS',
+                  'badge-emerald': item.status === 'UAT_EXIT',
+                  'badge-green': item.status === 'GO_LIVE',
+                  'badge-red': item.status === 'BLOCKED',
+                  'badge-teal': item.status === 'COMPLETED'
+                }">
+                  {{ item.status.replace('_', ' ') }}
+                </span>
+                <select *ngIf="isEditingCell(item.id, 'status')" class="cell-select" [value]="item.status" (change)="updateField(item, 'status', $any($event.target).value)" (blur)="stopInlineEdit()" (click)="$event.stopPropagation()">
+                  <option *ngFor="let col of kanbanColumns" [value]="col.status">{{ col.label }}</option>
+                </select>
+              </td>
+
+              <!-- Dynamic Cell Edit: Priority -->
+              <td class="editable-cell" (click)="startInlineEdit(item.id, 'priority', $event)">
+                <span *ngIf="!isEditingCell(item.id, 'priority')" class="badge" [ngClass]="{
+                  'badge-red': item.priority === 'CRITICAL' || item.priority === 'HIGH',
+                  'badge-amber': item.priority === 'MEDIUM',
+                  'badge-slate': item.priority === 'LOW'
+                }">
+                  {{ item.priority }}
+                </span>
+                <select *ngIf="isEditingCell(item.id, 'priority')" class="cell-select" [value]="item.priority" (change)="updateField(item, 'priority', $any($event.target).value)" (blur)="stopInlineEdit()" (click)="$event.stopPropagation()">
+                  <option value="LOW">LOW</option>
+                  <option value="MEDIUM">MEDIUM</option>
+                  <option value="HIGH">HIGH</option>
+                  <option value="CRITICAL">CRITICAL</option>
+                </select>
+              </td>
+
+              <td>
+                <div class="comp-progress-cell">
+                  <div class="progress-bar-sm">
+                    <div class="progress-fill-sm" [style.width.%]="item.completionPercentage || 0"></div>
+                  </div>
+                  <span class="pct-num">{{ item.completionPercentage || 0 }}%</span>
+                </div>
+              </td>
+              <td>
+                <span class="date-cell">{{ item.completedDate || item.dueDate || 'TBD' }}</span>
+              </td>
+              <td class="font-bold">{{ item.estimatedHours || 0 }}h</td>
+              <td class="text-indigo font-bold">{{ item.actualHours || 0 }}h</td>
+              <td>
+                <span class="badge badge-slate">{{ item.billingType || 'None' }}</span>
+              </td>
+              
+              <!-- Explicit Row Action Button: Open Detail -->
+              <td style="text-align: right;" (click)="$event.stopPropagation()">
+                <button class="btn btn-sm btn-primary-outline open-task-btn" (click)="openTaskDrawer(item)" matTooltip="Open Task Specification Drawer">
+                  <mat-icon class="sm-ico">open_in_new</mat-icon> Open Detail
+                </button>
+              </td>
+            </tr>
+          </ng-container>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 2. KANBAN BOARD VIEW (Drag and Drop Across All Enterprise Stages) -->
+  <div class="kanban-board-container" *ngIf="!isLoading() && viewMode() === 'KANBAN'">
+    <div class="kanban-scroll-viewport" cdkDropListGroup>
+      <div
+        class="kanban-column card-panel"
+        *ngFor="let col of kanbanColumns"
+      >
+        <div class="kanban-column-header">
+          <div class="col-title-wrap">
+            <span class="badge" [ngClass]="col.badgeClass">{{ col.label }}</span>
+            <span class="count-pill">{{ getColumnItems(col.status).length }}</span>
+          </div>
+        </div>
+
+        <div
+          class="kanban-cards-list"
+          cdkDropList
+          [id]="'cdk-drop-list-' + col.status"
+          [cdkDropListData]="getColumnItems(col.status)"
+          (cdkDropListDropped)="onKanbanDrop($event, col.status)"
+        >
+          <div
+            class="kanban-card card-panel"
+            *ngFor="let item of getColumnItems(col.status)"
+            cdkDrag
+            (cdkDragStarted)="onKanbanDragStart()"
+            (cdkDragEnded)="onKanbanDragEnd()"
+            (click)="openKanbanDetail(item)"
+            matTooltip="Drag to move between stages • Click to open details"
+          >
+            <div class="card-drag-placeholder" *cdkDragPlaceholder></div>
+
+            <div class="k-card-top">
+              <span class="task-id-badge">{{ item.ticketNumber }}</span>
+              <span class="badge badge-slate">{{ item.priority }}</span>
+            </div>
+
+            <h4 class="k-card-title">{{ item.title }}</h4>
+
+            <div class="k-card-tags" *ngIf="item.tags">
+              <span class="tag-pill">{{ item.tags }}</span>
+            </div>
+
+            <div class="k-card-meta">
+              <div class="k-meta-item">
+                <mat-icon class="mini-ico">schedule</mat-icon>
+                <span>{{ item.actualHours || 0 }}h / {{ item.estimatedHours || 0 }}h</span>
+              </div>
+              <div class="k-meta-item" *ngIf="item.dueDate">
+                <mat-icon class="mini-ico">event</mat-icon>
+                <span>{{ item.dueDate }}</span>
+              </div>
+            </div>
+
+            <div class="k-card-footer">
+              <div class="assignee-chip">
+                <div class="user-avatar-xs">
+                  {{ item.assigneeName ? item.assigneeName.charAt(0) : 'U' }}
+                </div>
+                <span>{{ item.assigneeName || 'Unassigned' }}</span>
+              </div>
+
+              <div class="k-card-actions">
+                <span class="badge" [ngClass]="item.completionPercentage === 100 ? 'badge-green' : 'badge-purple'">
+                  {{ item.completionPercentage || 0 }}%
+                </span>
+                <button class="icon-btn-sm kanban-task-open-btn" (click)="openKanbanDetail(item); $event.stopPropagation()" matTooltip="Open Task Specification">
+                  <mat-icon>open_in_new</mat-icon>
+                </button>
+              </div>
+            </div>
+
+            <div class="blocker-warning" *ngIf="item.status === 'BLOCKED'">
+              <mat-icon class="b-ico">error_outline</mat-icon>
+              <span>{{ item.blockedReason || 'No blocking reason provided' }}</span>
+            </div>
+          </div>
+
+          <div class="empty-column-placeholder" *ngIf="getColumnItems(col.status).length === 0">
+            <span>No tasks in {{ col.label }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. GANTT / TIMELINE VIEW -->
+  <div class="gantt-view-container card-panel" *ngIf="!isLoading() && viewMode() === 'GANTT'">
+    <div class="gantt-header-row">
+      <div class="g-col-title">Task ID &amp; Name</div>
+      <div class="g-col-timeline">Delivery Milestone Schedule (Dev &rarr; SIT &rarr; UAT &rarr; Go-Live)</div>
+    </div>
+
+    <div class="gantt-items-list">
+      <div class="gantt-item-row" *ngFor="let item of filteredWorkItems()" (click)="openTaskDrawer(item)">
+        <div class="g-item-info">
+          <span class="task-id-badge">{{ item.ticketNumber }}</span>
+          <span class="font-bold g-title">{{ item.title }}</span>
+          <span class="text-muted g-team">&bull; {{ item.associatedTeam || '—' }}</span>
+        </div>
+
+        <div class="g-item-timeline">
+          <div class="milestone-track">
+            <div class="milestone-point dev" *ngIf="item.devExitDate" matTooltip="Dev Exit: {{ item.devExitDate }}">
+              <span class="m-dot"></span>
+              <span class="m-lbl">Dev Exit ({{ item.devExitDate }})</span>
+            </div>
+            <div class="milestone-point sit" *ngIf="item.sitExitDate" matTooltip="SIT Exit: {{ item.sitExitDate }}">
+              <span class="m-dot"></span>
+              <span class="m-lbl">SIT Exit ({{ item.sitExitDate }})</span>
+            </div>
+            <div class="milestone-point uat" *ngIf="item.uatExitDate" matTooltip="UAT Exit: {{ item.uatExitDate }}">
+              <span class="m-dot"></span>
+              <span class="m-lbl">UAT Exit ({{ item.uatExitDate }})</span>
+            </div>
+            <div class="milestone-point prod" *ngIf="item.goLiveDate || item.dueDate" matTooltip="Target Delivery">
+              <span class="m-dot"></span>
+              <span class="m-lbl">Go-Live ({{ item.goLiveDate || item.dueDate }})</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. TASK DETAIL DIALOG (Shared Enterprise Task Detail Modal) -->
+  <app-task-detail-dialog
+    *ngIf="selectedTask()"
+    [task]="selectedTask()!"
+    [users]="users()"
+    [projects]="projects()"
+    (close)="closeTaskDrawer()"
+    (saved)="onTaskModalSaved()"
+  ></app-task-detail-dialog>
+
+  <!-- Create Task Modal Dialog -->
+  <div class="modal-backdrop" *ngIf="showCreateModal()">
+    <div class="modal-card card-panel" style="max-width: 780px;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <mat-icon class="text-indigo">add_task</mat-icon>
+          <h3>Create New Enterprise Task</h3>
+        </div>
+        <button class="icon-btn" (click)="closeCreateModal()"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Project <span class="required">*</span></label>
+            <select [(ngModel)]="newTask.projectId" class="form-control">
+              <option *ngFor="let p of projects()" [value]="p.id">{{ p.name }} ({{ p.projectCode }})</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label>Task Ticket Number (e.g. CR#3)</label>
+            <input type="text" [(ngModel)]="newTask.ticketNumber" placeholder="Leave empty for auto-generated" class="form-control" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Task Title &amp; Summary <span class="required">*</span></label>
+          <input type="text" [(ngModel)]="newTask.title" placeholder="e.g. Display of Total amount of Selected Files..." class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="newTask.description" rows="2" class="form-control" placeholder="Task requirements and acceptance criteria..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Associated Team</label>
+            <input type="text" [(ngModel)]="newTask.associatedTeam" placeholder="e.g. Core Banking Squad" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>Delivery Status</label>
+            <select [(ngModel)]="newTask.status" class="form-control">
+              <option *ngFor="let c of kanbanColumns" [value]="c.status">{{ c.label }}</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label>Priority</label>
+            <select [(ngModel)]="newTask.priority" class="form-control">
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+              <option value="CRITICAL">Critical</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Work Hours (Planned)</label>
+            <input type="number" [(ngModel)]="newTask.estimatedHours" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>Dev Efforts (Days)</label>
+            <input type="number" [(ngModel)]="newTask.devEffortDays" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>QC Efforts (Days)</label>
+            <input type="number" [(ngModel)]="newTask.qcEffortDays" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>Billing Type</label>
+            <select [(ngModel)]="newTask.billingType" class="form-control">
+              <option value="Billable">Billable</option>
+              <option value="Non-Billable">Non-Billable</option>
+              <option value="Fixed Cost">Fixed Cost</option>
+              <option value="None">None</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Start Date</label>
+            <input type="date" [(ngModel)]="newTask.startDate" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>Dev Exit Date</label>
+            <input type="date" [(ngModel)]="newTask.devExitDate" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>SIT Exit Date</label>
+            <input type="date" [(ngModel)]="newTask.sitExitDate" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>UAT Exit Date</label>
+            <input type="date" [(ngModel)]="newTask.uatExitDate" class="form-control" />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeCreateModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="submitCreateTask()">Create Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Blocker Dialog Modal -->
+  <div class="modal-backdrop" *ngIf="showBlockerModal()">
+    <div class="modal-card card-panel">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <mat-icon class="text-red">block</mat-icon>
+          <h3>Mark Task as BLOCKED</h3>
+        </div>
+        <button class="icon-btn" (click)="closeBlockerModal()"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Blocking Reason <span class="required">*</span></label>
+          <textarea
+            [ngModel]="blockerReason()"
+            (ngModelChange)="blockerReason.set($event)"
+            rows="3"
+            class="form-control"
+            placeholder="Explain root cause of dependency / technical blocker..."
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Blocked Owner (Team / Individual) <span class="required">*</span></label>
+          <input
+            type="text"
+            [ngModel]="blockerOwner()"
+            (ngModelChange)="blockerOwner.set($event)"
+            class="form-control"
+            placeholder="e.g. Infrastructure DBA / External API Gateway"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Expected Resolution Date</label>
+          <input type="date" [ngModel]="blockerExpectedDate()" (ngModelChange)="blockerExpectedDate.set($event)" class="form-control" />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeBlockerModal()">Cancel</button>
+        <button class="btn btn-danger" (click)="confirmBlocker()">Confirm Blocker</button>
+      </div>
+    </div>
+  </div>
+
+</div>

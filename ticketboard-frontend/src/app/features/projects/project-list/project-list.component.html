@@ -1,0 +1,174 @@
+<div class="zoho-projects-container">
+  <!-- Top Navigation & Tabs Bar -->
+  <div class="projects-nav-bar">
+    <div class="nav-left">
+      <div class="project-title-badge">
+        <mat-icon class="icon">menu</mat-icon>
+        <span class="title">Projects</span>
+      </div>
+
+      <div class="sub-nav-tabs">
+        <button class="nav-tab" [class.active]="activeTab() === 'active'" (click)="setTab('active')">
+          Active Projects
+        </button>
+        <button class="nav-tab" [class.active]="activeTab() === 'public'" (click)="setTab('public')">
+          Public Projects
+        </button>
+      </div>
+
+      <!-- Category / Status Filter Dropdown -->
+      <div class="filter-dropdown">
+        <select [ngModel]="filterScope()" (ngModelChange)="filterScope.set($event); applyFilters()" class="select-control">
+          <option value="ALL">All Projects</option>
+          <option value="ACTIVE">Active Projects</option>
+          <option value="ON_HOLD">On Hold Projects</option>
+          <option value="COMPLETED">Completed Projects</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="nav-right">
+      <button class="btn btn-accent-primary" (click)="openCreateModal()">
+        <mat-icon class="sm">add</mat-icon>
+        <span>New Project</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading()">
+    <div class="spinner"></div>
+    <span>Loading projects...</span>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state card-panel" *ngIf="!isLoading() && filteredProjects().length === 0">
+    <mat-icon>folder_open</mat-icon>
+    <h3>No projects found</h3>
+    <p>Projects will appear here once data is available.</p>
+  </div>
+
+  <!-- Main Table Canvas -->
+  <div class="projects-table-wrapper" *ngIf="!isLoading() && filteredProjects().length > 0">
+    <table class="zoho-data-table">
+      <thead>
+        <tr>
+          <th class="col-check"><input type="checkbox" /></th>
+          <th class="col-id">ID <mat-icon class="sort-icon">unfold_more</mat-icon></th>
+          <th class="col-name">Project Name <mat-icon class="sort-icon">unfold_more</mat-icon></th>
+          <th class="col-pct">% <mat-icon class="sort-icon">unfold_more</mat-icon></th>
+          <th class="col-owner">Owner</th>
+          <th class="col-status">Status</th>
+          <th class="col-tasks">Tasks</th>
+          <th class="col-milestones">Milestones</th>
+          <th class="col-issues">Issues</th>
+          <th class="col-dates">Start Date / End Date</th>
+          <th class="col-tags">Tags</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of filteredProjects()" [routerLink]="['/projects', p.id]" class="clickable-row">
+          <td class="col-check" (click)="$event.stopPropagation()"><input type="checkbox" /></td>
+          <td class="col-id font-bold text-primary">{{ p.projectCode }}</td>
+          <td class="col-name">
+            <span class="project-title-link">{{ p.name }}</span>
+          </td>
+          <td class="col-pct">
+            <div class="pct-cell">
+              <span class="pct-val">{{ p.completionPercentage }}%</span>
+              <div class="mini-progress-track">
+                <div class="mini-progress-fill" [style.width.%]="p.completionPercentage"></div>
+              </div>
+            </div>
+          </td>
+          <td class="col-owner">
+            <div class="owner-cell">
+              <div class="user-avatar-sm">{{ p.projectManagerName?.charAt(0) || '?' }}</div>
+              <div class="owner-info">
+                <span class="owner-name">{{ p.projectManagerName || 'Unassigned' }}</span>
+                <span class="owner-you-badge" *ngIf="isOwnedByMe(p)">You own</span>
+              </div>
+            </div>
+          </td>
+          <td class="col-status">
+            <span class="status-pill" [ngClass]="statusClass(p.status)">{{ statusLabel(p.status) }}</span>
+          </td>
+          <td class="col-tasks">
+            <div class="stacked-bar-cell" *ngIf="taskCounts(p).total > 0" [matTooltip]="taskCounts(p).closed + ' Closed Tasks / ' + taskCounts(p).total + ' Total'">
+              <div class="stacked-bar">
+                <div class="bar-fill green-fill" [style.width.%]="(taskCounts(p).closed / taskCounts(p).total) * 100"></div>
+                <div class="bar-fill grey-fill" [style.width.%]="((taskCounts(p).total - taskCounts(p).closed) / taskCounts(p).total) * 100"></div>
+              </div>
+              <span class="stacked-label">{{ taskCounts(p).closed }} / {{ taskCounts(p).total }}</span>
+            </div>
+            <span class="text-subtle" *ngIf="taskCounts(p).total === 0">No Tasks</span>
+          </td>
+          <td class="col-milestones">
+            <span class="text-subtle" *ngIf="!p.milestones || p.milestones.length === 0">No Milestones</span>
+            <span class="font-medium" *ngIf="p.milestones && p.milestones.length > 0">{{ p.milestones.length }} Milestones</span>
+          </td>
+          <td class="col-issues">
+            <div class="stacked-bar-cell" *ngIf="issueCounts(p).open > 0" [matTooltip]="issueCounts(p).open + ' Open Issues'">
+              <div class="stacked-bar">
+                <div class="bar-fill red-fill" [style.width.%]="100"></div>
+              </div>
+              <span class="stacked-label">{{ issueCounts(p).open }} open</span>
+            </div>
+            <span class="text-subtle" *ngIf="issueCounts(p).open === 0">No Open Issues</span>
+          </td>
+          <td class="col-dates text-subtle font-mono">
+            <span *ngIf="p.startDate && p.plannedEndDate">{{ p.startDate }} - {{ p.plannedEndDate }}</span>
+            <span *ngIf="!p.startDate || !p.plannedEndDate">No dates scheduled</span>
+          </td>
+          <td class="col-tags">
+            <span class="tag-chip">{{ p.projectCode }}</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Table Footer Pagination -->
+  <div class="projects-table-footer" *ngIf="filteredProjects().length > 0">
+    <span class="total-count">Total Count: {{ filteredProjects().length }}</span>
+    <div class="pagination-controls">
+      <button class="page-btn"><mat-icon>first_page</mat-icon></button>
+      <button class="page-btn"><mat-icon>chevron_left</mat-icon></button>
+      <span class="page-info">1 - {{ filteredProjects().length }} of {{ filteredProjects().length }}</span>
+      <button class="page-btn"><mat-icon>chevron_right</mat-icon></button>
+      <button class="page-btn"><mat-icon>last_page</mat-icon></button>
+    </div>
+  </div>
+
+  <!-- Create Project Modal Dialog -->
+  <div class="modal-backdrop" *ngIf="showCreateModal()">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Create Project</h3>
+        <button class="icon-btn" (click)="closeCreateModal()"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-grid form-grid-2">
+          <div class="field">
+            <label class="field-label">Project Code <span class="required">*</span></label>
+            <input type="text" [(ngModel)]="newProject.projectCode" placeholder="e.g. AP-586" class="form-control" />
+          </div>
+          <div class="field">
+            <label class="field-label">Project Name <span class="required">*</span></label>
+            <input type="text" [(ngModel)]="newProject.name" placeholder="e.g. SBI CR" class="form-control" />
+          </div>
+          <div class="field field-full">
+            <label class="field-label">Description</label>
+            <textarea [(ngModel)]="newProject.description" rows="3" class="form-control"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer form-actions">
+        <button class="btn btn-secondary" (click)="closeCreateModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="submitCreateProject()">Add Project</button>
+      </div>
+    </div>
+  </div>
+</div>

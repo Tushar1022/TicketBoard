@@ -1,0 +1,203 @@
+<div class="workspace-page">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="title-group">
+      <div class="badge badge-blue">
+        <mat-icon class="badge-icon">person_pin</mat-icon>
+        <span>Developer Cockpit</span>
+      </div>
+      <h1>My Assigned Work &amp; Sprint Queue</h1>
+      <p class="subtitle">Personalized queue for tasks, defects, blockers, and weekly 40-hour timesheet tracking</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-primary btn-sm" (click)="openLogTimeModal()">
+        <mat-icon class="sm-icon">timer</mat-icon>
+        <span>Log Time Today</span>
+      </button>
+      <button class="btn btn-secondary btn-sm" (click)="loadWorkspaceData()">
+        <mat-icon class="sm-icon">refresh</mat-icon>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading()">
+    <div class="spinner"></div>
+    <span>Loading your work items and capacity...</span>
+  </div>
+
+  <div class="workspace-content" *ngIf="!isLoading() && data()">
+    
+    <!-- Top KPI Cards -->
+    <div class="kpi-banner-grid">
+      <!-- Hours Logged Card -->
+      <div class="kpi-box card-panel">
+        <div class="kpi-icon-wrap bg-indigo">
+          <mat-icon>schedule</mat-icon>
+        </div>
+        <div class="kpi-detail">
+          <span class="kpi-num">{{ data()?.hoursLoggedThisWeek }}h / {{ data()?.weeklyCapacityHours }}h</span>
+          <span class="kpi-lbl">Hours Logged This Week</span>
+          <div class="capacity-progress">
+            <div
+              class="capacity-fill"
+              [style.width.%]="((data()?.hoursLoggedThisWeek || 0) / (data()?.weeklyCapacityHours || 40)) * 100"
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Tasks -->
+      <div class="kpi-box card-panel">
+        <div class="kpi-icon-wrap bg-blue">
+          <mat-icon>task_alt</mat-icon>
+        </div>
+        <div class="kpi-detail">
+          <span class="kpi-num">{{ data()?.assignedTasksCount }}</span>
+          <span class="kpi-lbl">Active Tasks Assigned</span>
+        </div>
+      </div>
+
+      <!-- Bugs -->
+      <div class="kpi-box card-panel">
+        <div class="kpi-icon-wrap bg-red">
+          <mat-icon>bug_report</mat-icon>
+        </div>
+        <div class="kpi-detail">
+          <span class="kpi-num text-red">{{ data()?.openBugsCount }}</span>
+          <span class="kpi-lbl">Open Defects Assigned</span>
+        </div>
+      </div>
+
+      <!-- Blockers -->
+      <div class="kpi-box card-panel">
+        <div class="kpi-icon-wrap bg-amber">
+          <mat-icon>block</mat-icon>
+        </div>
+        <div class="kpi-detail">
+          <span class="kpi-num text-amber">{{ data()?.blockedTasksCount }}</span>
+          <span class="kpi-lbl">Blocked Tasks</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Workspace Grid -->
+    <div class="workspace-grid">
+      <!-- Left: Active Task Queue & Bugs -->
+      <div class="grid-col left-col">
+        <!-- Active Tasks Section -->
+        <div class="card-panel section-card">
+          <div class="section-card-header">
+            <div class="header-left-title">
+              <mat-icon class="section-icon text-indigo">checklist</mat-icon>
+              <h3>My Active Tasks &amp; Stories</h3>
+            </div>
+            <a routerLink="/work-items" class="view-all-link">Kanban Board &rarr;</a>
+          </div>
+
+          <div class="item-list">
+            <div class="work-card" *ngFor="let item of data()?.myActiveTasks" [routerLink]="['/work-items']">
+              <div class="card-header-line">
+                <span class="ticket-tag">{{ item.ticketNumber }}</span>
+                <span class="badge" [ngClass]="{
+                  'badge-blue': item.status === 'IN_PROGRESS',
+                  'badge-purple': item.status === 'IN_REVIEW',
+                  'badge-slate': item.status === 'TODO'
+                }">{{ item.status }}</span>
+              </div>
+              <div class="item-title">{{ item.title }}</div>
+              <div class="item-meta">
+                <span>Project: {{ item.projectName }}</span>
+                <span>Due: {{ item.dueDate || 'N/A' }}</span>
+                <span>Est: {{ item.estimatedHours }}h</span>
+              </div>
+            </div>
+
+            <div class="empty-hint" *ngIf="!data()?.myActiveTasks?.length">
+              No active tasks assigned to you right now.
+            </div>
+          </div>
+        </div>
+
+        <!-- Open Defects Assigned to Me -->
+        <div class="card-panel section-card" style="margin-top: 20px;" *ngIf="(data()?.openBugsCount || 0) > 0">
+          <div class="section-card-header">
+            <div class="header-left-title">
+              <mat-icon class="section-icon text-red">bug_report</mat-icon>
+              <h3>Defects Assigned to Me</h3>
+            </div>
+          </div>
+
+          <div class="item-list">
+            <div class="work-card bug-card" *ngFor="let bug of data()?.myBugs">
+              <div class="card-header-line">
+                <span class="ticket-tag text-red">{{ bug.ticketNumber }}</span>
+                <span class="badge badge-red">{{ bug.severity }}</span>
+              </div>
+              <div class="item-title">{{ bug.title }}</div>
+              <div class="item-meta">
+                <span>Project: {{ bug.projectName }}</span>
+                <span>Status: {{ bug.status }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Blocked Tasks & Recent Time Entries -->
+      <div class="grid-col right-col">
+        <!-- Blocked Tasks Alert Card -->
+        <div class="card-panel section-card" *ngIf="(data()?.blockedTasksCount || 0) > 0">
+          <div class="section-card-header">
+            <div class="header-left-title">
+              <mat-icon class="section-icon text-amber">warning</mat-icon>
+              <h3>My Blocked Tasks</h3>
+            </div>
+          </div>
+
+          <div class="item-list">
+            <div class="work-card blocker-card" *ngFor="let b of data()?.myBlockedTasks">
+              <div class="card-header-line">
+                <span class="ticket-tag">{{ b.ticketNumber }}</span>
+                <span class="badge badge-amber">BLOCKED</span>
+              </div>
+              <div class="item-title">{{ b.title }}</div>
+              <div class="blocker-reason-box" *ngIf="b.blockedReason">
+                <mat-icon class="reason-icon">lock</mat-icon>
+                <span><strong>Blocker Reason:</strong> {{ b.blockedReason }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Time Logged -->
+        <div class="card-panel section-card" [style.margin-top]="(data()?.blockedTasksCount || 0) > 0 ? '20px' : '0'">
+          <div class="section-card-header">
+            <div class="header-left-title">
+              <mat-icon class="section-icon">history</mat-icon>
+              <h3>Recent Time Entries</h3>
+            </div>
+            <a routerLink="/timetracking" class="view-all-link">Full Timesheet &rarr;</a>
+          </div>
+
+          <div class="time-entry-list">
+            <div class="time-row" *ngFor="let t of data()?.recentTimeEntries">
+              <div class="time-date">
+                <span class="date-val">{{ t.workDate }}</span>
+                <span class="time-hrs">{{ t.totalHours }}h</span>
+              </div>
+              <div class="time-desc">
+                <span class="entry-proj">[{{ t.projectCode }}] {{ t.workItemTicketNumber ? '(' + t.workItemTicketNumber + ')' : '' }}</span>
+                <span class="entry-text">{{ t.description }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>

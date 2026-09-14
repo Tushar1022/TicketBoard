@@ -1,0 +1,997 @@
+{
+	"info": {
+		"_postman_id": "ticketboard-deliveryhub-collection-v1",
+		"name": "TicketBoard / DeliveryHub Work Management API",
+		"description": "Comprehensive REST API Collection for TicketBoard DeliveryHub Platform covering Authentication, Projects, Requirements, Tasks, Time Tracking, Timesheets, Releases, Risks, Capacity Planning, Dashboards, and Audit Trails.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{jwt_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Authentication & Security",
+			"item": [
+				{
+					"name": "Login (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success && jsonData.data && jsonData.data.accessToken) {",
+									"    pm.collectionVariables.set('jwt_token', jsonData.data.accessToken);",
+									"    pm.environment.set('jwt_token', jsonData.data.accessToken);",
+									"    console.log('JWT Token saved:', jsonData.data.accessToken);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@ticketboard.com\",\n    \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "login"]
+						},
+						"description": "Authenticates user and returns JWT accessToken. Available demo accounts:\n- admin@ticketboard.com\n- pm@ticketboard.com\n- ba@ticketboard.com\n- lead@ticketboard.com\n- dev1@ticketboard.com\n- dev2@ticketboard.com\n- qa@ticketboard.com\n- mgmt@ticketboard.com\nPassword for all accounts: Admin@123"
+					}
+				},
+				{
+					"name": "Login (Developer 1)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success && jsonData.data && jsonData.data.accessToken) {",
+									"    pm.collectionVariables.set('jwt_token', jsonData.data.accessToken);",
+									"    pm.environment.set('jwt_token', jsonData.data.accessToken);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"dev1@ticketboard.com\",\n    \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Get Current User Profile (/me)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "me"]
+						}
+					}
+				},
+				{
+					"name": "Register New User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"employeeId\": \"EMP-2001\",\n    \"firstName\": \"Arjun\",\n    \"lastName\": \"Reddy\",\n    \"email\": \"arjun@ticketboard.com\",\n    \"password\": \"Admin@123\",\n    \"phone\": \"+91-9988776655\",\n    \"designation\": \"Fullstack Developer\",\n    \"departmentId\": 1,\n    \"teamId\": 1,\n    \"dailyCapacityHours\": 8.0,\n    \"hourlyCost\": 65.0,\n    \"skills\": \"Java, Angular, MySQL\",\n    \"roleNames\": [\"ROLE_DEVELOPER\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"oldPassword\": \"Admin@123\",\n    \"newPassword\": \"Admin@999\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/change-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "auth", "change-password"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Dashboards & KPIs",
+			"item": [
+				{
+					"name": "Executive Dashboard (5 Core Questions)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/dashboards/executive",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "dashboards", "executive"]
+						},
+						"description": "Returns answers to the 5 Core Executive Questions:\n1. What is happening? (Active projects, reqs, work items)\n2. What is delayed & at risk? (Delayed count, critical risks, overdue items)\n3. What is coming? (Deliveries in next 7 and 30 days)\n4. Who is overloaded? (Employees with >100% capacity utilization)\n5. Are we on schedule? (On-time release rate %, total estimated vs actual effort variance)"
+					}
+				},
+				{
+					"name": "Developer Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/dashboards/developer",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "dashboards", "developer"]
+						},
+						"description": "Returns personalized workload for logged-in developer: assigned tasks, bugs, blocked tasks, hours logged this week vs 40h capacity, upcoming deadlines."
+					}
+				},
+				{
+					"name": "QA Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/dashboards/qa",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "dashboards", "qa"]
+						},
+						"description": "Returns QA testing queue, open defects, blocker bugs, and resolved bugs awaiting verification."
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Project Management & Milestones",
+			"item": [
+				{
+					"name": "Get All Projects",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/projects",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "projects"]
+						}
+					}
+				},
+				{
+					"name": "Get Project By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/projects/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "projects", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Project",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"projectCode\": \"NEFT-2026\",\n    \"name\": \"National NEFT Clearing Gateway 2.0\",\n    \"description\": \"Real-time 24x7 batch clearing pipeline with automated reconciliation engine.\",\n    \"clientId\": 1,\n    \"projectManagerId\": 2,\n    \"startDate\": \"2026-08-15\",\n    \"plannedEndDate\": \"2026-11-30\",\n    \"priority\": \"HIGH\",\n    \"budget\": 150000.0,\n    \"estimatedHours\": 900.0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/projects",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "projects"]
+						}
+					}
+				},
+				{
+					"name": "Update Project",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"CR91 IFSC Code & Routing Engine Update (Phase 2)\",\n    \"description\": \"National clearing IFSC migration and MQ updates.\",\n    \"priority\": \"CRITICAL\",\n    \"status\": \"IN_PROGRESS\",\n    \"budget\": 60000.0,\n    \"plannedEndDate\": \"2026-08-30\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/projects/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "projects", "1"]
+						}
+					}
+				},
+				{
+					"name": "Add Member to Project",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": 6,\n    \"projectRole\": \"Backend Developer\",\n    \"allocatedHoursPerDay\": 8.0\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/projects/1/members",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "projects", "1", "members"]
+						}
+					}
+				},
+				{
+					"name": "Get Milestones By Project",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/milestones/project/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "milestones", "project", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Milestone",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"projectId\": 1,\n    \"name\": \"Security Audit & Penetration Testing\",\n    \"description\": \"Vulnerability assessment signoff before production rollout\",\n    \"plannedDate\": \"2026-08-22\",\n    \"ownerId\": 7\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/milestones",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "milestones"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Requirements & Scope Creep",
+			"item": [
+				{
+					"name": "Get All Requirements",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/requirements",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "requirements"]
+						}
+					}
+				},
+				{
+					"name": "Get Requirements By Project",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/requirements?projectId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "requirements"],
+							"query": [
+								{
+									"key": "projectId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Requirement By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/requirements/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "requirements", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Requirement",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reqNumber\": \"REQ-2026-005\",\n    \"title\": \"Multi-Currency Settlement Gateway\",\n    \"description\": \"Enable FX rate lookups and settlement in USD, EUR, and GBP.\",\n    \"businessObjective\": \"Allow cross-border corporate payments.\",\n    \"acceptanceCriteria\": \"1. Fetch live rates from Treasury API\\n2. Calculate spread\\n3. Lock rate for 120 seconds\",\n    \"priority\": \"HIGH\",\n    \"requester\": \"International Treasury Desk\",\n    \"projectId\": 1,\n    \"ownerId\": 3,\n    \"estimatedEffortHours\": 50.0,\n    \"plannedStartDate\": \"2026-08-18\",\n    \"plannedEndDate\": \"2026-08-28\",\n    \"deliveryVersion\": \"REL-2026-015\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/requirements",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "requirements"]
+						}
+					}
+				},
+				{
+					"name": "Update Requirement (Scope Creep Trigger)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"CR91 Dynamic IFSC Validation & Advanced Branch Locator\",\n    \"description\": \"Expanded to include geo-coordinates and branch contact numbers.\",\n    \"estimatedEffortHours\": 65.0,\n    \"reasonForChange\": \"Client requested addition of branch phone numbers and GPS coordinates\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/requirements/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "requirements", "1"]
+						},
+						"description": "Updating estimatedEffortHours >20% triggers scopeCreepFlag = true and records history entry."
+					}
+				},
+				{
+					"name": "Update Requirement Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"READY_FOR_DEV\",\n    \"comment\": \"BRD and FRD signed off by client. Ready for technical implementation.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/requirements/1/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "requirements", "1", "status"]
+						}
+					}
+				},
+				{
+					"name": "Get Requirement Version History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/requirements/1/history",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "requirements", "1", "history"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Work Items, Tasks & Blockers",
+			"item": [
+				{
+					"name": "Get All Work Items",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/work-items",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "work-items"]
+						}
+					}
+				},
+				{
+					"name": "Get Work Items By Project",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/work-items?projectId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "work-items"],
+							"query": [
+								{
+									"key": "projectId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Work Item By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/work-items/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "work-items", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Task / Bug",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"ticketNumber\": \"CR91-104\",\n    \"title\": \"Implement Redis Cache for IFSC Lookup\",\n    \"description\": \"Store IFSC records with 24-hour TTL in clustered Redis cache.\",\n    \"type\": \"TASK\",\n    \"priority\": \"HIGH\",\n    \"severity\": \"MEDIUM\",\n    \"projectId\": 1,\n    \"requirementId\": 1,\n    \"assigneeId\": 5,\n    \"reporterId\": 4,\n    \"estimatedHours\": 12.0,\n    \"startDate\": \"2026-08-15\",\n    \"dueDate\": \"2026-08-18\",\n    \"labels\": \"redis,caching,performance\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/work-items",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "work-items"]
+						}
+					}
+				},
+				{
+					"name": "Update Work Item Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"IN_PROGRESS\",\n    \"comment\": \"Started writing unit tests for Redis cache integration\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/work-items/1/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "work-items", "1", "status"]
+						}
+					}
+				},
+				{
+					"name": "Log Work Item Blocker",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reason\": \"Database server disk full on SIT environment (0 MB remaining)\",\n    \"owner\": \"Database Administration Team\",\n    \"expectedResolutionDate\": \"2026-08-15T18:00:00\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/work-items/2/block",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "work-items", "2", "block"]
+						}
+					}
+				},
+				{
+					"name": "Unblock Work Item",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reason\": \"DBA allocated 100GB additional storage. Partition purged.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/work-items/2/unblock",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "work-items", "2", "unblock"]
+						}
+					}
+				},
+				{
+					"name": "Add Task Dependency",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"targetWorkItemId\": 3,\n    \"dependencyType\": \"BLOCKS\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/work-items/2/dependencies",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "work-items", "2", "dependencies"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "6. Time Tracking & Timesheets",
+			"item": [
+				{
+					"name": "Get My Time Entries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/time-entries/my",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "time-entries", "my"]
+						}
+					}
+				},
+				{
+					"name": "Log Daily Work Time",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"projectId\": 1,\n    \"requirementId\": 1,\n    \"workItemId\": 1,\n    \"workDate\": \"2026-08-14\",\n    \"startTime\": \"09:30\",\n    \"endTime\": \"18:00\",\n    \"breakMinutes\": 60,\n    \"description\": \"Implemented Spring Data repository and added indexing tests\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/time-entries",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "time-entries"]
+						},
+						"description": "Total hours are automatically calculated as: (endTime - startTime - breakMinutes)."
+					}
+				},
+				{
+					"name": "Get Effort Variances (Estimated vs Actual)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/time-entries/variance",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "time-entries", "variance"]
+						}
+					}
+				},
+				{
+					"name": "Get Weekly Timesheet",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/timesheets/week",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "timesheets", "week"]
+						}
+					}
+				},
+				{
+					"name": "Get Pending Timesheets for Review",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/timesheets/pending",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "timesheets", "pending"]
+						}
+					}
+				},
+				{
+					"name": "Submit Weekly Timesheet",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/timesheets/1/submit",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "timesheets", "1", "submit"]
+						}
+					}
+				},
+				{
+					"name": "Review Timesheet (Approve / Reject)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"APPROVED\",\n    \"rejectionReason\": null\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/timesheets/1/review",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "timesheets", "1", "review"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "7. Releases & Deliveries",
+			"item": [
+				{
+					"name": "Get All Releases",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/releases",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "releases"]
+						}
+					}
+				},
+				{
+					"name": "Get Releases By Project",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/releases?projectId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "releases"],
+							"query": [
+								{
+									"key": "projectId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Release",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"releaseVersion\": \"REL-2026-016\",\n    \"title\": \"CR91 Production Hotfix 1.4.1\",\n    \"description\": \"Hotfix patch for Redis caching connection pool timeouts.\",\n    \"projectId\": 1,\n    \"environment\": \"PRODUCTION\",\n    \"plannedDate\": \"2026-08-25\",\n    \"status\": \"PLANNED\",\n    \"ownerId\": 2,\n    \"requirementIds\": [1],\n    \"workItemIds\": [1, 2]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/releases",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "releases"]
+						}
+					}
+				},
+				{
+					"name": "Update Release Status",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"CR91 IFSC Compliance Production Release\",\n    \"projectId\": 1,\n    \"environment\": \"PRODUCTION\",\n    \"plannedDate\": \"2026-08-24\",\n    \"actualDate\": \"2026-08-24\",\n    \"status\": \"DEPLOYED\",\n    \"deploymentResult\": \"Success - Zero downtime deployment completed\",\n    \"rollbackRequired\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/releases/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "releases", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "8. Risk & Issue Management",
+			"item": [
+				{
+					"name": "Get All Risks",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/risks",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "risks"]
+						}
+					}
+				},
+				{
+					"name": "Create Risk",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"riskCode\": \"RSK-103\",\n    \"projectId\": 1,\n    \"description\": \"Third-party IFSC database API downtime during national clearing cycle\",\n    \"probability\": 4,\n    \"impact\": 4,\n    \"ownerId\": 4,\n    \"mitigationPlan\": \"Local failover database replica with hourly delta synchronization\",\n    \"targetDate\": \"2026-08-20\",\n    \"status\": \"IDENTIFIED\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/risks",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "risks"]
+						}
+					}
+				},
+				{
+					"name": "Get Project Issues",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/risks/issues/project/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "risks", "issues", "project", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Issue",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"projectId\": 1,\n    \"description\": \"MQ broker port 1414 firewall blocking test packets from SIT subnet\",\n    \"severity\": \"HIGH\",\n    \"status\": \"OPEN\",\n    \"ownerId\": 6,\n    \"resolution\": \"Raised emergency firewall change request CR-8832\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/risks/issues",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "risks", "issues"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "9. Capacity Planning & Forecasting",
+			"item": [
+				{
+					"name": "Get Employee Workloads",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/capacity/workload",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "capacity", "workload"]
+						},
+						"description": "Returns utilization % and isOverloaded (>100%) flag for every active employee based on assigned tasks vs monthly capacity."
+					}
+				},
+				{
+					"name": "Get Team Capacity & Shortages",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/capacity/teams",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "capacity", "teams"]
+						},
+						"description": "Aggregates total monthly team capacity hours vs total demand hours, highlighting shortage gap."
+					}
+				},
+				{
+					"name": "Get Project Delivery Forecasts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/capacity/projections",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "capacity", "projections"]
+						},
+						"description": "Calculates Remaining Effort / Team Daily Capacity => Projected Delivery Date, comparing against planned delivery date to detect delay days."
+					}
+				},
+				{
+					"name": "Get 30/60/90 Days Demand Forecast",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/capacity/demand-forecast",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "capacity", "demand-forecast"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "10. Collaboration & Audit Logs",
+			"item": [
+				{
+					"name": "Get Comments on Entity",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/comments?entityType=PROJECT&entityId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "comments"],
+							"query": [
+								{
+									"key": "entityType",
+									"value": "PROJECT"
+								},
+								{
+									"key": "entityId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Add Comment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"entityType\": \"PROJECT\",\n    \"entityId\": 1,\n    \"content\": \"Reviewed sprint velocity. Development is 72% complete and on schedule for UAT signoff.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/comments",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "comments"]
+						}
+					}
+				},
+				{
+					"name": "Get Entity Activity Audit Logs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/audit-logs?entityType=PROJECT&entityId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "v1", "audit-logs"],
+							"query": [
+								{
+									"key": "entityType",
+									"value": "PROJECT"
+								},
+								{
+									"key": "entityId",
+									"value": "1"
+								}
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}

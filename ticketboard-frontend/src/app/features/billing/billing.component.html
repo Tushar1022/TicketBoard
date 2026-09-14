@@ -1,0 +1,274 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="header-copy">
+      <h1 class="page-title">Billing &amp; Revenue</h1>
+      <p class="page-subtitle">Generate invoices from approved billable time, reconcile revenue and export client-ready documents.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary btn-sm" (click)="showCreatePanel.set(!showCreatePanel())">
+        <mat-icon class="sm-icon">{{ showCreatePanel() ? 'expand_more' : 'add' }}</mat-icon>
+        <span>{{ showCreatePanel() ? 'Hide Invoice Builder' : 'New Invoice' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-grid" *ngIf="summary() as s">
+    <div class="summary-card card-panel">
+      <div class="summary-icon violet"><mat-icon>receipt_long</mat-icon></div>
+      <div class="summary-text">
+        <div class="summary-value">{{ currency(s.totalRevenueBilled) }}</div>
+        <div class="summary-label">Revenue Billed</div>
+      </div>
+    </div>
+    <div class="summary-card card-panel">
+      <div class="summary-icon green"><mat-icon>paid</mat-icon></div>
+      <div class="summary-text">
+        <div class="summary-value">{{ currency(s.totalRevenuePaid) }}</div>
+        <div class="summary-label">Revenue Paid</div>
+      </div>
+    </div>
+    <div class="summary-card card-panel">
+      <div class="summary-icon amber"><mat-icon>schedule</mat-icon></div>
+      <div class="summary-text">
+        <div class="summary-value">{{ currency(s.totalOutstanding) }}</div>
+        <div class="summary-label">Outstanding</div>
+      </div>
+    </div>
+    <div class="summary-card card-panel">
+      <div class="summary-icon blue"><mat-icon>inventory_2</mat-icon></div>
+      <div class="summary-text">
+        <div class="summary-value">{{ s.invoiceCount }}</div>
+        <div class="summary-label">{{ s.paidInvoiceCount }} paid / {{ s.pendingInvoiceCount }} pending</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Invoice Builder -->
+  <div class="builder card-panel" *ngIf="showCreatePanel()">
+    <h3 class="panel-title"><mat-icon>build</mat-icon> Invoice Builder</h3>
+    <p class="panel-hint">Select a project and billing period — line items are computed from <strong>approved, billable</strong> time entries using each consultant's hourly rate.</p>
+
+    <div class="builder-form">
+      <div class="form-field">
+        <label>Project</label>
+        <select [(ngModel)]="form.projectId" class="form-control">
+          <option [ngValue]="null" disabled>Select project…</option>
+          <option *ngFor="let p of projects()" [ngValue]="p.id">{{ p.projectCode }} — {{ p.name }}</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>From</label>
+        <input type="date" [(ngModel)]="form.fromDate" class="form-control" />
+      </div>
+      <div class="form-field">
+        <label>To</label>
+        <input type="date" [(ngModel)]="form.toDate" class="form-control" />
+      </div>
+      <div class="form-field">
+        <label>Tax Rate (%)</label>
+        <input type="number" [(ngModel)]="form.taxRate" class="form-control" min="0" max="40" />
+      </div>
+      <div class="form-field form-action">
+        <button class="btn btn-primary" (click)="generatePreview()" [disabled]="previewLoading() || creating()">
+          <mat-icon class="sm-icon">{{ previewLoading() ? 'hourglass_top' : 'calculate' }}</mat-icon>
+          <span>{{ previewLoading() ? 'Computing…' : 'Preview' }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="preview-error" *ngIf="previewError()">
+      <mat-icon>error_outline</mat-icon> {{ previewError() }}
+    </div>
+
+    <div class="preview" *ngIf="preview() as p">
+      <div class="preview-head">
+        <div>
+          <div class="preview-title">{{ p.projectName }} — {{ p.clientName }}</div>
+          <div class="preview-period">{{ p.projectCode }} &bull; {{ form.fromDate }} to {{ form.toDate }}</div>
+        </div>
+        <div class="preview-total">
+          <div class="preview-total-label">Grand Total</div>
+          <div class="preview-total-value">{{ currency(p.grandTotal) }}</div>
+          <div class="preview-total-sub">{{ p.totalBillableHours }} billable hrs &bull; tax {{ p.taxRate }}%</div>
+        </div>
+      </div>
+
+      <table class="data-table table-compact">
+        <thead>
+          <tr>
+            <th>Ticket</th>
+            <th>Work Item</th>
+            <th>Consultant</th>
+            <th class="ta-r">Hours</th>
+            <th class="ta-r">Rate</th>
+            <th class="ta-r">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let li of p.lineItems">
+            <td class="mono">{{ li.workItemNumber || '—' }}</td>
+            <td>{{ li.workItemTitle || li.description }}</td>
+            <td>{{ li.consultantName }}</td>
+            <td class="ta-r">{{ li.hours }}</td>
+            <td class="ta-r">{{ currency(li.rate) }}</td>
+            <td class="ta-r">{{ currency(li.amount) }}</td>
+          </tr>
+          <tr *ngIf="!p.lineItems || p.lineItems.length === 0">
+            <td colspan="6" class="empty-cell">No billable approved time entries in this period.</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4"></td>
+            <td>Subtotal</td>
+            <td class="ta-r">{{ currency(p.grandTotal) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div class="preview-actions">
+        <button class="btn btn-accent" (click)="createInvoice()" [disabled]="creating()">
+          <mat-icon class="sm-icon">{{ creating() ? 'hourglass_top' : 'file_download' }}</mat-icon>
+          <span>{{ creating() ? 'Creating…' : 'Create Invoice' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Invoice List -->
+  <div class="invoice-list card-panel">
+    <div class="list-header">
+      <h3 class="panel-title"><mat-icon>receipt</mat-icon> Invoices</h3>
+      <span class="list-count">{{ invoices().length }} records &bull; {{ currency(sumInvoice()) }} total</span>
+    </div>
+
+    <div class="loading-row" *ngIf="isLoading()">
+      <span class="spinner"></span> Loading invoices…
+    </div>
+
+    <div class="empty-state" *ngIf="!isLoading() && invoices().length === 0">
+      <mat-icon>receipt_long</mat-icon>
+      <p>No invoices yet. Use the Invoice Builder to create your first one.</p>
+    </div>
+
+    <table class="data-table" *ngIf="!isLoading() && invoices().length > 0">
+      <thead>
+        <tr>
+          <th>Invoice</th>
+          <th>Project</th>
+          <th>Client</th>
+          <th>Period</th>
+          <th>Status</th>
+          <th class="ta-r">Total</th>
+          <th class="ta-r">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let inv of invoices()" [class.active-row]="selectedInvoice()?.id === inv.id" (click)="selectInvoice(inv)">
+          <td class="mono">{{ inv.invoiceNumber }}</td>
+          <td>{{ inv.projectName }}</td>
+          <td>{{ inv.clientName }}</td>
+          <td>{{ fmtDate(inv.fromDate) }} → {{ fmtDate(inv.toDate) }}</td>
+          <td>
+            <span class="badge" [class]="statusStyles[inv.status] || 'badge-slate'">{{ inv.status }}</span>
+          </td>
+          <td class="ta-r"><strong>{{ currency(inv.total) }}</strong></td>
+          <td class="ta-r actions-cell" (click)="$event.stopPropagation()">
+            <select
+              class="form-control status-select"
+              [ngModel]="inv.status"
+              (ngModelChange)="changeStatus(inv, $event)"
+            >
+              <option *ngFor="let opt of statusOptions" [value]="opt">{{ opt }}</option>
+            </select>
+            <div class="action-btns">
+              <button class="icon-btn" (click)="previewPdf(inv)" matTooltip="Preview Invoice PDF">
+                <mat-icon>visibility</mat-icon>
+              </button>
+              <button class="icon-btn" (click)="downloadPdf(inv)" matTooltip="Download Invoice PDF">
+                <mat-icon>picture_as_pdf</mat-icon>
+              </button>
+              <button class="icon-btn" (click)="exportInvoice(inv, 'word')" matTooltip="Download as Word">
+                <mat-icon>article</mat-icon>
+              </button>
+              <button class="icon-btn" (click)="exportInvoice(inv, 'excel')" matTooltip="Download as Excel">
+                <mat-icon>table_chart</mat-icon>
+              </button>
+              <button class="icon-btn danger" (click)="confirmDelete(inv)" matTooltip="Delete Invoice">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Invoice Detail -->
+  <div class="invoice-detail card-panel" *ngIf="selectedInvoice() as inv">
+    <div class="detail-head">
+      <div>
+        <h3 class="in-doc-title">{{ inv.invoiceNumber }}</h3>
+        <p class="in-doc-sub">{{ inv.projectCode }} &bull; {{ inv.projectName }} &bull; {{ inv.clientName }}</p>
+      </div>
+      <span class="badge" [class]="statusStyles[inv.status] || 'badge-slate'">{{ inv.status }}</span>
+    </div>
+    <div class="detail-meta">
+      <div><span>Period</span> {{ fmtDate(inv.fromDate) }} → {{ fmtDate(inv.toDate) }}</div>
+      <div><span>Issued</span> {{ fmtDate(inv.issuedDate) }}</div>
+      <div><span>Due</span> {{ fmtDate(inv.dueDate) }}</div>
+      <div><span>Created By</span> {{ inv.createdByName || '—' }}</div>
+    </div>
+
+    <table class="data-table table-compact">
+      <thead>
+        <tr>
+          <th>Ticket</th>
+          <th>Work Item</th>
+          <th>Consultant</th>
+          <th class="ta-r">Hours</th>
+          <th class="ta-r">Rate</th>
+          <th class="ta-r">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let li of inv.lineItems">
+          <td class="mono">{{ li.workItemNumber || '—' }}</td>
+          <td>{{ li.workItemTitle || li.description }}</td>
+          <td>{{ li.consultantName }}</td>
+          <td class="ta-r">{{ li.hours }}</td>
+          <td class="ta-r">{{ currency(li.rate) }}</td>
+          <td class="ta-r">{{ currency(li.amount) }}</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr><td colspan="4"></td><td>Subtotal</td><td class="ta-r">{{ currency(inv.subtotal) }}</td></tr>
+        <tr><td colspan="4"></td><td>Tax {{ inv.taxRate }}%</td><td class="ta-r">{{ currency(inv.taxAmount) }}</td></tr>
+        <tr class="total-row"><td colspan="4"></td><td>Total</td><td class="ta-r">{{ currency(inv.total) }}</td></tr>
+      </tfoot>
+    </table>
+
+    <div class="detail-notes" *ngIf="inv.notes">
+      <mat-icon>sticky_note_2</mat-icon> {{ inv.notes }}
+    </div>
+
+    <div class="detail-actions">
+      <button class="btn btn-primary btn-sm" (click)="previewPdf(inv)">
+        <mat-icon class="sm-icon">visibility</mat-icon> Preview PDF
+      </button>
+      <button class="btn btn-sm" (click)="downloadPdf(inv)">
+        <mat-icon class="sm-icon">file_download</mat-icon> Download PDF
+      </button>
+      <button class="btn btn-sm" (click)="exportInvoice(inv, 'word')">
+        <mat-icon class="sm-icon">article</mat-icon> Word
+      </button>
+      <button class="btn btn-sm" (click)="exportInvoice(inv, 'excel')">
+        <mat-icon class="sm-icon">table_chart</mat-icon> Excel
+      </button>
+      <button class="btn btn-sm" (click)="exportInvoice(inv, 'csv')">
+        <mat-icon class="sm-icon">grid_on</mat-icon> CSV
+      </button>
+    </div>
+  </div>
+</div>

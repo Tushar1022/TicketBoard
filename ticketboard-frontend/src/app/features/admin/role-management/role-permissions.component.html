@@ -1,0 +1,107 @@
+<div class="role-permissions">
+  <div class="page-header">
+    <div>
+      <h1>Roles &amp; Permissions</h1>
+      <p class="subtitle">Configure which capabilities each role can access</p>
+    </div>
+  </div>
+
+  <div class="content-grid">
+    <!-- Role List -->
+    <aside class="role-list-panel">
+      <div class="panel-title">Roles</div>
+      <div class="role-list">
+        <button
+          *ngFor="let role of roles()"
+          class="role-item"
+          [class.selected]="selectedRole()?.id === role.id"
+          (click)="selectRole(role)"
+        >
+          <span class="role-name">{{ roleLabel(role) }}</span>
+          <span class="role-meta">
+            <mat-icon class="people-icon">people</mat-icon> {{ role.userCount }}
+          </span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Permission Matrix -->
+    <section class="matrix-panel">
+      <ng-container *ngIf="selectedRole(); else noRole">
+        <div class="matrix-header">
+          <div>
+            <h2>{{ roleLabel(selectedRole()!) }}</h2>
+            <span class="perm-summary">
+              {{ permCount().checked }} of {{ permCount().total }} permissions assigned
+            </span>
+          </div>
+          <div class="header-actions">
+            <button mat-button (click)="toggleAll()" *ngIf="authService.hasPermission('admin:roles-permissions')">
+              Toggle All
+            </button>
+            <button mat-raised-button color="primary" (click)="save()" [disabled]="!authService.hasPermission('admin:roles-permissions') || saving()">
+              <mat-icon>save</mat-icon>
+              Save Changes
+            </button>
+          </div>
+        </div>
+
+        <!-- Permission Summary Panel -->
+        <div class="perm-summary-panel">
+          <div class="summary-left">
+            <div class="summary-role">
+              <span class="summary-role-name">{{ roleLabel(selectedRole()!) }}</span>
+              <span class="summary-role-badge" [class.super]="selectedRole()!.name === 'ROLE_SUPER_ADMIN'">
+                {{ selectedRole()!.name }}
+              </span>
+            </div>
+            <span class="summary-count">{{ permCount().checked }} of {{ permCount().total }} permissions assigned</span>
+          </div>
+          <div class="summary-right">
+            <span class="summary-pct">{{ permPercent() }}%</span>
+            <div class="summary-track">
+              <div class="summary-fill" [class.full]="permPercent() === 100" [style.width.%]="permPercent()"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="matrix-body">
+          <div class="module-group" *ngFor="let module of modules()">
+            <div class="module-header">
+              <mat-checkbox
+                [checked]="isModuleFull(module)"
+                [indeterminate]="isModulePartial(module)"
+                (change)="toggleModule(module)"
+                [disabled]="selectedRole()!.name === 'ROLE_SUPER_ADMIN' || !authService.hasPermission('admin:roles-permissions')"
+              ></mat-checkbox>
+              <mat-icon>{{ moduleIcon(module) }}</mat-icon>
+              <span class="module-name">{{ module }}</span>
+            </div>
+            <div class="module-perms">
+              <label class="perm-chip" *ngFor="let perm of modulePerms(module)">
+                <mat-checkbox
+                  [checked]="hasPerm(perm.code)"
+                  (change)="togglePerm(perm.code)"
+                  [disabled]="selectedRole()!.name === 'ROLE_SUPER_ADMIN' || !authService.hasPermission('admin:roles-permissions')"
+                ></mat-checkbox>
+                <span class="perm-code" [matTooltip]="perm.description || ''">{{ perm.code }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="super-admin-note" *ngIf="selectedRole()!.name === 'ROLE_SUPER_ADMIN'">
+          <mat-icon>info</mat-icon>
+          Super Admin always has full access to all permissions and cannot be modified.
+        </div>
+      </ng-container>
+
+      <ng-template #noRole>
+        <div class="no-role">
+          <mat-icon>admin_panel_settings</mat-icon>
+          <span>Select a role to view its permissions</span>
+        </div>
+      </ng-template>
+    </section>
+  </div>
+</div>

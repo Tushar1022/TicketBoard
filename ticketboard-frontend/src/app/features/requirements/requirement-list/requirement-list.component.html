@@ -1,0 +1,208 @@
+<div class="requirements-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="title-group">
+      <div class="badge badge-purple">
+        <mat-icon class="badge-icon">assignment</mat-icon>
+        <span>Scope &amp; Traceability</span>
+      </div>
+      <h1>Requirements Management &amp; Scope Creep Engine</h1>
+      <p class="subtitle">Lifecycle governance from Draft to Release with automatic &gt;20% estimate growth detection</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="openCreateModal()">
+        <mat-icon class="sm-icon">add</mat-icon>
+        <span>New Requirement</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters Toolbar -->
+  <div class="filters-bar card-panel">
+    <div class="filter-group">
+      <label>Filter by Project:</label>
+      <select [ngModel]="selectedProjectId()" (ngModelChange)="selectedProjectId.set($event); onFilterProject()" class="form-control">
+        <option [ngValue]="null">All Projects</option>
+        <option *ngFor="let p of projects()" [ngValue]="p.id">[{{ p.projectCode }}] {{ p.name }}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading()">
+    <div class="spinner"></div>
+    <span>Loading requirements &amp; scope versions...</span>
+  </div>
+
+  <!-- Requirements Table -->
+  <div class="card-panel table-card" *ngIf="!isLoading()">
+    <div class="table-responsive">
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>Req #</th>
+            <th>Title &amp; Objective</th>
+            <th>Project</th>
+            <th>Lifecycle Status</th>
+            <th>Scope Version</th>
+            <th>Effort (Act / Est)</th>
+            <th>Owner</th>
+            <th>Version History</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of requirements()">
+            <td class="mono font-bold">{{ r.reqNumber }}</td>
+            <td>
+              <div class="req-title-group">
+                <span class="req-title">{{ r.title }}</span>
+                <span class="req-obj">{{ r.businessObjective }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="project-tag">{{ r.projectCode }}</span>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-blue': r.status === 'IN_DEVELOPMENT' || r.status === 'READY_FOR_DEV',
+                'badge-green': r.status === 'DELIVERED' || r.status === 'APPROVED',
+                'badge-amber': r.status === 'IN_QA' || r.status === 'UAT_READY',
+                'badge-slate': r.status === 'DRAFT'
+              }">{{ r.status }}</span>
+            </td>
+            <td>
+              <div class="scope-cell">
+                <span class="badge badge-amber" *ngIf="r.scopeCreepFlag">
+                  <mat-icon class="sm-icon">warning</mat-icon>
+                  Scope Creep (v{{ r.scopeVersion }})
+                </span>
+                <span class="badge badge-slate" *ngIf="!r.scopeCreepFlag">
+                  v{{ r.scopeVersion }} (Baseline)
+                </span>
+              </div>
+            </td>
+            <td>
+              <div class="effort-val">
+                <span>{{ r.actualEffortHours || 0 }}h / {{ r.estimatedEffortHours }}h</span>
+              </div>
+            </td>
+            <td>{{ r.ownerName || 'Unassigned' }}</td>
+            <td>
+              <button class="btn btn-secondary btn-sm" (click)="viewHistory(r)">
+                <mat-icon class="sm-icon">history</mat-icon>
+                <span>Audit ({{ r.scopeVersion }})</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Scope Version History Modal -->
+  <div class="modal-backdrop" *ngIf="showHistoryModal()">
+    <div class="modal-card card-panel">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <mat-icon class="text-indigo">history_toggle_off</mat-icon>
+          <h3>Scope Version History: {{ activeRequirement()?.reqNumber }}</h3>
+        </div>
+        <button class="icon-btn" (click)="closeHistoryModal()"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="history-timeline">
+          <div class="hist-item" *ngFor="let h of historyList()">
+            <div class="hist-badge" [class.creep-badge]="h.isScopeCreep">
+              v{{ h.versionNumber }}
+            </div>
+            <div class="hist-content">
+              <div class="hist-header">
+                <strong>{{ h.title }}</strong>
+                <span class="hist-date">{{ h.createdAt | date:'short' }}</span>
+              </div>
+              <div class="hist-effort">
+                Estimate: <strong>{{ h.estimatedEffortHours }} Hours</strong>
+                <span class="variance-tag text-red" *ngIf="h.isScopeCreep">
+                  +{{ h.varianceHours }}h Scope Growth (&gt;20%)
+                </span>
+              </div>
+              <div class="hist-reason" *ngIf="h.reasonForChange">
+                <em>Reason: {{ h.reasonForChange }}</em>
+              </div>
+              <div class="hist-author">Modified by: {{ h.changedByName }}</div>
+            </div>
+          </div>
+
+          <div class="empty-hint" *ngIf="!historyList().length">
+            No previous versions recorded. This requirement is currently on baseline v1.
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeHistoryModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Requirement Modal -->
+  <div class="modal-backdrop" *ngIf="showCreateModal()">
+    <div class="modal-card card-panel">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <mat-icon class="text-indigo">add_circle</mat-icon>
+          <h3>Create New Requirement</h3>
+        </div>
+        <button class="icon-btn" (click)="closeCreateModal()"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Requirement # <span class="required">*</span></label>
+            <input type="text" [(ngModel)]="newReq.reqNumber" placeholder="e.g. REQ-2026-009" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>Project</label>
+            <select [(ngModel)]="newReq.projectId" class="form-control">
+              <option *ngFor="let p of projects()" [ngValue]="p.id">[{{ p.projectCode }}] {{ p.name }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Requirement Title <span class="required">*</span></label>
+          <input type="text" [(ngModel)]="newReq.title" placeholder="e.g. Real-Time Fraud Checking API" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Business Objective</label>
+          <input type="text" [(ngModel)]="newReq.businessObjective" placeholder="Why this feature is needed..." class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Acceptance Criteria</label>
+          <textarea [(ngModel)]="newReq.acceptanceCriteria" rows="3" placeholder="1. Given..., 2. When..., 3. Then..." class="form-control"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Estimated Effort (Hours)</label>
+            <input type="number" [(ngModel)]="newReq.estimatedEffortHours" class="form-control" />
+          </div>
+          <div class="form-group flex-1">
+            <label>Target Delivery Version</label>
+            <input type="text" [(ngModel)]="newReq.deliveryVersion" class="form-control" />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeCreateModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="submitCreateReq()">Save Requirement</button>
+      </div>
+    </div>
+  </div>
+</div>

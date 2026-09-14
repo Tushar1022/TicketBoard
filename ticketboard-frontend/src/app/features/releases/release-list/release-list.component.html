@@ -1,0 +1,152 @@
+<div class="releases-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="title-group">
+      <div class="badge badge-purple">
+        <mat-icon class="badge-icon">rocket_launch</mat-icon>
+        <span>Delivery Pipelines</span>
+      </div>
+      <h1>Releases &amp; Multi-Environment Deployments</h1>
+      <p class="subtitle">Orchestrate environment progression (DEV &rarr; SIT &rarr; UAT &rarr; PROD) with rollback auditing</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="openCreateModal()">
+        <mat-icon class="sm-icon">add</mat-icon>
+        <span>New Release</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters Bar -->
+  <div class="filters-bar card-panel">
+    <div class="filter-item">
+      <label>Filter by Project:</label>
+      <select [ngModel]="selectedProjectId()" (ngModelChange)="selectedProjectId.set($event); loadReleases()" class="form-control">
+        <option [ngValue]="null">All Projects</option>
+        <option *ngFor="let p of projects()" [ngValue]="p.id">[{{ p.projectCode }}] {{ p.name }}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading()">
+    <div class="spinner"></div>
+    <span>Loading delivery releases &amp; deployment status...</span>
+  </div>
+
+  <!-- Environment Pipeline Overview Strip -->
+  <div class="pipeline-strip card-panel" *ngIf="!isLoading()">
+    <div class="pipe-step" *ngFor="let env of pipelineEnvironments; let last = last">
+      <div class="pipe-box">
+        <span class="pipe-env-name">{{ env }}</span>
+        <span class="pipe-count">
+          {{ getPipelineCount(env) }} Release{{ getPipelineCount(env) === 1 ? '' : 's' }}
+        </span>
+      </div>
+      <mat-icon class="pipe-arrow" *ngIf="!last">arrow_forward</mat-icon>
+    </div>
+  </div>
+
+  <!-- Releases Table -->
+  <div class="card-panel table-card" *ngIf="!isLoading()">
+    <div class="table-responsive">
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>Version</th>
+            <th>Title &amp; Scope</th>
+            <th>Project</th>
+            <th>Environment</th>
+            <th>Target Date</th>
+            <th>Status</th>
+            <th>Deployment Log</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of releases()">
+            <td class="mono font-bold">{{ r.releaseVersion }}</td>
+            <td>
+              <div class="rel-title-group">
+                <span class="rel-title">{{ r.title }}</span>
+                <span class="rel-desc">{{ r.description }}</span>
+              </div>
+            </td>
+            <td><span class="project-tag">{{ r.projectCode }}</span></td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-green': r.environment === 'PRODUCTION',
+                'badge-blue': r.environment === 'UAT',
+                'badge-purple': r.environment === 'SIT',
+                'badge-slate': r.environment === 'DEV'
+              }">{{ r.environment }}</span>
+            </td>
+            <td>{{ r.plannedDate }}</td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-green': r.status === 'DEPLOYED' || r.status === 'VERIFIED',
+                'badge-blue': r.status === 'APPROVED' || r.status === 'READY',
+                'badge-amber': r.status === 'DEPLOYING',
+                'badge-slate': r.status === 'PLANNED'
+              }">{{ r.status }}</span>
+            </td>
+            <td>
+              <span class="deploy-note">{{ r.deploymentResult || 'Awaiting deployment' }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Create Release Modal -->
+  <div class="modal-backdrop" *ngIf="showCreateModal()">
+    <div class="modal-card card-panel">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <mat-icon class="text-indigo">add_circle</mat-icon>
+          <h3>Schedule New Delivery Release</h3>
+        </div>
+        <button class="icon-btn" (click)="closeCreateModal()"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-grid form-grid-2">
+          <div class="field">
+            <label class="field-label">Release Version <span class="required">*</span></label>
+            <input type="text" [(ngModel)]="newRelease.releaseVersion" placeholder="e.g. REL-2026-020" class="form-control" />
+          </div>
+          <div class="field">
+            <label class="field-label">Environment</label>
+            <select [(ngModel)]="newRelease.environment" class="form-control">
+              <option *ngFor="let env of pipelineEnvironments" [value]="env">{{ env }}</option>
+            </select>
+          </div>
+          <div class="field field-full">
+            <label class="field-label">Release Title <span class="required">*</span></label>
+            <input type="text" [(ngModel)]="newRelease.title" placeholder="e.g. Core Settlement & MQ Hotfix" class="form-control" />
+          </div>
+          <div class="field field-full">
+            <label class="field-label">Scope Description</label>
+            <textarea [(ngModel)]="newRelease.description" rows="3" placeholder="Summary of tickets and changes included in this build..." class="form-control"></textarea>
+          </div>
+          <div class="field">
+            <label class="field-label">Project</label>
+            <select [(ngModel)]="newRelease.projectId" class="form-control">
+              <option *ngFor="let p of projects()" [ngValue]="p.id">[{{ p.projectCode }}] {{ p.name }}</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Planned Target Date</label>
+            <input type="date" [(ngModel)]="newRelease.plannedDate" class="form-control" />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeCreateModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="submitCreateRelease()">Schedule Release</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,106 @@
+<div class="modal-dialog-content">
+  <div class="modal-header">
+    <div class="header-title">
+      <div class="icon-wrap bg-purple">
+        <mat-icon>confirmation_number</mat-icon>
+      </div>
+      <div>
+        <h2>Raise Ticket to Admin / Super Admin</h2>
+        <p class="subtitle">Submit your query, bug report, or access request directly to platform administrators.</p>
+      </div>
+    </div>
+    <button class="close-btn" (click)="cancel()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="modal-body">
+    <div class="alert alert-success" *ngIf="successMessage()">
+      <mat-icon>check_circle</mat-icon>
+      <span>{{ successMessage() }}</span>
+    </div>
+
+    <div class="alert alert-danger" *ngIf="errorMessage()">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ errorMessage() }}</span>
+    </div>
+
+    <div class="form-grid" *ngIf="!successMessage()">
+
+      <!-- Target Recipient & Priority Row -->
+      <div class="form-row two-col">
+        <div class="form-group">
+          <label class="required">Target Recipient</label>
+          <select [(ngModel)]="targetRole" class="form-control">
+            <option value="ROLE_SUPER_ADMIN">⚡ Super Admin (System Architecture & Security)</option>
+            <option value="ROLE_ADMIN">🛡️ Admin (Workspace & Governance Team)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="required">Priority Level</label>
+          <select [(ngModel)]="priority" class="form-control">
+            <option value="URGENT">🔴 URGENT — Critical Blocker / Outage</option>
+            <option value="HIGH">🟠 HIGH — Important Project Impact</option>
+            <option value="MEDIUM">🟡 MEDIUM — Standard Issue / Query</option>
+            <option value="LOW">🟢 LOW — Enhancement / Inquiry</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Category & Subject -->
+      <div class="form-row two-col">
+        <div class="form-group">
+          <label class="required">Query Category</label>
+          <select [(ngModel)]="category" class="form-control">
+            <option value="ACCESS_REQUEST">Access & Permission Elevation</option>
+            <option value="SYSTEM_DEFECT">System Defect / Bug Report</option>
+            <option value="DATA_QUERY">Data Discrepancy / Telemetry Query</option>
+            <option value="PERFORMANCE_ISSUE">Performance & Webhook Latency</option>
+            <option value="BILLING_SLA">Billing & SLA Governance</option>
+            <option value="OTHER">Other Query</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="required">Ticket Subject</label>
+          <input
+            type="text"
+            [(ngModel)]="subject"
+            placeholder="Brief summary of your issue or request..."
+            class="form-control"
+          />
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="form-group">
+        <label class="required">Detailed Description</label>
+        <textarea
+          [(ngModel)]="description"
+          rows="4"
+          placeholder="Provide step-by-step details, expected behavior, or justification for access requests..."
+          class="form-control"
+        ></textarea>
+      </div>
+
+      <!-- Auto System Diagnostics -->
+      <div class="form-group checkbox-group">
+        <label class="checkbox-label">
+          <input type="checkbox" [(ngModel)]="includeDiagnostics" />
+          <span>Auto-attach system environment diagnostics (Tenant: <strong>aurionpro</strong>, Project: <strong>SBI CR AP-586</strong>)</span>
+        </label>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="modal-footer" *ngIf="!successMessage()">
+    <button class="btn btn-secondary" (click)="cancel()" [disabled]="isSubmitting()">Cancel</button>
+    <button class="btn btn-primary" (click)="submitTicket()" [disabled]="isSubmitting()">
+      <mat-icon *ngIf="!isSubmitting()">send</mat-icon>
+      <div class="spinner-xs" *ngIf="isSubmitting()"></div>
+      <span>{{ isSubmitting() ? 'Submitting...' : 'Raise Ticket' }}</span>
+    </button>
+  </div>
+</div>

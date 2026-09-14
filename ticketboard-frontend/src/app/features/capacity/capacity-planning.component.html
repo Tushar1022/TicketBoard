@@ -1,0 +1,190 @@
+<div class="capacity-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="title-group">
+      <div class="badge badge-purple">
+        <mat-icon class="badge-icon">trending_up</mat-icon>
+        <span>Forecasting &amp; Resource Optimization</span>
+      </div>
+      <h1>Team Capacity Planning &amp; Delivery Date Projections</h1>
+      <p class="subtitle">Dynamic velocity modeling: Remaining Effort &divide; Team Daily Capacity &rarr; Projected Delivery Dates &amp; 30/60/90-day gaps</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" (click)="loadAllCapacityMetrics()">
+        <mat-icon class="sm-icon">refresh</mat-icon>
+        <span>Recalculate Projections</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading()">
+    <div class="spinner"></div>
+    <span>Calculating project delivery forecasts and resource utilization...</span>
+  </div>
+
+  <div class="capacity-content" *ngIf="!isLoading()">
+    
+    <!-- 1. 30 / 60 / 90-DAY DEMAND VS CAPACITY HORIZON -->
+    <div class="card-panel section-card">
+      <div class="section-card-header">
+        <div class="header-left-title">
+          <mat-icon class="section-icon text-indigo">calendar_month</mat-icon>
+          <h3>30 / 60 / 90-Day Demand vs Capacity Forecast Horizon</h3>
+        </div>
+      </div>
+
+      <div class="forecast-grid">
+        <div class="horizon-card card-panel" *ngFor="let f of demandForecasts()" [class.shortage]="f.isShortage">
+          <div class="h-top">
+            <span class="h-period">{{ f.periodName }}</span>
+            <span class="badge" [ngClass]="f.isShortage ? 'badge-red' : 'badge-green'">
+              {{ f.isShortage ? 'CAPACITY SHORTAGE' : 'CAPACITY SUFFICIENT' }}
+            </span>
+          </div>
+
+          <div class="h-stats">
+            <div class="h-stat-item">
+              <span class="h-val text-indigo">{{ f.upcomingRequirementCount }}</span>
+              <span class="h-lbl">Upcoming Scope Reqs</span>
+            </div>
+            <div class="h-stat-item">
+              <span class="h-val">{{ f.estimatedDemandHours }}h</span>
+              <span class="h-lbl">Demand Hours</span>
+            </div>
+            <div class="h-stat-item">
+              <span class="h-val">{{ f.availableTeamCapacityHours }}h</span>
+              <span class="h-lbl">Available Capacity</span>
+            </div>
+          </div>
+
+          <div class="h-footer">
+            <span *ngIf="!f.isShortage" class="text-green font-bold">
+              +{{ f.capacityGapHours }}h Surplus Capacity ({{ f.utilizationPercentage }}% Utilization)
+            </span>
+            <span *ngIf="f.isShortage" class="text-red font-bold">
+              {{ f.capacityGapHours }}h Deficit / Shortage ({{ f.utilizationPercentage }}% Utilization)
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. PROJECT DELIVERY FORECASTS TABLE -->
+    <div class="card-panel section-card" style="margin-top: 20px;">
+      <div class="section-card-header">
+        <div class="header-left-title">
+          <mat-icon class="section-icon text-indigo">precision_manufacturing</mat-icon>
+          <h3>Mathematical Delivery Forecasts (Remaining Effort &divide; Team Daily Capacity)</h3>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Health</th>
+              <th>Estimated Effort</th>
+              <th>Logged Effort</th>
+              <th>Remaining Effort</th>
+              <th>Daily Team Capacity</th>
+              <th>Days Needed</th>
+              <th>Planned Date</th>
+              <th>Projected Delivery</th>
+              <th>Delivery Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of projections()">
+              <td class="font-bold">
+                <div class="proj-link" [routerLink]="['/projects', p.projectId]">
+                  <span class="project-tag">[{{ p.projectCode }}]</span> {{ p.projectName }}
+                </div>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="{
+                  'badge-green': p.health === 'GREEN',
+                  'badge-amber': p.health === 'AMBER',
+                  'badge-red': p.health === 'RED'
+                }">
+                  <span class="health-dot" [ngClass]="p.health.toLowerCase()"></span>
+                  {{ p.health }}
+                </span>
+              </td>
+              <td>{{ p.totalEstimatedHours }}h</td>
+              <td>{{ p.actualHoursLogged }}h</td>
+              <td class="font-bold text-indigo">{{ p.remainingEffortHours }}h</td>
+              <td>{{ p.teamDailyCapacity }}h/day</td>
+              <td><span class="badge badge-slate">{{ p.projectedDaysRemaining }} Working Days</span></td>
+              <td>{{ p.plannedDeliveryDate }}</td>
+              <td class="font-bold">{{ p.projectedDeliveryDate }}</td>
+              <td>
+                <span class="badge" [ngClass]="p.isDelayed ? 'badge-red' : 'badge-green'">
+                  {{ p.isDelayed ? 'DELAYED (+ ' + p.delayDays + 'd)' : 'ON SCHEDULE' }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 3. INDIVIDUAL ENGINEER WORKLOAD & UTILIZATION MATRIX -->
+    <div class="card-panel section-card" style="margin-top: 20px;">
+      <div class="section-card-header">
+        <div class="header-left-title">
+          <mat-icon class="section-icon text-indigo">groups</mat-icon>
+          <h3>Resource Capacity Utilization (160h Monthly Base)</h3>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Designation &amp; Team</th>
+              <th>Monthly Capacity</th>
+              <th>Allocated Work</th>
+              <th>Actual Logged</th>
+              <th>Remaining Capacity</th>
+              <th>Utilization Rate</th>
+              <th>Workload State</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let emp of workloads()">
+              <td class="font-bold">{{ emp.employeeName }} ({{ emp.employeeId }})</td>
+              <td>{{ emp.designation }} &bull; {{ emp.teamName }}</td>
+              <td>{{ emp.monthlyCapacityHours }}h</td>
+              <td>{{ emp.allocatedHours }}h</td>
+              <td>{{ emp.actualHoursLogged }}h</td>
+              <td>{{ emp.remainingCapacity }}h</td>
+              <td>
+                <div class="util-cell">
+                  <div class="util-bar-track">
+                    <div
+                      class="util-bar-fill"
+                      [class.bg-red]="emp.isOverloaded"
+                      [class.bg-indigo]="!emp.isOverloaded"
+                      [style.width.%]="emp.utilizationPercentage > 100 ? 100 : emp.utilizationPercentage"
+                    ></div>
+                  </div>
+                  <span class="util-num" [class.text-red]="emp.isOverloaded">{{ emp.utilizationPercentage }}%</span>
+                </div>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="emp.isOverloaded ? 'badge-red' : 'badge-green'">
+                  {{ emp.isOverloaded ? 'OVERLOADED (>100%)' : 'BALANCED' }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>

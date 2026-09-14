@@ -1,0 +1,586 @@
+/* =========================================================
+   LOGIN PAGE — Enterprise Sign-in
+   ========================================================= */
+
+.login-page {
+  min-height: 100dvh;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(900px 500px at 85% -10%, rgba(99, 102, 241, 0.12), transparent 60%),
+    radial-gradient(700px 420px at -10% 110%, rgba(14, 165, 233, 0.10), transparent 55%),
+    var(--surface-bg);
+}
+
+/* =========================================================
+   CARD
+   ========================================================= */
+
+.login-card {
+  width: 100%;
+  max-width: 920px;
+  display: grid;
+  grid-template-columns: 0.95fr 1.05fr;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: #ffffff;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--surface-border);
+}
+
+/* =========================================================
+   BRAND PANEL — Executive Dark Slate Theme
+   ========================================================= */
+
+.brand-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 44px 40px 32px;
+  box-sizing: border-box;
+  color: #ffffff;
+  background:
+    radial-gradient(600px 400px at 100% 0%, rgba(99, 102, 241, 0.25), transparent 70%),
+    radial-gradient(500px 350px at 0% 100%, rgba(56, 189, 248, 0.15), transparent 65%),
+    linear-gradient(160deg, #0f172a 0%, #1e293b 55%, #1e1b4b 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.brand-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(241, 245, 249, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+.brand-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-logo {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(79, 70, 229, 0.2));
+  border: 1px solid rgba(165, 180, 252, 0.25);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.brand-logo mat-icon {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+  color: #818cf8;
+}
+
+.brand-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #f8fafc;
+}
+
+.brand-by {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  color: #a5b4fc;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* =========================================================
+   BRAND CONTENT
+   ========================================================= */
+
+.brand-content {
+  position: relative;
+  margin: auto 0;
+  max-width: 360px;
+}
+
+.brand-content h2 {
+  margin: 0 0 12px;
+  font-size: 1.95rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  color: #f8fafc;
+}
+
+.brand-content h2 span {
+  background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-description {
+  margin: 0 0 28px;
+  color: #94a3b8;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.feature-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.feature-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+
+.feature-icon mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}
+
+.feature-icon.indigo {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(129, 140, 248, 0.2);
+}
+
+.feature-icon.green {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.feature-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.feature-text strong {
+  color: #f1f5f9;
+  font-size: 0.80rem;
+  font-weight: 600;
+}
+
+.feature-text span {
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+
+/* =========================================================
+   BRAND FOOTER
+   ========================================================= */
+
+.brand-footer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 0.70rem;
+  font-weight: 500;
+}
+
+.brand-footer mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  color: #818cf8;
+}
+
+/* =========================================================
+   FORM PANEL
+   ========================================================= */
+
+.form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 52px 46px;
+  box-sizing: border-box;
+  background: #ffffff;
+}
+
+.form-content {
+  width: 100%;
+  max-width: 360px;
+}
+
+/* =========================================================
+   FORM HEADER
+   ========================================================= */
+
+.form-header {
+  margin-bottom: 26px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 9px;
+  color: var(--primary-600);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.form-header h1 {
+  margin: 0 0 7px;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+}
+
+.form-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+/* =========================================================
+   ERROR
+   ========================================================= */
+
+.alert-danger {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 18px;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-sm);
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.76rem;
+}
+
+.alert-danger mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   FORM
+   ========================================================= */
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.form-group label {
+  color: var(--text-main);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+/* =========================================================
+   INPUT
+   ========================================================= */
+
+.input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.field-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  color: var(--text-subtle);
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.input-wrapper input {
+  width: 100%;
+  height: 48px;
+  padding: 0 44px 0 42px;
+  box-sizing: border-box;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  outline: none;
+  background: #fbfcfe;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.86rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.input-wrapper input::placeholder {
+  color: #a1acba;
+}
+
+.input-wrapper input:hover {
+  border-color: var(--surface-border-hover);
+}
+
+.input-wrapper:focus-within input {
+  border-color: var(--primary-500);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.input-wrapper:focus-within .field-icon {
+  color: var(--primary-600);
+}
+
+.toggle-pwd {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-subtle);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.toggle-pwd mat-icon {
+  width: 19px;
+  height: 19px;
+  font-size: 19px;
+}
+
+.toggle-pwd:hover {
+  color: var(--primary-600);
+  background: var(--primary-50);
+}
+
+/* =========================================================
+   OPTIONS
+   ========================================================= */
+
+.form-options {
+  display: flex;
+  align-items: center;
+  margin-top: -2px;
+}
+
+.remember-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.remember-label input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary-600);
+  cursor: pointer;
+}
+
+/* =========================================================
+   LOGIN BUTTON
+   ========================================================= */
+
+.login-button {
+  width: 100%;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 2px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--primary-500), var(--primary-700));
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.28);
+  transition: box-shadow 0.2s ease, transform 0.15s ease, filter 0.2s ease;
+}
+
+.login-button .btn-arrow {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  transition: transform 0.2s ease;
+}
+
+.login-button:hover:not(:disabled) {
+  filter: brightness(1.05);
+  box-shadow: 0 9px 22px rgba(79, 70, 229, 0.34);
+  transform: translateY(-1px);
+}
+
+.login-button:hover:not(:disabled) .btn-arrow {
+  transform: translateX(3px);
+}
+
+.login-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.26);
+}
+
+.login-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: login-spin 0.7s linear infinite;
+}
+
+@keyframes login-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================================
+   SECURITY NOTE
+   ========================================================= */
+
+.security-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 20px;
+  color: var(--text-subtle);
+  font-size: 0.68rem;
+}
+
+.security-note mat-icon {
+  width: 13px;
+  height: 13px;
+  font-size: 13px;
+}
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .login-page {
+    padding: 20px;
+  }
+
+  .login-card {
+    max-width: 620px;
+    grid-template-columns: 1fr;
+  }
+
+  .brand-panel {
+    padding: 26px 30px;
+  }
+
+  .brand-content {
+    margin: 26px 0;
+  }
+
+  .brand-content h2 {
+    font-size: 1.8rem;
+  }
+
+  .form-panel {
+    padding: 40px 34px;
+  }
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 560px) {
+  .login-page {
+    min-height: 100dvh;
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .login-card {
+    min-height: 100dvh;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .brand-panel {
+    display: none;
+  }
+
+  .form-panel {
+    padding: 40px 24px;
+  }
+}

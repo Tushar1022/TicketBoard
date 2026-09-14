@@ -1,0 +1,264 @@
+<div class="timetracking-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="title-group">
+      <div class="badge badge-purple">
+        <mat-icon class="badge-icon">schedule</mat-icon>
+        <span>Timesheet &amp; Effort Governance</span>
+      </div>
+      <h1>Time Tracking &amp; Weekly Timesheet Portal</h1>
+      <p class="subtitle">Log daily work effort, submit weekly timesheets for approval, and analyze effort variance</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="openLogTime()">
+        <mat-icon class="sm-icon">timer</mat-icon>
+        <span>Log Time Entry</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="tabs-nav-bar card-panel">
+    <button class="t-nav-btn" [class.active]="activeTab() === 'WEEKLY'" (click)="setTab('WEEKLY')">
+      <mat-icon class="sm-icon">calendar_view_week</mat-icon>
+      <span>My Weekly Timesheet</span>
+    </button>
+    <button
+      class="t-nav-btn"
+      *ngIf="authService.hasPermission('timelog:approve')"
+      [class.active]="activeTab() === 'PENDING'"
+      (click)="setTab('PENDING')"
+    >
+      <mat-icon class="sm-icon">rule</mat-icon>
+      <span>Pending Manager Approvals</span>
+    </button>
+    <button class="t-nav-btn" [class.active]="activeTab() === 'VARIANCE'" (click)="setTab('VARIANCE')">
+      <mat-icon class="sm-icon">trending_up</mat-icon>
+      <span>Effort Variance Report</span>
+    </button>
+  </div>
+
+  <!-- 1. MY WEEKLY TIMESHEET VIEW -->
+  <div class="tab-view-container" *ngIf="activeTab() === 'WEEKLY'">
+    <div class="card-panel sheet-card" *ngIf="timesheet()">
+      
+      <div class="sheet-header">
+        <div class="sheet-meta">
+          <h2>Weekly Period: {{ timesheet()?.startDate }} &mdash; {{ timesheet()?.endDate }}</h2>
+          <span class="user-label">Employee: {{ timesheet()?.userName }} ({{ timesheet()?.userEmail }})</span>
+        </div>
+
+        <div class="sheet-actions">
+          <span class="badge" [ngClass]="{
+            'badge-green': timesheet()?.status === 'APPROVED',
+            'badge-blue': timesheet()?.status === 'SUBMITTED',
+            'badge-red': timesheet()?.status === 'REJECTED',
+            'badge-slate': timesheet()?.status === 'DRAFT'
+          }">Status: {{ timesheet()?.status }}</span>
+
+          <button
+            class="btn btn-primary btn-sm"
+            *ngIf="timesheet()?.status === 'DRAFT' || timesheet()?.status === 'REJECTED'"
+            (click)="submitCurrentTimesheet()"
+          >
+            <mat-icon class="sm-icon">send</mat-icon>
+            <span>Submit Timesheet</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Rejection Warning Banner -->
+      <div class="alert-box error" *ngIf="timesheet()?.status === 'REJECTED'">
+        <mat-icon>error_outline</mat-icon>
+        <span><strong>Timesheet Returned:</strong> {{ timesheet()?.rejectionReason }}</span>
+      </div>
+
+      <!-- Weekly Total KPI Strip -->
+      <div class="week-summary-strip">
+        <div class="summary-item">
+          <span class="s-val">{{ timesheet()?.totalHours }} Hours</span>
+          <span class="s-lbl">Total Hours Logged</span>
+        </div>
+        <div class="summary-item">
+          <span class="s-val">{{ timesheet()?.entries?.length || 0 }}</span>
+          <span class="s-lbl">Daily Entries</span>
+        </div>
+        <div class="summary-item">
+          <span class="s-val">{{ weeklyCapacity() !== null ? weeklyCapacity() + ' Hours' : '—' }}</span>
+          <span class="s-lbl">Target Capacity (Weekly)</span>
+        </div>
+      </div>
+
+      <!-- Entries Table -->
+      <div class="table-responsive">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Project</th>
+              <th>Work Item / Task</th>
+              <th>Hours Logged</th>
+              <th>Work Description</th>
+              <th>Entry Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let e of timesheet()?.entries">
+              <td class="mono font-bold">{{ e.workDate }}</td>
+              <td>
+                <span class="project-tag">{{ e.projectCode }}</span>
+              </td>
+              <td>
+                <span class="ticket-tag" *ngIf="e.workItemTicketNumber">[{{ e.workItemTicketNumber }}] {{ e.workItemTitle }}</span>
+                <span class="text-muted" *ngIf="!e.workItemTicketNumber">General Delivery Task</span>
+              </td>
+              <td>
+                <span class="hours-chip font-bold">{{ e.totalHours }}h</span>
+              </td>
+              <td>{{ e.description }}</td>
+              <td>
+                <span class="badge badge-slate">{{ e.status }}</span>
+              </td>
+            </tr>
+
+            <tr *ngIf="!timesheet()?.entries?.length">
+              <td colspan="6" class="empty-col-message">
+                No time entries logged for this week yet. Click "Log Time Entry" above to add your hours.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 2. PENDING TIMESHEETS FOR MANAGER APPROVAL -->
+  <div class="tab-view-container" *ngIf="activeTab() === 'PENDING'">
+    <div class="card-panel sheet-card">
+      <div class="sheet-header">
+        <div class="sheet-meta">
+          <h2>Pending Timesheet Submissions for Manager Review</h2>
+          <span class="user-label">Approve or reject weekly effort logs submitted by team members</span>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Week Period</th>
+              <th>Total Hours</th>
+              <th>Submission Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of pendingTimesheets()">
+              <td class="font-bold">{{ p.userName }} ({{ p.userEmail }})</td>
+              <td>{{ p.startDate }} &mdash; {{ p.endDate }}</td>
+              <td><span class="hours-chip font-bold">{{ p.totalHours }}h</span></td>
+              <td>{{ p.submittedAt | date:'medium' }}</td>
+              <td>
+                <div class="action-btn-group">
+                  <button class="btn btn-primary btn-sm" (click)="approveTimesheet(p)">
+                    <mat-icon class="sm-icon">check</mat-icon>
+                    <span>Approve</span>
+                  </button>
+                  <button class="btn btn-danger btn-sm" (click)="openRejectModal(p)">
+                    <mat-icon class="sm-icon">close</mat-icon>
+                    <span>Reject</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            <tr *ngIf="!pendingTimesheets().length">
+              <td colspan="5" class="empty-col-message">
+                No pending timesheets awaiting review. All weekly logs are up to date!
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. EFFORT VARIANCE REPORT -->
+  <div class="tab-view-container" *ngIf="activeTab() === 'VARIANCE'">
+    <div class="card-panel sheet-card">
+      <div class="sheet-header">
+        <div class="sheet-meta">
+          <h2>Effort Variance Analysis (Actual vs Estimated Hours)</h2>
+          <span class="user-label">Identifies tickets and requirements exceeding budget estimates</span>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Code / Title</th>
+              <th>Project</th>
+              <th>Estimated Hours</th>
+              <th>Actual Hours Logged</th>
+              <th>Variance (Hours)</th>
+              <th>Variance (%)</th>
+              <th>Budget State</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let v of variances()">
+              <td><span class="badge badge-slate">{{ v.entityType }}</span></td>
+              <td class="font-bold">[{{ v.code }}] {{ v.title }}</td>
+              <td><span class="project-tag">{{ v.projectName }}</span></td>
+              <td>{{ v.estimatedHours }}h</td>
+              <td>{{ v.actualHours }}h</td>
+              <td [class.text-red]="v.isOverBudget">{{ v.varianceHours > 0 ? '+' : '' }}{{ v.varianceHours }}h</td>
+              <td [class.text-red]="v.isOverBudget">{{ v.variancePercentage }}%</td>
+              <td>
+                <span class="badge" [ngClass]="v.isOverBudget ? 'badge-red' : 'badge-green'">
+                  {{ v.isOverBudget ? 'OVER BUDGET' : 'WITHIN BUDGET' }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rejection Modal -->
+  <div class="modal-backdrop" *ngIf="showReviewModal()">
+    <div class="modal-card card-panel">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <mat-icon class="text-red">close</mat-icon>
+          <h3>Reject Timesheet for {{ activeReviewTimesheet()?.userName }}</h3>
+        </div>
+        <button class="icon-btn" (click)="closeRejectModal()"><mat-icon>close</mat-icon></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Reason for Rejection / Clarification Needed <span class="required">*</span></label>
+          <textarea
+            [ngModel]="rejectionReason()"
+            (ngModelChange)="rejectionReason.set($event)"
+            rows="3"
+            placeholder="e.g. Please clarify 8 hours logged on Tuesday without ticket reference..."
+            class="form-control"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeRejectModal()">Cancel</button>
+        <button class="btn btn-danger" (click)="confirmReject()">Reject &amp; Return Timesheet</button>
+      </div>
+    </div>
+  </div>
+</div>
