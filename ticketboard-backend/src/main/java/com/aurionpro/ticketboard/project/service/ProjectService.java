@@ -8,6 +8,8 @@ import com.aurionpro.ticketboard.project.dto.MilestoneDto;
 import com.aurionpro.ticketboard.project.dto.ProjectCreateDto;
 import com.aurionpro.ticketboard.project.dto.ProjectDto;
 import com.aurionpro.ticketboard.project.dto.ProjectMemberDto;
+import com.aurionpro.ticketboard.project.dto.ProjectStatsDto;
+import com.aurionpro.ticketboard.project.entity.Milestone;
 import com.aurionpro.ticketboard.project.entity.Project;
 import com.aurionpro.ticketboard.project.entity.ProjectMember;
 import com.aurionpro.ticketboard.project.enums.ProjectHealth;
@@ -16,13 +18,21 @@ import com.aurionpro.ticketboard.project.enums.ProjectStatus;
 import com.aurionpro.ticketboard.project.repository.ProjectMemberRepository;
 import com.aurionpro.ticketboard.project.repository.ProjectRepository;
 import com.aurionpro.ticketboard.user.entity.User;
+import com.aurionpro.ticketboard.audit.enums.TimelineEventType;
+import com.aurionpro.ticketboard.audit.service.ActivityLogService;
+import com.aurionpro.ticketboard.comment.repository.CommentRepository;
+import com.aurionpro.ticketboard.requirement.repository.RequirementRepository;
+import com.aurionpro.ticketboard.risk.repository.IssueRepository;
 import com.aurionpro.ticketboard.user.repository.UserRepository;
+import com.aurionpro.ticketboard.workitem.repository.WorkItemRepository;
 import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,6 +43,11 @@ public class ProjectService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
+    private final WorkItemRepository workItemRepository;
+    private final RequirementRepository requirementRepository;
+    private final IssueRepository issueRepository;
+    private final CommentRepository commentRepository;
+    private final ActivityLogService activityLogService;
 
     @Transactional(readOnly = true)
     public List<ProjectDto> getAllProjects() {
@@ -118,6 +133,14 @@ public class ProjectService {
             projectMemberRepository.save(member);
         }
 
+        activityLogService.logEvent(
+                "PROJECT", saved.getId(), saved.getProjectCode(),
+                TimelineEventType.CREATED,
+                String.format("Project %s created", saved.getProjectCode()),
+                String.format("Project '%s' created with status %s", saved.getName(), saved.getStatus()),
+                null, saved.getStatus() != null ? saved.getStatus().name() : null
+        );
+
         return mapToDto(saved);
     }
 
@@ -152,6 +175,14 @@ public class ProjectService {
 
         recalculateProjectMetrics(project);
 
+        activityLogService.logEvent(
+                "PROJECT", project.getId(), project.getProjectCode(),
+                TimelineEventType.STATUS_CHANGED,
+                String.format("Project %s updated", project.getProjectCode()),
+                String.format("Project '%s' updated", project.getName()),
+                null, project.getStatus() != null ? project.getStatus().name() : null
+        );
+
         return mapToDto(projectRepository.save(project));
     }
 
@@ -176,6 +207,14 @@ public class ProjectService {
                 .allocationEndDate(memberDto.getAllocationEndDate())
                 .build();
 
+        activityLogService.logEvent(
+                "PROJECT", project.getId(), project.getProjectCode(),
+                TimelineEventType.ASSIGNED,
+                String.format("Member added to %s", project.getProjectCode()),
+                String.format("%s (%s) added as %s", user.getFullName(), user.getEmail(), member.getProjectRole()),
+                null, user.getFullName()
+        );
+
         return mapToMemberDto(projectMemberRepository.save(member));
     }
 
@@ -186,6 +225,14 @@ public class ProjectService {
         if (!member.getProject().getId().equals(projectId)) {
             throw new BadRequestException("Member does not belong to project ID: " + projectId);
         }
+        activityLogService.logEvent(
+                "PROJECT", member.getProject().getId(), member.getProject().getProjectCode(),
+                TimelineEventType.SCOPE_CHANGED,
+                String.format("Member removed from %s", member.getProject().getProjectCode()),
+                String.format("%s removed from project", member.getUser().getFullName()),
+                member.getUser().getFullName(), null
+        );
+
         projectMemberRepository.delete(member);
     }
 
@@ -194,6 +241,14 @@ public class ProjectService {
         if (!projectRepository.existsById(id)) {
             throw new ResourceNotFoundException("Project", "id", id);
         }
+        activityLogService.logEvent(
+                "PROJECT", id, projectRepository.findById(id).map(Project::getProjectCode).orElse(""),
+                TimelineEventType.SCOPE_CHANGED,
+                String.format("Project deleted"),
+                String.format("Project deleted"),
+                "ACTIVE", "DELETED"
+        );
+
         projectRepository.deleteById(id);
     }
 
@@ -205,6 +260,63 @@ public class ProjectService {
                 && project.getActualHours() != null && project.getActualHours() > project.getEstimatedHours() * 1.15) {
             project.setHealth(ProjectHealth.AMBER);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public ProjectStatsDto getProjectStats(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", "id", projectId));
+
+        List<com.aurionpro.ticketboard.workitem.entity.WorkItem> workItems = workItemRepository.findByProjectId(projectId);
+
+        int totalTasks = workItemRepository.countTopLevelByProjectId(projectId);
+        int openTasks = workItemRepository.countOpenByProjectId(projectId);
+        int completedTasks = totalTasks - openTasks;
+        int requirementCount = requirementRepository.countByProjectId(projectId);
+        int openBugs = workItemRepository.countOpenBugsByProjectId(projectId);
+
+        List<Milestone> milestones = project.getMilestones() != null ? project.getMilestones() : List.of();
+        long achievedMilestones = milestones.stream()
+                .filter(m -> m.getStatus() != null && m.getStatus() == com.aurionpro.ticketboard.project.enums.MilestoneStatus.ACHIEVED)
+                .count();
+
+        Map<String, Integer> tasksByStatus = new java.util.HashMap<>();
+        Map<String, Integer> tasksByPriority = new java.util.HashMap<>();
+        for (com.aurionpro.ticketboard.workitem.entity.WorkItem w : workItems) {
+            if (w.getParentTask() == null) {
+                String status = w.getStatus() != null ? w.getStatus().name() : "UNKNOWN";
+                tasksByStatus.merge(status, 1, Integer::sum);
+                String priority = w.getPriority() != null ? w.getPriority().name() : "UNKNOWN";
+                tasksByPriority.merge(priority, 1, Integer::sum);
+            }
+        }
+
+        List<com.aurionpro.ticketboard.risk.entity.Issue> issues = issueRepository.findByProjectId(projectId);
+        Map<String, Integer> issuesBySeverity = new java.util.HashMap<>();
+        for (com.aurionpro.ticketboard.risk.entity.Issue iss : issues) {
+            String sev = iss.getSeverity() != null ? iss.getSeverity().name() : "UNKNOWN";
+            issuesBySeverity.merge(sev, 1, Integer::sum);
+        }
+
+        Double estHours = workItemRepository.sumEstimatedHoursByProject(projectId);
+        Double actHours = workItemRepository.sumActualHoursByProject(projectId);
+
+        return ProjectStatsDto.builder()
+                .totalTasks(totalTasks)
+                .openTasks(openTasks)
+                .completedTasks(completedTasks)
+                .totalRequirements(requirementCount)
+                .openBugs(openBugs)
+                .totalMilestones(milestones.size())
+                .achievedMilestones((int) achievedMilestones)
+                .totalMembers(project.getMembers() != null ? project.getMembers().size() : 0)
+                .totalEstimatedHours(estHours != null ? estHours : 0.0)
+                .totalActualHours(actHours != null ? actHours : 0.0)
+                .completionPercentage(project.getCompletionPercentage() != null ? project.getCompletionPercentage() : 0.0)
+                .tasksByStatus(tasksByStatus)
+                .tasksByPriority(tasksByPriority)
+                .issuesBySeverity(issuesBySeverity)
+                .build();
     }
 
     public ProjectDto mapToDto(Project project) {
@@ -244,6 +356,9 @@ public class ProjectService {
                 .estimatedHours(project.getEstimatedHours())
                 .actualHours(project.getActualHours())
                 .completionPercentage(project.getCompletionPercentage())
+                .requirementCount(requirementRepository.countByProjectId(project.getId()))
+                .taskCount(workItemRepository.countTopLevelByProjectId(project.getId()))
+                .openBugCount(workItemRepository.countOpenBugsByProjectId(project.getId()))
                 .members(memberDtos)
                 .milestones(milestoneDtos)
                 .createdAt(project.getCreatedAt())

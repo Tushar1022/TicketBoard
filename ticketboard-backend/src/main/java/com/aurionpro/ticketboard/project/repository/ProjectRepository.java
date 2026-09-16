@@ -42,4 +42,10 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     @Query("SELECT p FROM Project p WHERE p.plannedEndDate BETWEEN :startDate AND :endDate")
     List<Project> findUpcomingDeliveries(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT p.status, COUNT(p) FROM Project p GROUP BY p.status")
+    List<Object[]> countByStatusGrouped();
+
+    @Query("SELECT p.health, COUNT(p) FROM Project p GROUP BY p.health")
+    List<Object[]> countByHealthGrouped();
 }

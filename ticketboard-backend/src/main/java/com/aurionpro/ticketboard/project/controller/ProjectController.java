@@ -4,6 +4,7 @@ import com.aurionpro.ticketboard.common.response.ApiResponse;
 import com.aurionpro.ticketboard.project.dto.ProjectCreateDto;
 import com.aurionpro.ticketboard.project.dto.ProjectDto;
 import com.aurionpro.ticketboard.project.dto.ProjectMemberDto;
+import com.aurionpro.ticketboard.project.dto.ProjectStatsDto;
 import com.aurionpro.ticketboard.project.enums.ProjectStatus;
 import com.aurionpro.ticketboard.project.service.ProjectService;
 import jakarta.validation.Valid;
@@ -40,6 +41,12 @@ public class ProjectController {
     public ResponseEntity<ApiResponse<ProjectDto>> getProjectById(@PathVariable Long id) {
         ProjectDto project = projectService.getProjectById(id);
         return ResponseEntity.ok(ApiResponse.ok("Project fetched successfully", project));
+    }
+
+    @GetMapping("/{id}/stats")
+    public ResponseEntity<ApiResponse<ProjectStatsDto>> getProjectStats(@PathVariable Long id) {
+        ProjectStatsDto stats = projectService.getProjectStats(id);
+        return ResponseEntity.ok(ApiResponse.ok("Project stats fetched successfully", stats));
     }
 
     @PostMapping

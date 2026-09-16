@@ -59,4 +59,43 @@ public interface WorkItemRepository extends JpaRepository<WorkItem, Long> {
 
     @Query("SELECT SUM(w.estimatedHours) FROM WorkItem w WHERE w.project.id = :projectId AND w.status IN (com.aurionpro.ticketboard.workitem.enums.WorkItemStatus.COMPLETED, com.aurionpro.ticketboard.workitem.enums.WorkItemStatus.CLOSED)")
     Double sumCompletedEstimatedHoursByProject(@Param("projectId") Long projectId);
+
+    @Query("SELECT COUNT(w) FROM WorkItem w WHERE w.project.id = :projectId AND w.parentTask IS NULL")
+    int countTopLevelByProjectId(@Param("projectId") Long projectId);
+
+    @Query("SELECT COUNT(w) FROM WorkItem w WHERE w.project.id = :projectId AND w.type = com.aurionpro.ticketboard.workitem.enums.WorkItemType.BUG AND w.status NOT IN (com.aurionpro.ticketboard.workitem.enums.WorkItemStatus.COMPLETED, com.aurionpro.ticketboard.workitem.enums.WorkItemStatus.CLOSED)")
+    int countOpenBugsByProjectId(@Param("projectId") Long projectId);
+
+    @Query("SELECT COUNT(w) FROM WorkItem w WHERE w.project.id = :projectId AND w.status NOT IN (com.aurionpro.ticketboard.workitem.enums.WorkItemStatus.COMPLETED, com.aurionpro.ticketboard.workitem.enums.WorkItemStatus.CLOSED)")
+    int countOpenByProjectId(@Param("projectId") Long projectId);
+
+    @Query("SELECT w.status, COUNT(w) FROM WorkItem w GROUP BY w.status")
+    List<Object[]> countByStatusGrouped();
+
+    @Query("SELECT w.status, COUNT(w) FROM WorkItem w WHERE w.project.id = :projectId GROUP BY w.status")
+    List<Object[]> countByStatusGroupedForProject(@Param("projectId") Long projectId);
+
+    @Query("SELECT w.priority, COUNT(w) FROM WorkItem w GROUP BY w.priority")
+    List<Object[]> countByPriorityGrouped();
+
+    @Query("SELECT w.priority, COUNT(w) FROM WorkItem w WHERE w.project.id = :projectId GROUP BY w.priority")
+    List<Object[]> countByPriorityGroupedForProject(@Param("projectId") Long projectId);
+
+    @Query("SELECT w.type, COUNT(w) FROM WorkItem w GROUP BY w.type")
+    List<Object[]> countByTypeGrouped();
+
+    @Query("SELECT w.type, COUNT(w) FROM WorkItem w WHERE w.project.id = :projectId GROUP BY w.type")
+    List<Object[]> countByTypeGroupedForProject(@Param("projectId") Long projectId);
+
+    @Query("SELECT w.severity, COUNT(w) FROM WorkItem w GROUP BY w.severity")
+    List<Object[]> countBySeverityGrouped();
+
+    @Query("SELECT w.severity, COUNT(w) FROM WorkItem w WHERE w.project.id = :projectId GROUP BY w.severity")
+    List<Object[]> countBySeverityGroupedForProject(@Param("projectId") Long projectId);
+
+    @Query("SELECT w.assignee.id, COUNT(w) FROM WorkItem w WHERE w.assignee IS NOT NULL GROUP BY w.assignee.id")
+    List<Object[]> countByAssigneeGrouped();
+
+    @Query("SELECT w.assignee.id, COUNT(w) FROM WorkItem w WHERE w.project.id = :projectId AND w.assignee IS NOT NULL GROUP BY w.assignee.id")
+    List<Object[]> countByAssigneeGroupedForProject(@Param("projectId") Long projectId);
 }

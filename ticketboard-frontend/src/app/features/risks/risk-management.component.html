@@ -134,11 +134,11 @@
         <div class="form-row">
           <div class="form-group flex-1">
             <label>Risk Code <span class="required">*</span></label>
-            <input type="text" [(ngModel)]="newRisk.riskCode" placeholder="e.g. RSK-104" class="form-control" />
+            <input type="text" [(ngModel)]="newRisk.riskCode" placeholder="e.g. RSK-104" class="form-control premium-input" />
           </div>
           <div class="form-group flex-1">
             <label>Project</label>
-            <select [(ngModel)]="newRisk.projectId" class="form-control">
+            <select [(ngModel)]="newRisk.projectId" class="form-control premium-input">
               <option *ngFor="let p of projects()" [ngValue]="p.id">[{{ p.projectCode }}] {{ p.name }}</option>
             </select>
           </div>
@@ -146,13 +146,13 @@
 
         <div class="form-group">
           <label>Risk Description &amp; Potential Delay <span class="required">*</span></label>
-          <textarea [(ngModel)]="newRisk.description" rows="3" placeholder="Describe the risk scenario (e.g. third-party API downtime, dependency delay)..." class="form-control"></textarea>
+          <textarea [(ngModel)]="newRisk.description" rows="3" placeholder="Describe the risk scenario (e.g. third-party API downtime, dependency delay)..." class="form-control premium-input"></textarea>
         </div>
 
         <div class="form-row">
           <div class="form-group flex-1">
             <label>Probability (1=Rare, 5=Almost Certain)</label>
-            <select [(ngModel)]="newRisk.probability" class="form-control">
+            <select [(ngModel)]="newRisk.probability" class="form-control premium-input">
               <option [ngValue]="1">1 - Very Low</option>
               <option [ngValue]="2">2 - Low</option>
               <option [ngValue]="3">3 - Medium</option>
@@ -163,7 +163,7 @@
 
           <div class="form-group flex-1">
             <label>Impact (1=Negligible, 5=Catastrophic)</label>
-            <select [(ngModel)]="newRisk.impact" class="form-control">
+            <select [(ngModel)]="newRisk.impact" class="form-control premium-input">
               <option [ngValue]="1">1 - Negligible</option>
               <option [ngValue]="2">2 - Minor</option>
               <option [ngValue]="3">3 - Moderate</option>
@@ -181,12 +181,12 @@
 
         <div class="form-group">
           <label>Mitigation Plan &amp; Contingency Strategy</label>
-          <textarea [(ngModel)]="newRisk.mitigationPlan" rows="2" placeholder="Action steps to eliminate or reduce the impact..." class="form-control"></textarea>
+          <textarea [(ngModel)]="newRisk.mitigationPlan" rows="2" placeholder="Action steps to eliminate or reduce the impact..." class="form-control premium-input"></textarea>
         </div>
 
         <div class="form-group">
           <label>Target Resolution Date</label>
-          <input type="date" [(ngModel)]="newRisk.targetDate" class="form-control" />
+          <input type="date" [(ngModel)]="newRisk.targetDate" class="form-control premium-input" />
         </div>
       </div>
 

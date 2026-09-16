@@ -1,7 +1,12 @@
 import { Injectable } from '@angular/core';
-import { ExportDocument, ExportFormat, ExportColumn, ExportTable } from '../models/report.models';
-import { BRAND, nowStamp, todayStamp } from '../branding/brand.config';
+import { ExportDocument, ExportFormat, ExportColumn, ExportTable, ExportOptions, ExportOrientation, ExportLayout } from '../models/report.models';
+import { BRAND, nowStamp } from '../branding/brand.config';
 import { AuthService } from './auth.service';
+
+const DEFAULT_OPTIONS: Required<ExportOptions> = {
+  orientation: 'landscape',
+  layout: 'standard'
+};
 
 @Injectable({ providedIn: 'root' })
 export class ExportService {
@@ -11,10 +16,11 @@ export class ExportService {
     return this.authService.currentUser()?.fullName || BRAND.author;
   }
 
-  async export(doc: ExportDocument, format: ExportFormat, baseName?: string): Promise<void> {
+  async export(doc: ExportDocument, format: ExportFormat, baseName?: string, options: ExportOptions = {}): Promise<void> {
+    const opts = { ...DEFAULT_OPTIONS, ...options };
     const name = baseName || this.sanitizeFilename(doc.title);
     switch (format) {
-      case 'pdf':   return this.exportPdf(doc, name);
+      case 'pdf':   return this.exportPdf(doc, name, opts);
       case 'csv':   return this.exportCsv(doc, name);
       case 'excel': return this.exportExcel(doc, name);
       case 'word':  return this.exportWord(doc, name);
@@ -44,90 +50,109 @@ export class ExportService {
 
   // ───────── PDF ─────────
 
-  private async exportPdf(doc: ExportDocument, baseName: string): Promise<void> {
+  private async exportPdf(doc: ExportDocument, baseName: string, opts: Required<ExportOptions>): Promise<void> {
     const jsPDFModule = await import('jspdf');
     const jsPDF = jsPDFModule.jsPDF;
     const autoTableFn = (await import('jspdf-autotable')).default;
 
-    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const orientation: ExportOrientation = opts.orientation;
+    const custom = opts.layout === 'custom';
+
+    const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 14;
+    const bandH = custom ? 18 : 26;
 
     // ── Header Band Drawing ──
     const drawHeader = (data: any) => {
       if (data.pageNumber === 1) {
         // Top dark header band
         pdf.setFillColor(30, 41, 59); // #1e293b
-        pdf.rect(0, 0, pageW, 26, 'F');
+        pdf.rect(0, 0, pageW, bandH, 'F');
 
         // Accent line below header band
         pdf.setFillColor(99, 102, 241); // #6366f1
-        pdf.rect(0, 26, pageW, 1.5, 'F');
+        pdf.rect(0, bandH, pageW, 1.5, 'F');
 
         // Title and brand text in header band
-        pdf.setFontSize(14);
+        pdf.setFontSize(custom ? 11 : 14);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(255, 255, 255);
-        pdf.text(BRAND.fullName.toUpperCase() + ' ENTERPRISE', 14, 11);
+        pdf.text(BRAND.fullName.toUpperCase() + ' ENTERPRISE', margin, custom ? 8 : 11);
 
-        pdf.setFontSize(11);
+        pdf.setFontSize(custom ? 9 : 11);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(226, 232, 240);
-        pdf.text(doc.title, 14, 18);
+        pdf.text(doc.title, margin, custom ? 13.5 : 18);
 
         pdf.setFontSize(8);
         pdf.setTextColor(148, 163, 184);
-        pdf.text(`Generated: ${nowStamp()} | Author: ${this.currentUserName}`, pageW - 14, 18, { align: 'right' });
+        pdf.text(`Generated: ${nowStamp()} | Author: ${this.currentUserName}`, pageW - margin, custom ? 13.5 : 18, { align: 'right' });
 
-        let y = 34;
+        let y = bandH + 8;
 
         // Draw Summary KPI cards if present
         if (doc.summary && doc.summary.length > 0) {
           const kpiCount = doc.summary.length;
-          const cardW = Math.min(65, (pageW - 28 - (kpiCount - 1) * 6) / kpiCount);
+          const cardW = Math.min(65, (pageW - margin * 2 - (kpiCount - 1) * 6) / kpiCount);
+          const cardH = custom ? 11 : 14;
 
           doc.summary.forEach((s, idx) => {
-            const x = 14 + idx * (cardW + 6);
+            const x = margin + idx * (cardW + 6);
             // Card background & border
             pdf.setFillColor(248, 250, 252);
             pdf.setDrawColor(226, 232, 240);
-            pdf.roundedRect(x, y, cardW, 14, 2, 2, 'FD');
+            pdf.roundedRect(x, y, cardW, cardH, 2, 2, 'FD');
 
-            pdf.setFontSize(7);
+            pdf.setFontSize(custom ? 6 : 7);
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(100, 116, 139);
-            pdf.text(s.label.toUpperCase(), x + 6, y + 5);
+            pdf.text(s.label.toUpperCase(), x + 6, y + (custom ? 4 : 5));
 
-            pdf.setFontSize(10);
+            pdf.setFontSize(custom ? 8.5 : 10);
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(15, 23, 42);
-            pdf.text(String(s.value), x + 6, y + 11);
+            pdf.text(String(s.value), x + 6, y + (custom ? 9 : 11));
           });
 
-          y += 18;
+          y += cardH + 4;
         }
 
         // Draw Metadata if present
         if (doc.meta && doc.meta.length > 0) {
-          doc.meta.forEach((m) => {
-            pdf.setFontSize(8);
+          const metaW = pageW - margin * 2;
+          const metaCols = orientation === 'landscape' ? 4 : 2;
+          const metaCellW = (metaW - (metaCols - 1) * 6) / metaCols;
+          doc.meta.forEach((m, i) => {
+            const col = i % metaCols;
+            const row = Math.floor(i / metaCols);
+            const mx = margin + col * (metaCellW + 6);
+            const my = y + row * 14;
+            pdf.setFillColor(248, 250, 252);
+            pdf.setDrawColor(226, 232, 240);
+            pdf.roundedRect(mx, my, metaCellW, 13, 1.5, 1.5, 'FD');
+            pdf.setFontSize(6.5);
             pdf.setFont('helvetica', 'bold');
-            pdf.setTextColor(71, 85, 105);
-            pdf.text(`${m.label}:`, 14, y);
+            pdf.setTextColor(100, 116, 139);
+            pdf.text(m.label.toUpperCase(), mx + 5, my + 4.5);
             pdf.setFont('helvetica', 'normal');
             pdf.setTextColor(15, 23, 42);
-            pdf.text(m.value, 45, y);
-            y += 4;
+            pdf.setFontSize(8.5);
+            pdf.text(m.value, mx + 5, my + 10);
           });
+          y += Math.ceil(doc.meta.length / metaCols) * 14 + 4;
         }
+        return y;
       }
+      return undefined;
     };
 
     const drawFooter = (data: any) => {
       pdf.setFontSize(7);
       pdf.setTextColor(148, 163, 184);
-      pdf.text(`${BRAND.fullName} Enterprise Report System`, 14, pageH - 6);
-      pdf.text(`Page ${data.pageNumber} of ${pdf.getNumberOfPages()}`, pageW - 14, pageH - 6, { align: 'right' });
+      pdf.text(`${BRAND.fullName} Enterprise Report System`, margin, pageH - 6);
+      pdf.text(`Page ${data.pageNumber} of ${pdf.getNumberOfPages()}`, pageW - margin, pageH - 6, { align: 'right' });
       pdf.text(`Confidential & Internal Use Only`, pageW / 2, pageH - 6, { align: 'center' });
       pdf.setTextColor(0);
     };
@@ -136,21 +161,24 @@ export class ExportService {
       const section = doc.sections[i];
       if (i > 0) pdf.addPage();
 
-      let startY = 32;
+      let startY = bandH + 8;
       if (i === 0) {
-        startY = 34 + (doc.summary?.length ? 20 : 0) + (doc.meta?.length ? doc.meta.length * 4.5 : 0);
+        let headerBottom = 0;
+        const returnedY = drawHeader({ pageNumber: 1 });
+        if (typeof returnedY === 'number') headerBottom = returnedY;
+        startY = headerBottom + 2;
       }
 
-      pdf.setFontSize(10);
+      pdf.setFontSize(custom ? 9 : 10);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(79, 70, 229);
-      pdf.text(section.title, 14, startY);
+      pdf.text(section.title, margin, startY);
 
       if (section.description) {
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(100, 116, 139);
-        pdf.text(section.description, 14, startY + 4);
+        pdf.text(section.description, margin, startY + 4);
       }
 
       const headers = section.columns.map((c) => c.label);
@@ -163,31 +191,31 @@ export class ExportService {
         body,
         startY: startY + (section.description ? 7 : 5),
         styles: {
-          fontSize: 7.5,
-          cellPadding: 2.5,
+          fontSize: custom ? 6.5 : 7.5,
+          cellPadding: custom ? 2 : 2.5,
           overflow: 'linebreak',
           font: 'helvetica',
           lineColor: [226, 232, 240], // Cell border color
           lineWidth: 0.15
         },
         headStyles: {
-          fillColor: [30, 41, 59], // #1e293b dark slate header
+          fillColor: [30, 27, 75], // #1e1b4b deep indigo header
           textColor: [255, 255, 255],
           fontStyle: 'bold',
-          fontSize: 8.5
+          fontSize: custom ? 7.5 : 8.5
         },
         alternateRowStyles: {
-          fillColor: [248, 250, 252] // #f8fafc zebra striping
+          fillColor: [248, 250, 252] // #f8fafc clean zebra striping
         },
         columnStyles: this.buildPdfColumnStyles(section.columns),
-        margin: { left: 14, right: 14 },
+        margin: { left: margin, right: margin },
         didParseCell: (data: any) => {
-          // Colourful Status Pills in table cells!
+          // Colorful Status Pills in table cells
           if (data.section === 'body') {
             const val = String(data.cell.raw || '').toUpperCase();
             if (val === 'COMPLETED' || val === 'RESOLVED' || val === 'GREEN' || val === 'UAT_EXIT') {
-              data.cell.styles.fillColor = [209, 250, 229]; // #d1fae5
-              data.cell.styles.textColor = [6, 95, 70]; // #065f46
+              data.cell.styles.fillColor = [220, 252, 231]; // #dcfce7
+              data.cell.styles.textColor = [22, 101, 52]; // #166534
               data.cell.styles.fontStyle = 'bold';
             } else if (val === 'IN_PROGRESS' || val === 'APPROVED' || val === 'BLUE' || val === 'URGENT') {
               data.cell.styles.fillColor = [224, 231, 255]; // #e0e7ff
@@ -218,11 +246,30 @@ export class ExportService {
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'italic');
       pdf.setTextColor(100, 116, 139);
-      pdf.text(doc.notes, 14, lastY);
+      pdf.text(doc.notes, margin, lastY);
     }
 
-    pdf.setPage(1);
-    drawHeader({ pageNumber: 1 });
+    // Executive Sign-off & Audit Signature Block on final page
+    const totalPages = pdf.getNumberOfPages();
+    pdf.setPage(totalPages);
+    const signY = pageH - 28;
+
+    pdf.setDrawColor(226, 232, 240);
+    pdf.line(margin, signY, pageW - margin, signY);
+
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(71, 85, 105);
+    pdf.text('REPORT AUDIT & EXECUTIVE SIGN-OFF', margin, signY + 5);
+
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100, 116, 139);
+    pdf.text(`Prepared By: ${this.currentUserName}`, margin, signY + 10);
+    pdf.text(`Classification: STRICTLY CONFIDENTIAL & INTERNAL TELEMETRY`, margin, signY + 14);
+
+    pdf.text('Authorized Signature: _______________________', pageW - margin - 65, signY + 10);
+    pdf.text('Date: ____ / ____ / ________', pageW - margin - 65, signY + 14);
 
     this.saveBlob(pdf.output('blob'), `${baseName}.pdf`);
   }
@@ -632,9 +679,14 @@ export class ExportService {
     this.saveBlob(blob, `${baseName}.txt`);
   }
 
-  // ───────── HTML PREVIEW (mirrors the branded landscape-A4 sheet) ─────────
+  // ───────── HTML PREVIEW (mirrors the branded A4 sheet; portrait or landscape) ─────────
 
-  renderHtmlPreview(doc: ExportDocument, format?: ExportFormat): string {
+  renderHtmlPreview(doc: ExportDocument, format?: ExportFormat, options: ExportOptions = {}): string {
+    const opts = { ...DEFAULT_OPTIONS, ...options };
+    const portrait = opts.orientation === 'portrait';
+    const sheetWidth = portrait ? 720 : 1000;
+    const sheetMinHeight = portrait ? 1000 : 706;
+
     const metaBoxes = (doc.meta || []).map((m) =>
       `<div class="kv"><span class="kv-label">${this.esc(m.label)}</span><span class="kv-value">${this.esc(m.value)}</span></div>`
     ).join('');
@@ -662,11 +714,11 @@ export class ExportService {
 <meta charset="utf-8" />
 <title>${this.esc(doc.title)} — Preview</title>
 <style>
-  @page { size: A4 landscape; margin: 14mm; }
+  @page { size: A4 ${portrait ? 'portrait' : 'landscape'}; margin: 14mm; }
   * { box-sizing: border-box; }
   body { margin: 0; background: #E2E8F0; color: #1E293B;
          font-family: 'Segoe UI', 'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif; }
-  .sheet { position: relative; width: 1000px; min-height: 706px; margin: 24px auto; background: #FFFFFF;
+  .sheet { position: relative; width: ${sheetWidth}px; min-height: ${sheetMinHeight}px; margin: 24px auto; background: #FFFFFF;
            padding: 30px 34px 26px; box-shadow: 0 10px 40px rgba(30,41,59,.18); overflow: hidden; }
   .sheet::after { content: 'TICKETBOARD'; position: absolute; right: -40px; bottom: 30px;
                   transform: rotate(-28deg); font-size: 80px; font-weight: 800; letter-spacing: 6px;
@@ -685,7 +737,7 @@ export class ExportService {
   .pill { display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 999px;
           background: rgba(255,255,255,.18); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; }
   .accent-line { height: 6px; background: linear-gradient(90deg, #4F46E5 0%, #0284C7 70%, #0D9488 100%); }
-  .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+  .meta-grid { display: grid; grid-template-columns: repeat(${portrait ? 2 : 4}, 1fr); gap: 8px; margin-top: 14px; }
   .kv { border: 1px solid #CBD5E1; border-left: 3px solid #4F46E5; background: #F8FAFC; padding: 6px 10px; }
   .kv-label { display: block; font-size: 9px; font-weight: 700; color: #94A3B8; letter-spacing: .6px; text-transform: uppercase; }
   .kv-value { display: block; font-size: 13px; font-weight: 600; color: #1E293B; margin-top: 1px; }
@@ -730,7 +782,7 @@ export class ExportService {
       <div class="brand-right">
         <div class="doctype">${this.esc(doc.title)}</div>
         <div class="doctype-sub">${this.esc(doc.subtitle || '')}</div>
-        <span class="pill">${format ? `Preview  •  ${format.toUpperCase()}` : 'Document Preview'}</span>
+        <span class="pill">${format ? `Preview  •  ${format.toUpperCase()}  •  ${opts.orientation.toUpperCase()}` : 'Document Preview'}</span>
       </div>
     </header>
     <div class="accent-line"></div>

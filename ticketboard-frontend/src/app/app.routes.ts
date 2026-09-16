@@ -120,6 +120,11 @@ export const routes: Routes = [
             path: 'roles',
             loadComponent: () => import('./features/admin/role-management/role-permissions.component').then(m => m.RolePermissionsComponent),
             data: { permission: 'admin:roles-permissions' }
+          },
+          {
+            path: 'support-tickets',
+            loadComponent: () => import('./features/admin/support-tickets/admin-support-tickets.component').then(m => m.AdminSupportTicketsComponent),
+            data: { permission: 'admin:access' }
           }
         ]
       }

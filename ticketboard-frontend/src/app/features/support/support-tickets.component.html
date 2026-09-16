@@ -1,14 +1,16 @@
 <div class="support-tickets-container">
 
-  <!-- Header & Page Actions -->
+  <!-- ═══ Page Header ═══════════════════════════════════════════════ -->
   <div class="page-header">
     <div class="title-group">
       <div class="badge badge-indigo">
         <mat-icon class="sm-icon">confirmation_number</mat-icon>
-        <span>Real-Time Support Desk &bull; Live Admin Queue</span>
+        <span>Ticket Desk &bull; Live Resolution Tracker</span>
       </div>
       <h1>Support Tickets &amp; Query Center</h1>
-      <p class="subtitle">Raise issues, track ticket resolution, and communicate with Super Admins &amp; Admins in real-time.</p>
+      <p class="subtitle">
+        Raise issues, track resolution progress, and collaborate with Super Admins &amp; Admins in real time.
+      </p>
     </div>
 
     <div class="header-actions">
@@ -23,15 +25,39 @@
     </div>
   </div>
 
-  <!-- Tab Selector & Search Filters -->
-  <div class="control-toolbar">
+  <!-- Load-Error Banner (silent-failure fix: surface service loadError instead of a blank list) -->
+  <div class="error-banner" *ngIf="supportTicketService.loadError()">
+    <mat-icon>error_outline</mat-icon>
+    <div class="error-banner-body">
+      <strong>Could not load support tickets</strong>
+      <span>{{ supportTicketService.loadError() }}</span>
+    </div>
+    <button class="error-banner-action" (click)="supportTicketService.refreshAll()">
+      <mat-icon>refresh</mat-icon>
+      <span>Retry</span>
+    </button>
+  </div>
+
+  <!-- ═══ KPI Stat Cards ════════════════════════════════════════════ -->
+  <div class="kpi-grid">
+    <div class="kpi-card" [class.tone-{{ k.tone }}]="true" *ngFor="let k of kpiCards()">
+      <div class="kpi-icon"><mat-icon>{{ k.icon }}</mat-icon></div>
+      <div class="kpi-body">
+        <span class="kpi-label">{{ k.label }}</span>
+        <span class="kpi-value">{{ k.value }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Tabs + Filters Toolbar ═════════════════════════════════════ -->
+  <div class="toolbar">
     <div class="tab-group">
       <button
         class="tab-btn"
         [class.active]="activeTab() === 'MY_TICKETS'"
         (click)="activeTab.set('MY_TICKETS')"
       >
-        <mat-icon>person</mat-icon>
+        <mat-icon>person_outline</mat-icon>
         <span>My Raised Tickets</span>
       </button>
 
@@ -43,234 +69,299 @@
       >
         <mat-icon>admin_panel_settings</mat-icon>
         <span>Super Admin &amp; Admin Queue</span>
-        <span class="badge-count" *ngIf="supportTicketService.openTicketsCount() > 0">
+        <span class="tab-count" *ngIf="supportTicketService.openTicketsCount() > 0">
           {{ supportTicketService.openTicketsCount() }}
         </span>
       </button>
     </div>
 
     <div class="filter-group">
-      <div class="search-input-wrap">
+      <div class="search-wrap">
         <mat-icon>search</mat-icon>
         <input
           type="text"
           [ngModel]="searchQuery()"
           (ngModelChange)="searchQuery.set($event)"
-          placeholder="Filter tickets by code, subject, user..."
+          placeholder="Search by code, subject, user..."
         />
+        <button class="clear-x" *ngIf="searchQuery()" (click)="searchQuery.set('')"><mat-icon>close</mat-icon></button>
       </div>
 
-      <select
-        [ngModel]="selectedStatus()"
-        (ngModelChange)="selectedStatus.set($event)"
-        class="status-select"
-      >
+      <select class="filter-select" [ngModel]="selectedStatus()" (ngModelChange)="selectedStatus.set($event)">
         <option value="ALL">All Statuses</option>
-        <option value="OPEN">Open</option>
-        <option value="IN_REVIEW">In Review</option>
-        <option value="RESOLVED">Resolved</option>
-        <option value="CLOSED">Closed</option>
+        <option *ngFor="let s of statusOptions" [value]="s">{{ s.replace('_', ' ') }}</option>
       </select>
+
+      <select class="filter-select" [ngModel]="selectedPriority()" (ngModelChange)="selectedPriority.set($event)">
+        <option value="ALL">All Priorities</option>
+        <option value="URGENT">Urgent</option>
+        <option value="HIGH">High</option>
+        <option value="MEDIUM">Medium</option>
+        <option value="LOW">Low</option>
+      </select>
+
+      <select class="filter-select" [ngModel]="selectedCategory()" (ngModelChange)="selectedCategory.set($event)">
+        <option value="ALL">All Categories</option>
+        <option *ngFor="let c of categoryOptions" [value]="c">{{ c.replace('_', ' ') }}</option>
+      </select>
+
+      <button class="reset-btn" matTooltip="Reset filters" (click)="resetFilters()">
+        <mat-icon>filter_alt_off</mat-icon>
+      </button>
     </div>
   </div>
 
-  <!-- Master / Detail Grid Split View -->
+  <!-- ═══ Master / Detail Workspace ══════════════════════════════════ -->
   <div class="tickets-workspace">
 
-    <!-- Left Column: Tickets List -->
-    <div class="tickets-list-col">
-      <div
-        class="ticket-card"
-        *ngFor="let t of filteredTickets()"
-        [class.selected]="selectedTicket()?.id === t.id"
-        (click)="selectTicket(t)"
-      >
-        <div class="card-top">
-          <div class="code-and-category">
-            <span class="ticket-code">{{ t.ticketCode }}</span>
-            <span class="target-badge" [class.super-admin]="t.targetRole === 'ROLE_SUPER_ADMIN'">
-              {{ t.targetRole === 'ROLE_SUPER_ADMIN' ? '⚡ Super Admin' : '🛡️ Admin' }}
-            </span>
-          </div>
-
-          <span
-            class="status-pill"
-            [ngClass]="{
-              'status-open': t.status === 'OPEN',
-              'status-review': t.status === 'IN_REVIEW',
-              'status-resolved': t.status === 'RESOLVED',
-              'status-closed': t.status === 'CLOSED'
-            }"
-          >
-            {{ t.status.replace('_', ' ') }}
-          </span>
-        </div>
-
-        <h4 class="ticket-subject">{{ t.subject }}</h4>
-
-        <div class="card-meta">
-          <span class="user-name">{{ t.createdByName }}</span>
-          <span class="meta-sep">&bull;</span>
-          <span class="priority-tag" [attr.data-priority]="t.priority">{{ t.priority }}</span>
-          <span class="meta-sep">&bull;</span>
-          <span class="time-ago">{{ t.createdAt }}</span>
-        </div>
-      </div>
-
-      <div class="empty-list" *ngIf="filteredTickets().length === 0">
-        <mat-icon>inbox</mat-icon>
-        <p>No support tickets match your selected filters.</p>
-        <button class="btn btn-sm btn-secondary" (click)="openRaiseTicketDialog()">Raise New Ticket</button>
-      </div>
+    <!-- Loading state -->
+    <div class="workspace-loading" *ngIf="isLoading()">
+      <div class="spinner"></div>
+      <span>Loading tickets from the support service...</span>
     </div>
 
-    <!-- Right Column: Ticket Details & Admin Resolution Actions -->
-    <div class="ticket-detail-col" *ngIf="selectedTicket() as t">
-      <div class="detail-header-panel">
-        <div class="detail-top-row">
-          <div class="code-group">
-            <span class="detail-code">{{ t.ticketCode }}</span>
-            <span class="cat-pill">{{ t.category }}</span>
-            <span class="target-pill" [class.super-admin]="t.targetRole === 'ROLE_SUPER_ADMIN'">
-              {{ t.targetRole === 'ROLE_SUPER_ADMIN' ? '⚡ Super Admin Queue' : '🛡️ Admin Queue' }}
+    <ng-container *ngIf="!isLoading()">
+
+      <!-- Left: Ticket List -->
+      <div class="tickets-list-col">
+        <div
+          class="ticket-card"
+          *ngFor="let t of filteredTickets()"
+          [class.selected]="selectedTicket()?.id === t.id"
+          (click)="selectTicket(t)"
+        >
+          <div class="card-top">
+            <span class="ticket-code">{{ t.ticketCode }}</span>
+            <span
+              class="status-pill"
+              [ngClass]="{
+                'status-open': t.status === 'OPEN',
+                'status-review': t.status === 'IN_REVIEW',
+                'status-resolved': t.status === 'RESOLVED',
+                'status-closed': t.status === 'CLOSED'
+              }"
+            >
+              <span class="status-dot"></span>{{ t.status.replace('_', ' ') }}
             </span>
           </div>
 
-          <span
-            class="status-pill large"
-            [ngClass]="{
-              'status-open': t.status === 'OPEN',
-              'status-review': t.status === 'IN_REVIEW',
-              'status-resolved': t.status === 'RESOLVED',
-              'status-closed': t.status === 'CLOSED'
-            }"
-          >
-            {{ t.status.replace('_', ' ') }}
-          </span>
+          <h4 class="ticket-subject">{{ t.subject }}</h4>
+
+          <div class="card-meta">
+            <span class="priority-chip" [attr.data-priority]="t.priority">{{ t.priority }}</span>
+            <span class="meta-sep">&bull;</span>
+            <span class="user-name">{{ t.createdByName }}</span>
+          </div>
+
+          <div class="card-foot">
+            <span class="target-chip" [class.super-admin]="t.targetRole === 'ROLE_SUPER_ADMIN'">
+              <mat-icon>{{ t.targetRole === 'ROLE_SUPER_ADMIN' ? 'flash_on' : 'shield' }}</mat-icon>
+              {{ t.targetRole === 'ROLE_SUPER_ADMIN' ? 'Super Admin' : 'Admin' }}
+            </span>
+            <span class="time-ago">{{ formatDate(t.createdAt) }}</span>
+          </div>
         </div>
 
-        <h2 class="detail-subject">{{ t.subject }}</h2>
-
-        <div class="detail-meta-bar">
-          <div class="meta-item">
-            <mat-icon>person</mat-icon>
-            <span>Raised by: <strong>{{ t.createdByName }}</strong> ({{ t.createdByEmail }})</span>
-          </div>
-          <div class="meta-item">
-            <mat-icon>schedule</mat-icon>
-            <span>Created: {{ t.createdAt }}</span>
-          </div>
-          <div class="meta-item" *ngIf="t.assignedToName">
-            <mat-icon>admin_panel_settings</mat-icon>
-            <span>Assigned Admin: <strong>{{ t.assignedToName }}</strong></span>
-          </div>
+        <div class="empty-list" *ngIf="filteredTickets().length === 0">
+          <mat-icon>inbox</mat-icon>
+          <h3>No tickets found</h3>
+          <p>No support tickets match your current filters.</p>
+          <button class="btn btn-primary btn-sm" (click)="openRaiseTicketDialog()">Raise New Ticket</button>
         </div>
       </div>
 
-      <div class="detail-scroll-content">
-
-        <!-- Description Box -->
-        <div class="detail-section">
-          <h3>Issue Description</h3>
-          <div class="desc-box">
-            <p>{{ t.description }}</p>
-          </div>
-        </div>
-
-        <!-- System Diagnostics Bar -->
-        <div class="detail-section" *ngIf="t.systemDiagnostics">
-          <h3>System Diagnostics Telemetry</h3>
-          <div class="diag-box">
-            <mat-icon>memory</mat-icon>
-            <code>{{ t.systemDiagnostics }}</code>
-          </div>
-        </div>
-
-        <!-- Resolution Notes (if present or when Admin) -->
-        <div class="detail-section" *ngIf="t.resolutionNotes || isAdminUser()">
-          <h3>Admin Resolution &amp; Solution Notes</h3>
-
-          <!-- View Mode for standard users -->
-          <div class="resolution-box" *ngIf="t.resolutionNotes && !isAdminUser()">
-            <mat-icon class="res-icon">check_circle</mat-icon>
-            <div class="res-text">
-              <p>{{ t.resolutionNotes }}</p>
-              <span class="res-admin">&mdash; Resolved by {{ t.assignedToName || 'Admin Team' }}</span>
+      <!-- Right: Detail Panel -->
+      <div class="ticket-detail-col" *ngIf="selectedTicket() as t">
+        <div class="detail-header">
+          <div class="detail-top-row">
+            <div class="code-group">
+              <span class="detail-code">{{ t.ticketCode }}</span>
+              <span class="cat-pill" *ngIf="t.category !== 'CUSTOM_ISSUE'">{{ t.category.replace('_', ' ') }}</span>
+              <span class="cat-pill custom" *ngIf="t.category === 'CUSTOM_ISSUE'">✨ {{ t.customCategoryName || 'Custom Issue' }}</span>
+              <span class="target-pill" [class.super-admin]="t.targetRole === 'ROLE_SUPER_ADMIN'">
+                {{ t.targetRole === 'ROLE_SUPER_ADMIN' ? 'Super Admin Queue' : 'Admin Queue' }}
+              </span>
+            </div>
+            <div class="top-actions">
+              <button class="btn btn-secondary btn-sm" *ngIf="isAdminUser() && !t.assignedToName" (click)="assignToMe()">
+                <mat-icon>person_add</mat-icon>
+                <span>Assign to Me</span>
+              </button>
+              <span
+                class="status-pill large"
+                [ngClass]="{
+                  'status-open': t.status === 'OPEN',
+                  'status-review': t.status === 'IN_REVIEW',
+                  'status-resolved': t.status === 'RESOLVED',
+                  'status-closed': t.status === 'CLOSED'
+                }"
+              >
+                {{ t.status.replace('_', ' ') }}
+              </span>
             </div>
           </div>
 
-          <!-- Edit / Resolve Mode for Super Admin / Admin -->
-          <div class="admin-action-box" *ngIf="isAdminUser()">
-            <div class="action-form-row">
-              <div class="form-group">
-                <label>Update Status</label>
-                <select [(ngModel)]="statusUpdateInput" class="form-control">
-                  <option value="OPEN">OPEN — Queued for review</option>
-                  <option value="IN_REVIEW">IN REVIEW — Admin working on issue</option>
-                  <option value="RESOLVED">RESOLVED — Issue solved &amp; verified</option>
-                  <option value="CLOSED">CLOSED — Ticket archived</option>
-                </select>
+          <h2 class="detail-subject">{{ t.subject }}</h2>
+
+          <div class="detail-meta-bar">
+            <div class="meta-item">
+              <mat-icon>person</mat-icon>
+              <span>Raised by <strong>{{ t.createdByName }}</strong></span>
+            </div>
+            <div class="meta-item">
+              <mat-icon>mail_outline</mat-icon>
+              <span>{{ t.createdByEmail }}</span>
+            </div>
+            <div class="meta-item" *ngIf="t.projectName">
+              <mat-icon>folder</mat-icon>
+              <span>Project: <strong>{{ t.projectName }}</strong></span>
+            </div>
+            <div class="meta-item">
+              <mat-icon>schedule</mat-icon>
+              <span>Created {{ formatDate(t.createdAt) }}</span>
+            </div>
+            <div class="meta-item" *ngIf="t.assignedToName">
+              <mat-icon>admin_panel_settings</mat-icon>
+              <span>Assigned <strong>{{ t.assignedToName }}</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-body">
+
+          <!-- Description -->
+          <section class="detail-section">
+            <h3><mat-icon>description</mat-icon> Issue Description</h3>
+            <div class="desc-box">{{ t.description }}</div>
+          </section>
+
+          <!-- Attachments Section -->
+          <section class="detail-section" *ngIf="(t.attachments && t.attachments.length > 0) || true">
+            <div class="section-title-row">
+              <h3><mat-icon>attach_file</mat-icon> Proof Attachments &amp; Screenshots</h3>
+              <label class="btn-attach-upload" *ngIf="isAdminUser() || t.createdByEmail === currentUser()?.email">
+                <input type="file" (change)="onDetailFileSelected($event)" style="display:none;" />
+                <mat-icon>cloud_upload</mat-icon>
+                <span>Upload Attachment</span>
+              </label>
+            </div>
+
+            <div class="attachments-grid" *ngIf="t.attachments && t.attachments.length > 0">
+              <a *ngFor="let url of t.attachments; let idx = index" [href]="url" target="_blank" class="attachment-card">
+                <mat-icon class="att-icon">insert_drive_file</mat-icon>
+                <div class="att-info">
+                  <span class="att-name">Proof Attachment #{{ idx + 1 }}</span>
+                  <span class="att-action">Click to view / download</span>
+                </div>
+                <mat-icon class="att-download">download</mat-icon>
+              </a>
+            </div>
+
+            <div class="empty-attachments" *ngIf="!t.attachments || t.attachments.length === 0">
+              <span>No attachments uploaded yet. Use the button above to upload screenshots or logs.</span>
+            </div>
+          </section>
+
+          <!-- System Diagnostics -->
+          <section class="detail-section" *ngIf="t.systemDiagnostics">
+            <h3><mat-icon>memory</mat-icon> System Diagnostics</h3>
+            <div class="diag-box">
+              <mat-icon>terminal</mat-icon>
+              <code>{{ t.systemDiagnostics }}</code>
+            </div>
+          </section>
+
+          <!-- Resolution -->
+          <section class="detail-section" *ngIf="t.resolutionNotes || isAdminUser()">
+            <h3><mat-icon>task_alt</mat-icon> Resolution &amp; Solution Notes</h3>
+
+            <div class="resolution-box" *ngIf="t.resolutionNotes && !isAdminUser()">
+              <mat-icon class="res-icon">check_circle</mat-icon>
+              <div class="res-text">
+                <p>{{ t.resolutionNotes }}</p>
+                <span class="res-admin">&mdash; {{ t.assignedToName || 'Admin Team' }}</span>
               </div>
             </div>
 
-            <div class="form-group">
-              <label>Resolution Notes / Instructions</label>
+            <div class="admin-resolve-panel" *ngIf="isAdminUser()">
+              <label class="panel-label">Resolution Status</label>
+              <select [(ngModel)]="statusUpdateInput" class="status-update-select">
+                <option value="OPEN">OPEN — Queued for review</option>
+                <option value="IN_REVIEW">IN REVIEW — Admin working on issue</option>
+                <option value="RESOLVED">RESOLVED — Issue solved &amp; verified</option>
+                <option value="CLOSED">CLOSED — Ticket archived</option>
+              </select>
+
+              <label class="panel-label">Resolution Notes / Instructions</label>
               <textarea
                 [(ngModel)]="resolutionNotesInput"
                 rows="3"
-                placeholder="Enter details on how the issue was resolved or instructions for the user..."
-                class="form-control"
+                placeholder="Document the root cause, applied fix and any required follow-up actions..."
               ></textarea>
+
+              <div class="resolve-actions">
+                <button class="btn btn-primary btn-sm" (click)="updateTicketStatus()">
+                  <mat-icon>save</mat-icon>
+                  <span>Save Status &amp; Notes</span>
+                </button>
+              </div>
             </div>
+          </section>
 
-            <div class="action-btns">
-              <button class="btn btn-primary" (click)="updateTicketStatus()">
-                <mat-icon>save</mat-icon>
-                <span>Save Status &amp; Resolution Notes</span>
-              </button>
-            </div>
-          </div>
-        </div>
+          <!-- Comments -->
+          <section class="detail-section">
+            <h3><mat-icon>forum</mat-icon> Communication Thread</h3>
 
-        <!-- Comment Thread -->
-        <div class="detail-section">
-          <h3>Communication History &amp; Comments</h3>
-
-          <div class="comments-thread">
-            <div class="comment-item" *ngFor="let c of t.comments">
-              <div class="comment-avatar">{{ c.authorName.charAt(0) }}</div>
-              <div class="comment-body">
-                <div class="comment-head">
-                  <strong class="author-name">{{ c.authorName }}</strong>
-                  <span class="author-role">{{ c.authorRole }}</span>
-                  <span class="comment-time">{{ c.createdAt }}</span>
+            <div class="comments-thread">
+              <div class="comment-item" *ngFor="let c of t.comments">
+                <div class="comment-avatar" [class.admin-avatar]="c.authorRole.includes('ADMIN')">
+                  {{ c.authorName.charAt(0).toUpperCase() }}
                 </div>
-                <p class="comment-text">{{ c.commentText }}</p>
+                <div class="comment-body">
+                  <div class="comment-head">
+                    <strong class="author-name">{{ c.authorName }}</strong>
+                    <span class="author-role">{{ displayRole(c.authorRole) }}</span>
+                    <span class="comment-time">{{ formatDate(c.createdAt) }}</span>
+                  </div>
+                  <p class="comment-text">{{ c.commentText }}</p>
+                </div>
+              </div>
+
+              <div class="empty-comments" *ngIf="!t.comments || t.comments.length === 0">
+                <mat-icon>chat_bubble_outline</mat-icon>
+                <p>No comments yet. Start the conversation below.</p>
               </div>
             </div>
 
-            <div class="empty-comments" *ngIf="!t.comments || t.comments.length === 0">
-              <p>No comments added yet.</p>
+            <div class="add-comment-box">
+              <input
+                type="text"
+                [(ngModel)]="commentInput"
+                placeholder="Write a message or follow-up note..."
+                (keyup.enter)="addComment()"
+              />
+              <button
+                class="send-btn"
+                matTooltip="Send comment"
+                (click)="addComment()"
+                [disabled]="!commentInput.trim()"
+              >
+                <mat-icon>send</mat-icon>
+              </button>
             </div>
-          </div>
+          </section>
 
-          <!-- Add Comment Input -->
-          <div class="add-comment-box">
-            <input
-              type="text"
-              [(ngModel)]="commentInput"
-              placeholder="Write a message or follow-up note..."
-              (keyup.enter)="addComment()"
-            />
-            <button class="btn btn-sm btn-primary" (click)="addComment()" [disabled]="!commentInput.trim()">
-              <mat-icon>send</mat-icon>
-            </button>
-          </div>
         </div>
-
       </div>
-    </div>
 
+      <!-- Right: Empty detail placeholder -->
+      <div class="ticket-detail-col detail-placeholder" *ngIf="!selectedTicket()">
+        <mat-icon>rule_folder</mat-icon>
+        <h3>Select a ticket</h3>
+        <p>Choose a support ticket from the list to view its full thread, diagnostics and resolution state.</p>
+      </div>
+
+    </ng-container>
   </div>
 
 </div>

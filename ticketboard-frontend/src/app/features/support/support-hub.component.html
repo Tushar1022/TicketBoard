@@ -1,114 +1,119 @@
 <div class="support-page-container">
 
-  <!-- Hero Banner & Search -->
-  <div class="support-hero">
-    <div class="hero-content">
-      <div class="hero-badge">
-        <mat-icon class="sm-icon">support_agent</mat-icon>
-        <span>Platform Help, Documentation & Support Desk</span>
-      </div>
-      <h1>How can we assist your project delivery today?</h1>
-      <p class="hero-sub">Search knowledge base, explore platform FAQs, or raise a direct support ticket to Super Admins & Admins.</p>
+  <!-- ═══ Hero Banner ═══════════════════════════════════════════════ -->
+  <section class="support-hero">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <div class="hero-badge">
+          <mat-icon class="sm-icon">support_agent</mat-icon>
+          <span>Support &amp; Governance Console</span>
+        </div>
+        <h1>How can we assist your project delivery today?</h1>
+        <p class="hero-sub">
+          Search the knowledge base, explore governance guides, or raise a ticket directly to
+          Super Admin &amp; Admin — resolved on a tracked SLA.
+        </p>
 
-      <div class="hero-search-box">
-        <mat-icon class="search-icon">search</mat-icon>
-        <input
-          type="text"
-          [ngModel]="searchQuery()"
-          (ngModelChange)="searchQuery.set($event)"
-          placeholder="Search documentation, FAQs, task guidelines, Jira sync..."
-        />
-        <button class="clear-btn" *ngIf="searchQuery()" (click)="searchQuery.set('')">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-    </div>
-  </div>
+        <div class="hero-search-box">
+          <mat-icon class="search-icon">search</mat-icon>
+          <input
+            type="text"
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
+            placeholder="Search documentation, FAQs, task guidelines, Jira sync..."
+          />
+          <button class="clear-btn" *ngIf="searchQuery()" (click)="searchQuery.set('')">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
 
-  <!-- Direct Support CTA Cards -->
-  <div class="cta-cards-grid">
-    <div class="cta-card super-admin-cta" (click)="openRaiseTicketDialog('ROLE_SUPER_ADMIN')">
-      <div class="cta-icon bg-purple">
-        <mat-icon>flash_on</mat-icon>
-      </div>
-      <div class="cta-info">
-        <h3>Raise Ticket to Super Admin</h3>
-        <p>Direct priority escalation for system architecture, permission elevation, or production outages.</p>
-        <span class="cta-link">Raise Super Admin Ticket &rarr;</span>
-      </div>
-    </div>
-
-    <div class="cta-card admin-cta" (click)="openRaiseTicketDialog('ROLE_ADMIN')">
-      <div class="cta-icon bg-blue">
-        <mat-icon>shield</mat-icon>
-      </div>
-      <div class="cta-info">
-        <h3>Raise Ticket to System Admin</h3>
-        <p>Submit queries regarding workspace governance, project data, user roles, or Jira sync issues.</p>
-        <span class="cta-link">Raise Admin Ticket &rarr;</span>
-      </div>
-    </div>
-
-    <div class="cta-card tickets-view-cta" routerLink="/support/tickets">
-      <div class="cta-icon bg-amber">
-        <mat-icon>confirmation_number</mat-icon>
-      </div>
-      <div class="cta-info">
-        <h3>My Support Tickets</h3>
-        <p>Track resolution progress and admin responses for your submitted queries.</p>
-        <div class="ticket-status-pill">
-          <span class="dot"></span>
-          <span>{{ openTicketsCount() }} Active Ticket(s)</span>
+        <div class="hero-actions">
+          <button class="hero-btn hero-btn-purple" (click)="openRaiseTicketDialog('ROLE_SUPER_ADMIN')">
+            <mat-icon>flash_on</mat-icon>
+            <span>Raise to Super Admin</span>
+          </button>
+          <button class="hero-btn hero-btn-blue" (click)="openRaiseTicketDialog('ROLE_ADMIN')">
+            <mat-icon>shield</mat-icon>
+            <span>Raise to System Admin</span>
+          </button>
+          <button class="hero-btn hero-btn-ghost" routerLink="/support/tickets">
+            <mat-icon>confirmation_number</mat-icon>
+            <span>My Support Tickets</span>
+          </button>
+          <button class="hero-btn hero-btn-ghost" *ngIf="isAdminUser()" routerLink="/admin/support-tickets">
+            <mat-icon>admin_panel_settings</mat-icon>
+            <span>Admin Tickets Console</span>
+          </button>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- Knowledge Base Category Grid -->
-  <section class="support-section">
-    <div class="section-header">
-      <h2>Knowledge Base &amp; Delivery Guides</h2>
-      <p>Explore comprehensive guides tailored for Project Managers, Engineers, and Business Analysts.</p>
-    </div>
-
-    <div class="kb-category-grid">
-      <div class="kb-card">
-        <div class="kb-icon text-indigo"><mat-icon>rocket_launch</mat-icon></div>
-        <h4>Getting Started</h4>
-        <p>Learn how to navigate workspace dashboards, project details, and executive delivery stats.</p>
-      </div>
-
-      <div class="kb-card">
-        <div class="kb-icon text-blue"><mat-icon>task</mat-icon></div>
-        <h4>Tasks &amp; Excel Compact Grid</h4>
-        <p>Master multi-column task forms, generic status dropdowns, and dynamic inline cell editing.</p>
-      </div>
-
-      <div class="kb-card">
-        <div class="kb-icon text-gold"><mat-icon>fact_check</mat-icon></div>
-        <h4>SLA Governance &amp; Milestones</h4>
-        <p>Track UAT Exit, SIT Exit, Dev Exit milestones and project delivery health metrics.</p>
-      </div>
-
-      <div class="kb-card">
-        <div class="kb-icon text-green"><mat-icon>schedule</mat-icon></div>
-        <h4>Time Tracking &amp; Approvals</h4>
-        <p>Log effort hours against SBI CR change requests and submit timesheets for PM review.</p>
+      <div class="hero-telemetry">
+        <div class="telemetry-card">
+          <div class="telemetry-top">
+            <span class="telemetry-label">Open &amp; In Review</span>
+            <span class="live-chip"><span class="live-dot"></span>LIVE</span>
+          </div>
+          <div class="telemetry-value">{{ openTicketsCount() }}</div>
+          <div class="telemetry-foot">Ticket(s) awaiting admin response</div>
+        </div>
+        <div class="telemetry-card">
+          <div class="telemetry-top">
+            <span class="telemetry-label">Urgent Queue</span>
+            <span class="live-chip red"><span class="live-dot"></span>PRIORITY</span>
+          </div>
+          <div class="telemetry-value urgent">{{ supportTicketService.urgentTicketsCount() }}</div>
+          <div class="telemetry-foot">Critical blockers needing attention</div>
+        </div>
+        <div class="telemetry-card actionable" routerLink="/support/tickets">
+          <div class="telemetry-top">
+            <span class="telemetry-label">Ticket Center</span>
+            <mat-icon class="telemetry-arrow">arrow_forward</mat-icon>
+          </div>
+          <div class="telemetry-value indigo">{{ supportTicketService.tickets().length }}</div>
+          <div class="telemetry-foot">Total tickets in this workspace</div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- Interactive FAQ Section -->
+  <!-- ═══ Knowledge Base ════════════════════════════════════════════ -->
   <section class="support-section">
     <div class="section-header">
-      <h2>Frequently Asked Questions</h2>
+      <div>
+        <span class="section-eyebrow">Knowledge Base</span>
+        <h2>Delivery Guides &amp; Documentation</h2>
+        <p>Tailored playbooks for Project Managers, Engineers, Analysts and QA teams.</p>
+      </div>
+    </div>
+
+    <div class="kb-category-grid">
+      <div class="kb-card" [class.accent-{{ kb.accent }}]="true" *ngFor="let kb of kbCategories">
+        <div class="kb-icon">
+          <mat-icon>{{ kb.icon }}</mat-icon>
+        </div>
+        <h4>{{ kb.title }}</h4>
+        <p>{{ kb.description }}</p>
+        <span class="kb-link">Browse guide <mat-icon>chevron_right</mat-icon></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FAQ Section ═══════════════════════════════════════════════ -->
+  <section class="support-section">
+    <div class="section-header faq-header">
+      <div>
+        <span class="section-eyebrow">Common Questions</span>
+        <h2>Frequently Asked Questions</h2>
+        <p>Instant answers for the most common platform tasks and governance queries.</p>
+      </div>
       <div class="category-pills">
-        <button [class.active]="selectedCategory() === 'ALL'" (click)="selectedCategory.set('ALL')">All FAQs</button>
-        <button [class.active]="selectedCategory() === 'TASKS'" (click)="selectedCategory.set('TASKS')">Tasks &amp; Grid</button>
-        <button [class.active]="selectedCategory() === 'TICKETS'" (click)="selectedCategory.set('TICKETS')">Support Tickets</button>
-        <button [class.active]="selectedCategory() === 'GOVERNANCE'" (click)="selectedCategory.set('GOVERNANCE')">Governance &amp; KPIs</button>
+        <button [class.active]="selectedCategory() === 'ALL'" (click)="selectedCategory.set('ALL')">All</button>
+        <button [class.active]="selectedCategory() === 'TASKS'" (click)="selectedCategory.set('TASKS')">Tasks</button>
+        <button [class.active]="selectedCategory() === 'TICKETS'" (click)="selectedCategory.set('TICKETS')">Tickets</button>
+        <button [class.active]="selectedCategory() === 'GOVERNANCE'" (click)="selectedCategory.set('GOVERNANCE')">Governance</button>
         <button [class.active]="selectedCategory() === 'TIMELOGS'" (click)="selectedCategory.set('TIMELOGS')">Time Logs</button>
-        <button [class.active]="selectedCategory() === 'SECURITY'" (click)="selectedCategory.set('SECURITY')">RBAC &amp; Security</button>
+        <button [class.active]="selectedCategory() === 'REPORTS'" (click)="selectedCategory.set('REPORTS')">Reports</button>
+        <button [class.active]="selectedCategory() === 'SECURITY'" (click)="selectedCategory.set('SECURITY')">Security</button>
       </div>
     </div>
 
@@ -120,10 +125,10 @@
       >
         <div class="faq-question" (click)="toggleFaq(faq)">
           <div class="q-title">
-            <mat-icon class="q-icon">help_outline</mat-icon>
+            <mat-icon class="q-icon">{{ faq.expanded ? 'help' : 'help_outline' }}</mat-icon>
             <span>{{ faq.question }}</span>
           </div>
-          <mat-icon class="chevron-icon">{{ faq.expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+          <mat-icon class="chevron-icon">{{ faq.expanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</mat-icon>
         </div>
 
         <div class="faq-answer" *ngIf="faq.expanded">
@@ -133,24 +138,65 @@
 
       <div class="empty-faq" *ngIf="filteredFaqs().length === 0">
         <mat-icon>find_in_page</mat-icon>
-        <p>No matching FAQs found. Try adjusting your search query or raise a support ticket directly to Admin.</p>
+        <h3>No matching results</h3>
+        <p>No FAQs matched your search. Raise a support ticket directly so the admin team can help.</p>
+        <button class="btn btn-primary" (click)="openRaiseTicketDialog()">Raise Support Ticket</button>
       </div>
     </div>
   </section>
 
-  <!-- Live System Health Telemetry Bar -->
+  <!-- ═══ Support Resources ═════════════════════════════════════════ -->
+  <section class="resources-strip">
+    <div class="resource-item">
+      <div class="resource-icon"><mat-icon>headset_mic</mat-icon></div>
+      <div>
+        <span class="resource-title">Help Desk</span>
+        <span class="resource-value">Mon–Fri, 9:00 – 18:00 IST</span>
+      </div>
+    </div>
+    <div class="resource-sep"></div>
+    <div class="resource-item">
+      <div class="resource-icon"><mat-icon>mail_outline</mat-icon></div>
+      <div>
+        <span class="resource-title">Email Support</span>
+        <span class="resource-value">support&#64;ticketboard.com</span>
+      </div>
+    </div>
+    <div class="resource-sep"></div>
+    <div class="resource-item">
+      <div class="resource-icon"><mat-icon>verified_user</mat-icon></div>
+      <div>
+        <span class="resource-title">SLA Commitment</span>
+        <span class="resource-value">Urgent: 4h &bull; High: 24h &bull; Standard: 48h</span>
+      </div>
+    </div>
+    <div class="resource-sep"></div>
+    <div class="resource-item">
+      <div class="resource-icon"><mat-icon>assessment</mat-icon></div>
+      <div>
+        <span class="resource-title">Governance</span>
+        <span class="resource-value">RBAC, Audit trails &amp; Role matrix</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ System Health Telemetry ═══════════════════════════════════ -->
   <div class="system-health-bar">
-    <div class="health-item">
-      <span class="dot green-dot"></span>
-      <span class="health-lbl">API Gateway &amp; Auth Service: <strong>Operational (99.99%)</strong></span>
+    <div class="health-bar-title">
+      <mat-icon>monitor_heart</mat-icon>
+      <span>System Status</span>
     </div>
     <div class="health-item">
       <span class="dot green-dot"></span>
-      <span class="health-lbl">Telemetry Pipeline: <strong>Live Real-Time Sync</strong></span>
+      <span class="health-lbl">API Gateway &amp; Auth Service <strong>Operational</strong></span>
     </div>
     <div class="health-item">
       <span class="dot green-dot"></span>
-      <span class="health-lbl">Jira Integration Webhook: <strong>Connected</strong></span>
+      <span class="health-lbl">Telemetry Pipeline <strong>Live Sync</strong></span>
+    </div>
+    <div class="health-item">
+      <span class="dot green-dot"></span>
+      <span class="health-lbl">Jira Integration Webhook <strong>Connected</strong></span>
     </div>
   </div>
 

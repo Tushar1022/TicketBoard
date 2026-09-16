@@ -42,10 +42,17 @@ public class SupportTicketController {
     }
 
     @GetMapping("/admin")
-    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_PROJECT_MANAGER', 'ROLE_TEAM_LEAD')")
     public ResponseEntity<ApiResponse<List<SupportTicketDto>>> getAdminQueue() {
         List<SupportTicketDto> tickets = supportTicketService.getAllTicketsForAdmin();
         return ResponseEntity.ok(ApiResponse.ok("Admin support ticket queue fetched", tickets));
+    }
+
+    @GetMapping("/admin/stats")
+    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_PROJECT_MANAGER', 'ROLE_TEAM_LEAD')")
+    public ResponseEntity<ApiResponse<SupportStatsDto>> getAdminStats() {
+        SupportStatsDto stats = supportTicketService.getStats();
+        return ResponseEntity.ok(ApiResponse.ok("Admin support ticket statistics fetched", stats));
     }
 
     @GetMapping("/{id}")
@@ -55,7 +62,7 @@ public class SupportTicketController {
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_PROJECT_MANAGER', 'ROLE_TEAM_LEAD')")
     public ResponseEntity<ApiResponse<SupportTicketDto>> updateTicketStatus(
             @PathVariable Long id,
             @Valid @RequestBody UpdateTicketStatusRequest request,
@@ -66,6 +73,19 @@ public class SupportTicketController {
         String email = authentication.getName();
         SupportTicketDto updated = supportTicketService.updateTicketStatus(id, request, email);
         return ResponseEntity.ok(ApiResponse.ok("Support ticket status updated successfully", updated));
+    }
+
+    @PostMapping(value = "/{id}/attachments", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<SupportTicketDto>> uploadAttachment(
+            @PathVariable Long id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        String email = authentication.getName();
+        SupportTicketDto updated = supportTicketService.uploadAttachment(id, file, email);
+        return ResponseEntity.ok(ApiResponse.ok("Attachment uploaded to support ticket", updated));
     }
 
     @PostMapping("/{id}/comments")

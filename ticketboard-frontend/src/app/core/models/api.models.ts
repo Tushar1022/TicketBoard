@@ -122,6 +122,7 @@ export interface Project {
   id: number;
   projectCode: string;
   name: string;
+  projectName?: string;
   description?: string;
   clientId: number;
   clientName?: string;
@@ -749,7 +750,7 @@ export interface LookupData {
 }
 
 // ─── Support Ticket Models ─────────────────────────────────────────────
-export type SupportCategory = 'SYSTEM_DEFECT' | 'ACCESS_REQUEST' | 'DATA_QUERY' | 'PERFORMANCE_ISSUE' | 'BILLING_SLA' | 'OTHER';
+export type SupportCategory = 'SYSTEM_DEFECT' | 'ACCESS_REQUEST' | 'DATA_QUERY' | 'PERFORMANCE_ISSUE' | 'BILLING_SLA' | 'CUSTOM_ISSUE' | 'OTHER';
 export type TicketPriority = 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW';
 export type TicketStatus = 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'CLOSED';
 
@@ -781,9 +782,48 @@ export interface SupportTicket {
   description: string;
   resolutionNotes?: string;
   systemDiagnostics?: string;
+  customCategoryName?: string;
+  projectId?: number;
+  projectName?: string;
+  moduleName?: string;
+  attachments?: string[];
   comments?: TicketComment[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SupportStats {
+  totalTickets: number;
+  openTickets: number;
+  inReviewTickets: number;
+  resolvedTickets: number;
+  closedTickets: number;
+  urgentTickets: number;
+  highPriorityTickets: number;
+  mediumPriorityTickets: number;
+  lowPriorityTickets: number;
+  unassignedTickets: number;
+  byStatus: Record<TicketStatus, number>;
+  byPriority: Record<TicketPriority, number>;
+  byCategory: Record<SupportCategory, number>;
+  byTargetRole: Record<'ROLE_SUPER_ADMIN' | 'ROLE_ADMIN', number>;
+}
+
+export interface ProjectStats {
+  totalTasks: number;
+  openTasks: number;
+  completedTasks: number;
+  totalRequirements: number;
+  openBugs: number;
+  totalMilestones: number;
+  achievedMilestones: number;
+  totalMembers: number;
+  totalEstimatedHours: number;
+  totalActualHours: number;
+  completionPercentage: number;
+  tasksByStatus: Record<string, number>;
+  tasksByPriority: Record<string, number>;
+  issuesBySeverity: Record<string, number>;
 }
 
 

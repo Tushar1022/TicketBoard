@@ -38,4 +38,16 @@ public interface RequirementRepository extends JpaRepository<Requirement, Long> 
 
     @Query("SELECT COUNT(r) FROM Requirement r WHERE r.project.id = :projectId")
     int countByProjectId(@Param("projectId") Long projectId);
+
+    @Query("SELECT r.status, COUNT(r) FROM Requirement r GROUP BY r.status")
+    List<Object[]> countByStatusGrouped();
+
+    @Query("SELECT r.status, COUNT(r) FROM Requirement r WHERE r.project.id = :projectId GROUP BY r.status")
+    List<Object[]> countByStatusGroupedForProject(@Param("projectId") Long projectId);
+
+    @Query("SELECT r.priority, COUNT(r) FROM Requirement r GROUP BY r.priority")
+    List<Object[]> countByPriorityGrouped();
+
+    @Query("SELECT r.priority, COUNT(r) FROM Requirement r WHERE r.project.id = :projectId GROUP BY r.priority")
+    List<Object[]> countByPriorityGroupedForProject(@Param("projectId") Long projectId);
 }

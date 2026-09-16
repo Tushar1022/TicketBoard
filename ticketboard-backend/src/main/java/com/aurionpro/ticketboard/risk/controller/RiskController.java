@@ -70,4 +70,18 @@ public class RiskController {
         IssueDto updated = riskService.updateIssue(id, dto);
         return ResponseEntity.ok(ApiResponse.ok("Issue updated successfully", updated));
     }
+
+    @PreAuthorize("hasAuthority('risk:view')")
+    @GetMapping("/issues/{id}")
+    public ResponseEntity<ApiResponse<IssueDto>> getIssueById(@PathVariable Long id) {
+        IssueDto issue = riskService.getIssueById(id);
+        return ResponseEntity.ok(ApiResponse.ok("Issue fetched successfully", issue));
+    }
+
+    @PreAuthorize("hasAnyAuthority('risk:create', 'risk:edit')")
+    @DeleteMapping("/issues/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteIssue(@PathVariable Long id) {
+        riskService.deleteIssue(id);
+        return ResponseEntity.ok(ApiResponse.ok("Issue deleted successfully", null));
+    }
 }

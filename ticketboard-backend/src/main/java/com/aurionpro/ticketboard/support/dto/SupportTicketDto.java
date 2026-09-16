@@ -29,6 +29,11 @@ public class SupportTicketDto {
     private String description;
     private String resolutionNotes;
     private String systemDiagnostics;
+    private String customCategoryName;
+    private Long projectId;
+    private String projectName;
+    private String moduleName;
+    private List<String> attachments;
     private List<TicketCommentDto> comments;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

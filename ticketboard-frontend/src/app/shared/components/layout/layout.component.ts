@@ -88,6 +88,7 @@ export class LayoutComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadRecentProjects();
+    this.supportTicketService.refreshAll();
   }
 
   public loadRecentProjects(): void {

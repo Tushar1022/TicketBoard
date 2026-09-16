@@ -17,5 +17,9 @@ public interface SupportTicketService {
 
     TicketCommentDto addComment(Long ticketId, AddTicketCommentRequest request, String currentUserEmail);
 
+    SupportTicketDto uploadAttachment(Long ticketId, org.springframework.web.multipart.MultipartFile file, String currentUserEmail);
+
     long getOpenTicketsCount();
+
+    SupportStatsDto getStats();
 }

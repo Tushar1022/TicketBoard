@@ -10,6 +10,8 @@ import java.util.List;
 @Entity
 @Table(name = "support_tickets", indexes = {
     @Index(name = "idx_supportticket_status", columnList = "status"),
+    @Index(name = "idx_supportticket_priority", columnList = "priority"),
+    @Index(name = "idx_supportticket_category", columnList = "category"),
     @Index(name = "idx_supportticket_created_by", columnList = "created_by")
 })
 @Getter
@@ -67,6 +69,24 @@ public class SupportTicket extends BaseEntity {
 
     @Column(name = "system_diagnostics", length = 500)
     private String systemDiagnostics;
+
+    @Column(name = "custom_category_name", length = 100)
+    private String customCategoryName;
+
+    @Column(name = "project_id")
+    private Long projectId;
+
+    @Column(name = "project_name", length = 150)
+    private String projectName;
+
+    @Column(name = "module_name", length = 100)
+    private String moduleName;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "support_ticket_attachments", joinColumns = @JoinColumn(name = "ticket_id"))
+    @Column(name = "file_url")
+    @Builder.Default
+    private List<String> attachments = new ArrayList<>();
 
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default

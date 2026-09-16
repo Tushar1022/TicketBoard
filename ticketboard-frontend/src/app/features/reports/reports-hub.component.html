@@ -10,77 +10,22 @@
   <!-- Page Header -->
   <div class="page-header">
     <div class="title-group">
-      <div class="badge badge-purple">
-        <mat-icon class="sm-icon">analytics</mat-icon>
-        <span>Real-Time Database Telemetry &bull; Custom Report Builder</span>
-      </div>
-      <h1>Enterprise Reports &amp; Interactive Analytics</h1>
-      <p class="subtitle">Generate custom database reports, opt-in specific fields, and export colorful PDFs, Excel spreadsheets, and clean CSV data.</p>
-    </div>
-
-    <!-- Tab Switcher -->
-    <div class="tab-switcher">
-      <button
-        class="tab-btn"
-        [class.active]="activeTab() === 'PORTFOLIO'"
-        (click)="activeTab.set('PORTFOLIO')"
-      >
-        <mat-icon>grid_view</mat-icon>
-        <span>Standard Report Cards</span>
-      </button>
-
-      <button
-        class="tab-btn"
-        [class.active]="activeTab() === 'CUSTOM_BUILDER'"
-        (click)="activeTab.set('CUSTOM_BUILDER')"
-      >
-        <mat-icon>tune</mat-icon>
-        <span>Custom Report Builder &amp; Field Selector</span>
-      </button>
+      <h1>Custom Report</h1>
     </div>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════
-       TAB 1: STANDARD REPORTS PORTFOLIO
+       CUSTOM INTERACTIVE REPORT BUILDER (FIELD OPT-IN & LIVE PREVIEW)
        ═══════════════════════════════════════════════════════════════════ -->
-  <div class="portfolio-grid" *ngIf="activeTab() === 'PORTFOLIO'">
-    <div class="report-card" *ngFor="let card of cards">
-      <div class="card-head">
-        <div class="icon-wrap">
-          <mat-icon>{{ card.icon }}</mat-icon>
-        </div>
-        <div class="card-titles">
-          <h3>{{ card.title }}</h3>
-          <p>{{ card.description }}</p>
-        </div>
-      </div>
-
-      <div class="card-actions">
-        <button class="btn btn-secondary btn-sm" (click)="previewCard(card.id, 'pdf')">
-          <mat-icon class="sm-icon">tune</mat-icon>
-          <span>Custom Reports</span>
-        </button>
-
-        <div class="export-dropdown-group">
-          <button class="btn btn-primary btn-sm" (click)="previewCard(card.id, 'pdf')">
-            <mat-icon class="sm-icon">picture_as_pdf</mat-icon>
-            <span>PDF</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════════════════════════
-       TAB 2: CUSTOM INTERACTIVE REPORT BUILDER (FIELD OPT-IN & LIVE PREVIEW)
-       ═══════════════════════════════════════════════════════════════════ -->
-  <div class="custom-builder-layout" *ngIf="activeTab() === 'CUSTOM_BUILDER'">
+  <div class="custom-builder-layout">
 
     <!-- Step 1: Category & Filter Control Panel -->
     <div class="builder-control-panel card-panel">
       <div class="control-header">
-        <div class="step-badge">STEP 1</div>
-        <h3>Select Report Category &amp; Filters</h3>
+        <div class="header-left">
+          <mat-icon class="panel-icon">filter_list</mat-icon>
+          <h3>Select Report Category &amp; Filters</h3>
+        </div>
       </div>
 
       <div class="category-pills-row">
@@ -96,26 +41,51 @@
       </div>
 
       <div class="filter-controls-row">
+        <div class="filter-group search-group">
+          <label>Search Data</label>
+          <div class="search-input-wrap">
+            <mat-icon class="search-icon">search</mat-icon>
+            <input
+              type="text"
+              [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event)"
+              placeholder="Search table records..."
+              class="form-control search-control"
+            />
+          </div>
+        </div>
+
         <div class="filter-group">
           <label>Status Filter</label>
           <select [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event); fetchCustomReportData()" class="form-control">
             <option value="ALL">All Statuses</option>
-            <option value="IN_PROGRESS">IN_PROGRESS</option>
-            <option value="COMPLETED">COMPLETED</option>
-            <option value="UAT_EXIT">UAT_EXIT</option>
-            <option value="BLOCKED">BLOCKED</option>
-            <option value="OPEN">OPEN</option>
+            <option *ngFor="let st of statusOptions()" [value]="st">{{ st }}</option>
           </select>
         </div>
 
         <div class="filter-group">
           <label>Project Context</label>
           <select [ngModel]="filterProject()" (ngModelChange)="filterProject.set($event); fetchCustomReportData()" class="form-control">
-            <option value="ALL">All Projects (Aurionpro Workspace)</option>
-            <option value="CR91">CR91 IFSC Routing Engine</option>
-            <option value="IPM-2026">IPM-2026 Instant Payments</option>
-            <option value="DCB-100">DCB-100 Core Banking</option>
+            <option value="ALL">All Projects</option>
+            <option *ngFor="let p of projectOptions()" [value]="p.code">{{ p.name }} ({{ p.code }})</option>
           </select>
+        </div>
+
+        <div class="filter-group">
+          <label>From Date</label>
+          <input type="date" [(ngModel)]="startDateInput" (ngModelChange)="fetchCustomReportData()" class="form-control" />
+        </div>
+
+        <div class="filter-group">
+          <label>To Date</label>
+          <input type="date" [(ngModel)]="endDateInput" (ngModelChange)="fetchCustomReportData()" class="form-control" />
+        </div>
+
+        <div class="filter-group filter-actions">
+          <button class="btn btn-secondary btn-sm" (click)="clearFilters()">
+            <mat-icon class="sm-icon">filter_alt_off</mat-icon>
+            <span>Reset</span>
+          </button>
         </div>
       </div>
     </div>
@@ -161,28 +131,60 @@
           <span class="records-count-pill">{{ totalRecordCount() }} Records Found</span>
         </div>
 
-        <!-- Export Buttons Group -->
+        <!-- Export Actions (consolidated dropdown) -->
         <div class="export-actions-group">
-          <button class="btn btn-pdf" (click)="exportCustomReport('pdf')">
-            <mat-icon>picture_as_pdf</mat-icon>
-            <span>Download Colourful PDF</span>
+          <button class="btn btn-ghost btn-sm" (click)="previewCustom()">
+            <mat-icon class="sm-icon">pageview</mat-icon>
+            <span>Print Preview</span>
           </button>
-          <button class="btn btn-excel" (click)="exportCustomReport('excel')">
-            <mat-icon>table_view</mat-icon>
-            <span>Download Excel (.xlsx)</span>
+          <button
+            class="btn btn-pdf btn-sm"
+            [matMenuTriggerFor]="exportMenu"
+            aria-haspopup="true"
+          >
+            <mat-icon class="sm-icon">download</mat-icon>
+            <span>Export</span>
+            <mat-icon class="sm-icon caret">arrow_drop_down</mat-icon>
           </button>
-          <button class="btn btn-csv" (click)="exportCustomReport('csv')">
-            <mat-icon>text_snippet</mat-icon>
-            <span>Download CSV</span>
-          </button>
+          <mat-menu #exportMenu="matMenu" xPosition="after">
+            <button mat-menu-item (click)="exportCustomReport('pdf')">
+              <mat-icon>picture_as_pdf</mat-icon>
+              <span>PDF Document</span>
+            </button>
+            <button mat-menu-item (click)="exportCustomReport('excel')">
+              <mat-icon>table_view</mat-icon>
+              <span>Excel Spreadsheet (.xlsx)</span>
+            </button>
+            <button mat-menu-item (click)="exportCustomReport('csv')">
+              <mat-icon>text_snippet</mat-icon>
+              <span>CSV Data</span>
+            </button>
+          </mat-menu>
         </div>
       </div>
 
-      <!-- Live Summary KPI Tiles -->
-      <div class="summary-kpis-row" *ngIf="liveSummaryKpis().length > 0">
-        <div class="kpi-tile" *ngFor="let kpi of liveSummaryKpis()">
-          <span class="kpi-lbl">{{ kpi.label }}</span>
-          <span class="kpi-val">{{ kpi.value }}</span>
+      <div class="render-settings-row">
+        <div class="render-option">
+          <label>Page Orientation</label>
+          <div class="segmented">
+            <button [class.active]="exportOrientation() === 'portrait'" (click)="exportOrientation.set('portrait')">
+              <mat-icon>vertical_align_top</mat-icon> Portrait
+            </button>
+            <button [class.active]="exportOrientation() === 'landscape'" (click)="exportOrientation.set('landscape')">
+              <mat-icon>swap_horiz</mat-icon> Landscape
+            </button>
+          </div>
+        </div>
+        <div class="render-option">
+          <label>PDF Layout</label>
+          <div class="segmented">
+            <button [class.active]="exportLayout() === 'standard'" (click)="exportLayout.set('standard')">
+              <mat-icon>web</mat-icon> Standard
+            </button>
+            <button [class.active]="exportLayout() === 'custom'" (click)="exportLayout.set('custom')">
+              <mat-icon>tune</mat-icon> Custom
+            </button>
+          </div>
         </div>
       </div>
 
@@ -196,7 +198,16 @@
         <table class="preview-table" *ngIf="!isLoadingPreview() && livePreviewRows().length > 0">
           <thead>
             <tr>
-              <th *ngFor="let col of selectedColumnsList()">{{ col.label }}</th>
+              <th
+                *ngFor="let col of selectedColumnsList()"
+                class="sortable-th"
+                (click)="sortColumn.set(col.key); sortDirection.set(sortDirection() === 'asc' ? 'desc' : 'asc')"
+              >
+                <span>{{ col.label }}</span>
+                <mat-icon *ngIf="sortColumn() === col.key" class="sort-icon">
+                  {{ sortDirection() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                </mat-icon>
+              </th>
             </tr>
           </thead>
           <tbody>

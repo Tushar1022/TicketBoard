@@ -35,6 +35,6 @@ export class CommentService {
     let params = new HttpParams()
       .set('entityType', entityType)
       .set('entityId', entityId.toString());
-    return this.http.get<ApiResponse<ActivityLog[]>>(this.auditUrl, { params });
+    return this.http.get<ApiResponse<ActivityLog[]>>(`${this.auditUrl}/timeline`, { params });
   }
 }

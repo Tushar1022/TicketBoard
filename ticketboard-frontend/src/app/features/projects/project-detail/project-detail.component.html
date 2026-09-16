@@ -63,27 +63,86 @@
       <div class="dashboard-toolbar">
         <div class="toolbar-title">
           <h2>Project Dashboard</h2>
-          <span class="sub-text">Live KPI tiles, Task Status report, and Issue Status breakdown</span>
+          <span class="sub-text">Live health, KPI tiles, task &amp; issue reports, delivery progress and recent activity</span>
+        </div>
+      </div>
+
+      <!-- Project Overview Health Strip -->
+      <div class="overview-strip" *ngIf="project() as p">
+        <div class="ov-block ov-primary">
+          <span class="ov-code">{{ p.projectCode }}</span>
+          <span class="ov-status-pill" [ngClass]="p.status === 'COMPLETED' || p.status === 'CLOSED' ? 'pill-green' : (p.status === 'ON_HOLD' ? 'pill-amber' : 'pill-blue')">
+            {{ (p.status || 'UNKNOWN').replace('_', ' ') }}
+          </span>
+        </div>
+        <div class="ov-block">
+          <span class="ov-label">Health</span>
+          <span class="ov-value">
+            <span class="health-dot" [ngClass]="'health-' + (p.health || 'GREEN').toLowerCase()"></span>
+            {{ p.health || 'GREEN' }}
+          </span>
+        </div>
+        <div class="ov-block">
+          <span class="ov-label">Client</span>
+          <span class="ov-value">{{ p.clientName || '—' }}</span>
+        </div>
+        <div class="ov-block editable-cell" (click)="startCellEdit('project', p.id, 'projectManagerId', $event)" style="cursor: pointer;">
+          <span class="ov-label">Project Manager <mat-icon class="mini-ico" style="font-size: 12px; height: 12px; width: 12px; vertical-align: middle;">edit</mat-icon></span>
+          <span class="ov-value" *ngIf="!isEditingCell('project', p.id, 'projectManagerId')">{{ p.projectManagerName || 'Unassigned' }}</span>
+          <select *ngIf="isEditingCell('project', p.id, 'projectManagerId')" class="form-control" style="padding: 2px 4px; font-size: 13px;" [value]="p.projectManagerId" (change)="updateProjectField('projectManagerId', $any($event.target).value)" (blur)="stopCellEdit()" (click)="$event.stopPropagation()">
+            <option *ngFor="let u of users()" [value]="u.id">{{ u.fullName }}</option>
+          </select>
+        </div>
+        <div class="ov-block">
+          <span class="ov-label">Timeline</span>
+          <span class="ov-value font-mono">{{ p.startDate || '—' }} → {{ p.plannedEndDate || 'Open' }}</span>
+        </div>
+        <div class="ov-block">
+          <span class="ov-label">Budget</span>
+          <span class="ov-value font-mono">{{ p.budget ? (p.budget | currency) : '—' }}</span>
+        </div>
+        <div class="ov-block ov-progress">
+          <span class="ov-label">Completion</span>
+          <div class="ov-progress-track">
+            <div class="ov-progress-fill" [style.width.%]="completionPct()"></div>
+          </div>
+          <span class="ov-progress-val">{{ completionPct() }}%</span>
         </div>
       </div>
 
       <!-- Top Row KPI Stat Tiles -->
-      <div class="kpi-tiles-row">
-        <div class="kpi-card" (click)="deepLinkFilter('total_issues')">
-          <span class="kpi-label">Total Issues</span>
-          <span class="kpi-value">{{ totalIssues() }}</span>
+      <div class="kpi-tiles-row kpi-tiles-eight">
+        <div class="kpi-card" (click)="deepLinkFilter('total_tasks')">
+          <span class="kpi-label">Total Tasks</span>
+          <span class="kpi-value">{{ taskCount() }}</span>
         </div>
-        <div class="kpi-card" (click)="deepLinkFilter('open_issues')">
-          <span class="kpi-label">Open Issues</span>
-          <span class="kpi-value text-amber">{{ openIssues() }}</span>
+        <div class="kpi-card" (click)="deepLinkFilter('open_tasks')">
+          <span class="kpi-label">Open Tasks</span>
+          <span class="kpi-value text-blue">{{ openTasksCount() }}</span>
         </div>
         <div class="kpi-card" (click)="deepLinkFilter('overdue')">
           <span class="kpi-label">Overdue Tasks</span>
           <span class="kpi-value text-red">{{ overdueTasks() }}</span>
         </div>
-        <div class="kpi-card" (click)="deepLinkFilter('open_tasks')">
-          <span class="kpi-label">Open Tasks Due Today</span>
-          <span class="kpi-value text-blue">{{ openTasksDueToday() }}</span>
+        <div class="kpi-card" (click)="deepLinkFilter('total_issues')">
+          <span class="kpi-label">Open Issues / Defects</span>
+          <span class="kpi-value">{{ totalIssues() }}</span>
+        </div>
+        <div class="kpi-card" (click)="deepLinkFilter('open_issues')">
+          <span class="kpi-label">Open Killing Bugs</span>
+          <span class="kpi-value text-amber">{{ openBugs() }}</span>
+        </div>
+        <div class="kpi-card" (click)="deepLinkFilter('requirements')">
+          <span class="kpi-label">Requirements</span>
+          <span class="kpi-value text-purple">{{ reqCount() }}</span>
+        </div>
+        <div class="kpi-card" (click)="deepLinkFilter('milestones')">
+          <span class="kpi-label">Milestones</span>
+          <span class="kpi-value text-green">{{ milestoneCount() }}</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Team Members</span>
+          <span class="kpi-value text-slate">{{ memberCount() }}</span>
         </div>
       </div>
 
@@ -139,6 +198,127 @@
             </div>
           </div>
         </div>
+
+        <!-- Widget 3: Team Members -->
+        <div class="widget-card">
+          <div class="widget-header">
+            <div>
+              <h3>Team Members</h3>
+              <span class="widget-subtitle">{{ memberCount() }} active allocation(s)</span>
+            </div>
+          </div>
+          <div class="widget-body">
+            <div class="members-list scrollable" *ngIf="project()?.members?.length">
+              <div class="member-row" *ngFor="let m of project()?.members">
+                <div class="member-avatar" [style.background-color]="avatarColor(m.userName)">{{ m.userName ? m.userName.charAt(0).toUpperCase() : '?' }}</div>
+                <div class="member-info">
+                  <strong>{{ m.userName || 'Unassigned' }}</strong>
+                  <span>{{ m.projectRole || 'Team Member' }}</span>
+                </div>
+                <span class="member-hours">{{ m.allocatedHoursPerDay || 0 }}h/day</span>
+              </div>
+            </div>
+            <div class="empty-inline" *ngIf="!project()?.members?.length">
+              No team members allocated to this project yet.
+            </div>
+          </div>
+        </div>
+
+        <!-- Widget 4: Milestone Delivery Progress -->
+        <div class="widget-card">
+          <div class="widget-header">
+            <div>
+              <h3>Milestone Delivery</h3>
+              <span class="widget-subtitle">{{ milestoneAchieved() }} of {{ milestoneCount() }} achieved</span>
+            </div>
+          </div>
+          <div class="widget-body">
+            <div class="empty-inline" *ngIf="milestoneCount() === 0">
+              No milestones scheduled for this project.
+            </div>
+            <div class="milestone-progress-wrap" *ngIf="milestoneCount() > 0">
+              <div class="ms-progress-ring-row">
+                <div class="ms-ring-wrap">
+                  <svg viewBox="0 0 36 36" class="circular-chart">
+                    <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3" />
+                    <path class="circle" [attr.stroke-dasharray]="(milestoneCount() ? (milestoneAchieved() / milestoneCount()) * 100 : 0) + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#10b981" stroke-width="3.5" />
+                  </svg>
+                  <span class="ms-ring-label">{{ milestoneCount() ? Math.round((milestoneAchieved() / milestoneCount()) * 100) : 0 }}%</span>
+                </div>
+                <div class="ms-detail-list">
+                  <div class="ms-detail-item">
+                    <span class="pill-green">{{ milestoneKPIs().achieved }} Achieved</span>
+                  </div>
+                  <div class="ms-detail-item">
+                    <span class="pill-blue">{{ milestoneKPIs().inProgress }} In Progress</span>
+                  </div>
+                  <div class="ms-detail-item">
+                    <span class="pill-red">{{ milestoneKPIs().missed }} Overdue / Missed</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Effort Consumption + Recent Activity Row -->
+      <div class="dashboard-bottom-grid">
+        <div class="widget-card">
+          <div class="widget-header">
+            <div>
+              <h3>Effort Consumption</h3>
+              <span class="widget-subtitle">Estimated vs Logged hours</span>
+            </div>
+          </div>
+          <div class="widget-body">
+            <div class="effort-row">
+              <div class="effort-block">
+                <span class="effort-label">Estimated</span>
+                <span class="effort-value font-mono">{{ totalPlannedHours() }}h</span>
+              </div>
+              <div class="effort-block">
+                <span class="effort-label">Logged</span>
+                <span class="effort-value font-mono text-blue">{{ totalLoggedHours() }}h</span>
+              </div>
+              <div class="effort-block">
+                <span class="effort-label">Utilization</span>
+                <span class="effort-value font-mono text-amber" [ngClass]="{ 'text-red': totalPlannedHours() > 0 && totalLoggedHours() > totalPlannedHours() }">
+                  {{ totalPlannedHours() > 0 ? Math.round((totalLoggedHours() / totalPlannedHours()) * 100) : 0 }}%
+                </span>
+              </div>
+            </div>
+            <div class="effort-track">
+              <div class="effort-fill" [style.width.%]="totalPlannedHours() > 0 ? Math.min(100, (totalLoggedHours() / totalPlannedHours()) * 100) : 0"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="widget-card activity-stream-card">
+          <div class="widget-header">
+            <div>
+              <h3>Recent Activity</h3>
+              <span class="widget-subtitle">Latest project audit trail</span>
+            </div>
+            <button class="view-all-btn" (click)="setTab('comments'); setCommentsView('activity')">
+              View all <mat-icon class="xs">arrow_forward</mat-icon>
+            </button>
+          </div>
+          <div class="widget-body">
+            <div class="feed-list scrollable" *ngIf="auditLogs().length">
+              <div class="feed-item" *ngFor="let a of auditLogs().slice(0, 6)">
+                <span class="feed-icon"><mat-icon>{{ activityTypeIcon(a.eventType) }}</mat-icon></span>
+                <div class="feed-body">
+                  <p class="feed-text">{{ a.summary }}</p>
+                  <span class="feed-meta">{{ a.performedByName || 'System' }} &bull; {{ formatChatTime(a.createdAt) }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="empty-inline" *ngIf="!auditLogs().length">
+              No activity recorded yet for this project.
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -191,19 +371,17 @@
           <div class="kanban-column" *ngFor="let col of kanbanColumns">
             <div class="kanban-column-header">
               <span class="kanban-status-pill" [ngClass]="taskStatusClass(col.status)">{{ col.label }}</span>
-              <span class="kanban-count-pill">{{ getColumnItems(col.status).length }}</span>
+              <span class="kanban-count-pill">{{ kanbanBoardData()[col.status].length }}</span>
             </div>
             <div class="kanban-cards-list"
                  cdkDropList
                  [id]="'cdk-drop-list-' + col.status"
-                 [cdkDropListData]="getColumnItems(col.status)"
+                 [cdkDropListData]="kanbanBoardData()[col.status]"
                  [cdkDropListConnectedTo]="getConnectedDropLists()"
                  (cdkDropListDropped)="onKanbanDrop($event, col.status)">
               <div class="kanban-card"
-                   *ngFor="let item of getColumnItems(col.status)"
+                   *ngFor="let item of kanbanBoardData()[col.status]"
                    cdkDrag
-                   (cdkDragStarted)="onKanbanDragStart()"
-                   (cdkDragEnded)="onKanbanDragEnd()"
                    (click)="openKanbanDetail(item)"
                    matTooltip="Drag to change status &bull; Click to open details">
                 <div class="card-drag-placeholder" *cdkDragPlaceholder></div>
@@ -235,7 +413,7 @@
                   </button>
                 </div>
               </div>
-              <div class="kanban-empty" *ngIf="getColumnItems(col.status).length === 0">No tasks</div>
+              <div class="kanban-empty" *ngIf="kanbanBoardData()[col.status].length === 0">No tasks</div>
             </div>
           </div>
         </div>
@@ -364,44 +542,90 @@
           </div>
           <div class="tree-group">
             <span class="group-title"><mat-icon class="xs">expand_more</mat-icon> Issue Basic Reports</span>
+            <a class="tree-item" [class.active]="selectedReportName() === 'Status'" (click)="selectReport('Issue Basic Reports', 'Status')">Status</a>
             <a class="tree-item" [class.active]="selectedReportName() === 'Severity'" (click)="selectReport('Issue Basic Reports', 'Severity')">Severity</a>
-            <a class="tree-item" [class.active]="selectedReportName() === 'Module'" (click)="selectReport('Issue Basic Reports', 'Module')">Module</a>
           </div>
         </aside>
 
         <!-- Center Chart & Paired Table Result -->
         <main class="report-result-canvas">
           <div class="report-result-header">
-            <h2>{{ selectedReportName() }}</h2>
-            <span class="total-badge">TOTAL: {{ taskCount() }} Tasks</span>
+            <div class="report-result-titles">
+              <h2>{{ selectedReportName() }}</h2>
+              <span class="total-badge">TOTAL: {{ reportTotal() }}</span>
+            </div>
+            <div class="report-export-actions">
+              <button class="export-btn" matTooltip="Print preview (landscape A4)" (click)="previewReport()">
+                <mat-icon class="sm">pageview</mat-icon><span>Preview</span>
+              </button>
+              <button class="export-btn pdf-btn" matTooltip="Download PDF (landscape)" (click)="exportReport('pdf', { orientation: 'landscape', layout: 'standard' })">
+                <mat-icon class="sm">picture_as_pdf</mat-icon><span>PDF</span>
+              </button>
+              <button class="export-btn pdf-btn" matTooltip="Download PDF (portrait)" (click)="exportReport('pdf', { orientation: 'portrait', layout: 'custom' })">
+                <mat-icon class="sm">picture_as_pdf</mat-icon><span>PDF Portrait</span>
+              </button>
+              <button class="export-btn xls-btn" matTooltip="Download Excel" (click)="exportReport('excel')">
+                <mat-icon class="sm">table_view</mat-icon><span>Excel</span>
+              </button>
+              <button class="export-btn csv-btn" matTooltip="Download CSV" (click)="exportReport('csv')">
+                <mat-icon class="sm">text_snippet</mat-icon><span>CSV</span>
+              </button>
+            </div>
           </div>
 
-          <div class="empty-inline" *ngIf="taskStatusSummary().length === 0">
-            No task data available to report on.
+          <div class="empty-inline" *ngIf="reportSeries().length === 0">
+            No data available to report on yet.
           </div>
 
-          <div class="report-chart-box" *ngIf="taskStatusSummary().length > 0">
+          <!-- BAR CHART -->
+          <div class="report-chart-box" *ngIf="reportSeries().length > 0 && selectedChartType() === 'bar'">
             <div class="bar-chart-container scrollable-x">
-              <div class="bar-column" *ngFor="let s of taskStatusSummary()">
-                <span class="bar-val">{{ s.count }}</span>
-                <div class="bar-fill" [style.height.px]="(s.count / (taskStatusSummary()[0].count || 1)) * 120" [style.background-color]="'#6366f1'"></div>
+              <div class="bar-column" *ngFor="let s of reportSeries(); let i = index">
+                <span class="bar-val">{{ s.value }}{{ s.isPercent ? '%' : '' }}</span>
+                <div class="bar-fill" [style.height.px]="Math.max(8, (s.value / reportMaxValue()) * 140)" [style.background-color]="reportColors[i % reportColors.length]"></div>
                 <span class="bar-label">{{ s.label }}</span>
               </div>
             </div>
           </div>
 
-          <div class="report-data-table-box" *ngIf="taskStatusSummary().length > 0">
+          <!-- PIE CHART -->
+          <div class="report-chart-box center-chart-box" *ngIf="reportSeries().length > 0 && (selectedChartType() === 'pie' || selectedChartType() === 'donut')">
+            <div class="pie-chart-wrap">
+              <div class="donut-chart-container">
+                <svg viewBox="0 0 36 36" class="circular-chart">
+                  <ng-container *ngFor="let s of reportSeries(); let i = index">
+                    <path class="circle" [attr.stroke-dasharray]="s.value + ', 100'" [attr.stroke-dashoffset]="pieOffset(s, i)" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" [attr.stroke]="reportColors[i % reportColors.length]" stroke-width="3.5" />
+                  </ng-container>
+                </svg>
+              </div>
+              <div class="legend-list">
+                <div class="legend-item" *ngFor="let s of reportSeries(); let i = index">
+                  <span class="legend-dot" [style.background-color]="reportColors[i % reportColors.length]"></span>
+                  {{ s.label }} - {{ s.value }}{{ s.isPercent ? '%' : '' }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="report-data-table-box" *ngIf="reportSeries().length > 0">
             <table class="zoho-report-table">
               <thead>
                 <tr>
-                  <th>Status</th>
+                  <th>{{ selectedReportName() }}</th>
                   <th>Count</th>
+                  <th>Distribution</th>
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let s of taskStatusSummary()">
+                <tr *ngFor="let s of reportSeries(); let i = index">
                   <td>{{ s.label }}</td>
-                  <td>{{ s.count }}</td>
+                  <td>{{ s.rawCount }}</td>
+                  <td class="dist-cell">
+                    <div class="dist-bar-track">
+                      <div class="dist-bar-fill" [style.width.%]="Math.round((s.rawCount / (reportTotal() || 1)) * 100)" [style.background-color]="reportColors[i % reportColors.length]"></div>
+                    </div>
+                    <span class="dist-pct">{{ Math.round((s.rawCount / (reportTotal() || 1)) * 100) }}%</span>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -414,14 +638,22 @@
           <div class="config-section">
             <label class="lbl">Chart Types</label>
             <div class="chart-icon-grid">
-              <button class="chart-btn active" matTooltip="Bar Chart"><mat-icon>bar_chart</mat-icon></button>
-              <button class="chart-btn" matTooltip="Pie Chart"><mat-icon>pie_chart</mat-icon></button>
-              <button class="chart-btn" matTooltip="Donut Chart"><mat-icon>donut_large</mat-icon></button>
+              <button class="chart-btn" [class.active]="selectedChartType() === 'bar'" matTooltip="Bar Chart" (click)="setChartType('bar')"><mat-icon>bar_chart</mat-icon></button>
+              <button class="chart-btn" [class.active]="selectedChartType() === 'pie'" matTooltip="Pie Chart" (click)="setChartType('pie')"><mat-icon>pie_chart</mat-icon></button>
+              <button class="chart-btn" [class.active]="selectedChartType() === 'donut'" matTooltip="Donut Chart" (click)="setChartType('donut')"><mat-icon>donut_large</mat-icon></button>
             </div>
           </div>
           <div class="config-section">
             <label class="lbl">Plot Options</label>
-            <select class="form-control sm"><option>X-Axis: Status</option></select>
+            <select class="form-control sm" [value]="selectedPlotOption()" (change)="setPlotOption($any($event.target).value)">
+              <option value="count">Count</option>
+              <option value="percent">Percentage</option>
+            </select>
+            <span class="config-hint">{{ selectedPlotOption() === 'percent' ? 'Showing values as % of total' : 'Showing raw counts' }}</span>
+          </div>
+          <div class="config-section">
+            <label class="lbl">Data Source</label>
+            <span class="config-source">{{ selectedReportCategory() }} / {{ selectedReportName() }}</span>
           </div>
         </aside>
       </div>
@@ -464,13 +696,14 @@
       </div>
     </div>
 
-    <!-- MODULE 5: MILESTONES (ENHANCED RICH UI) -->
+    <!-- MODULE 5: MILESTONES -->
     <div class="tab-pane milestones-pane" *ngIf="activeTab() === 'milestones'">
       <div class="milestones-toolbar">
         <div>
           <h2>Milestones &amp; Delivery Release Gates</h2>
           <span class="sub-text">Track phase gates, planned target dates, and completion status</span>
         </div>
+        <button class="btn btn-accent-primary" (click)="openCreateMilestoneModal()"><mat-icon class="xs">add</mat-icon> Add Milestone</button>
       </div>
 
       <!-- Milestone Summary KPI Bar -->
@@ -496,15 +729,18 @@
       <div class="empty-state" *ngIf="!project()?.milestones?.length">
         <mat-icon>flag</mat-icon>
         <h3>No milestones scheduled</h3>
-        <p>Milestones will appear here when they are planned for this project.</p>
+        <p>Click "Add Milestone" above to plan your first project phase gate.</p>
       </div>
 
-      <!-- Rich Cards Grid View for Milestones with Click-to-Edit -->
+      <!-- Milestone Cards Grid with Click-to-Edit + Delete -->
       <div class="milestones-grid-layout" *ngIf="project()?.milestones?.length">
         <div class="milestone-card" *ngFor="let m of project()?.milestones">
           <div class="card-header">
             <span class="ms-id font-mono">{{ m.milestoneId || ('MS-' + m.id) }}</span>
-            <span class="status-pill" [ngClass]="m.status === 'ACHIEVED' ? 'green-pill' : (m.status === 'IN_PROGRESS' ? 'blue-pill' : 'slate-pill')">{{ m.status }}</span>
+            <div class="card-header-actions">
+              <span class="status-pill" [ngClass]="m.status === 'ACHIEVED' ? 'green-pill' : (m.status === 'IN_PROGRESS' ? 'blue-pill' : 'slate-pill')">{{ m.status }}</span>
+              <button class="btn-icon-sm btn-danger-ghost" matTooltip="Delete milestone" (click)="$event.stopPropagation(); deleteMilestone(m)"><mat-icon class="xs">delete_outline</mat-icon></button>
+            </div>
           </div>
 
           <div class="card-body">
@@ -514,11 +750,10 @@
             </h3>
 
             <div class="ms-meta-row">
-              <span class="meta-item"><mat-icon class="xs">person</mat-icon> {{ m.ownerName || 'Kunal Salve' }}</span>
+              <span class="meta-item"><mat-icon class="xs">person</mat-icon> {{ m.ownerName || 'Unassigned' }}</span>
               <span class="meta-item font-mono"><mat-icon class="xs">calendar_today</mat-icon> {{ m.plannedDate }}</span>
             </div>
 
-            <!-- Progress Bar -->
             <div class="ms-progress-wrap">
               <div class="progress-lbl">
                 <span>Completion</span>
@@ -531,19 +766,64 @@
           </div>
 
           <div class="card-footer">
-            <span class="flag-chip"><mat-icon class="xs">flag</mat-icon> {{ m.flag || 'Release Milestone' }}</span>
-            <span class="linked-count">{{ m.linkedTaskCount || 10 }} Tasks &bull; {{ m.linkedIssueCount || 3 }} Issues</span>
+            <span class="flag-chip" *ngIf="m.flag"><mat-icon class="xs">flag</mat-icon> {{ m.flag }}</span>
+            <span class="linked-count">{{ m.linkedTaskCount ?? 0 }} Tasks &bull; {{ m.linkedIssueCount ?? 0 }} Issues</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create Milestone Modal -->
+      <div class="modal-backdrop" *ngIf="showCreateMilestoneModal()">
+        <div class="modal-card card-panel">
+          <div class="modal-header">
+            <div class="modal-title-wrap">
+              <mat-icon class="text-indigo">flag</mat-icon>
+              <div>
+                <h3>Create New Milestone</h3>
+                <span class="sub-text">Define phase gate, planned target date, and description</span>
+              </div>
+            </div>
+            <button class="icon-btn" (click)="closeCreateMilestoneModal()"><mat-icon>close</mat-icon></button>
+          </div>
+          <div class="modal-body scrollable-y">
+            <div class="form-group">
+              <label>Milestone Name <span class="required">*</span></label>
+              <input type="text" class="form-control" [(ngModel)]="newMilestone.name" placeholder="e.g. Phase 1 Release">
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label>Planned Date <span class="required">*</span></label>
+                <input type="date" class="form-control" [(ngModel)]="newMilestone.plannedDate">
+              </div>
+              <div class="form-group flex-1">
+                <label>Status</label>
+                <select class="form-control" [(ngModel)]="newMilestone.status">
+                  <option value="PLANNED">PLANNED</option>
+                  <option value="IN_PROGRESS">IN_PROGRESS</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <textarea class="form-control" rows="2" [(ngModel)]="newMilestone.description" placeholder="Optional description of this milestone..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-sm btn-ghost" (click)="closeCreateMilestoneModal()">Cancel</button>
+            <button class="btn btn-sm btn-primary" [disabled]="!newMilestone.name || !newMilestone.plannedDate" (click)="submitCreateMilestone()">
+              <mat-icon class="xs">save</mat-icon> Create Milestone
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- MODULE 6: TIME LOGS (ENHANCED RICH UI) -->
+    <!-- MODULE 6: TIME LOGS -->
     <div class="tab-pane timelogs-pane" *ngIf="activeTab() === 'timelogs'">
       <div class="timelogs-toolbar">
         <div>
           <h2>Time Logs &amp; Utilization Variance Report</h2>
-          <span class="sub-text">Log work hours, track planned vs actual effort variance</span>
+          <span class="sub-text">Log work hours, track actual effort and billing</span>
         </div>
         <button class="btn btn-accent-primary" (click)="openLogTime()"><mat-icon class="xs">timer</mat-icon> Log Time</button>
       </div>
@@ -560,7 +840,7 @@
         </div>
         <div class="kpi-box">
           <span class="kpi-lbl">Variance (P - L)</span>
-          <span class="kpi-num text-green">+{{ timeLogMetrics().varianceHours }} hrs</span>
+          <span class="kpi-num" [ngClass]="{ 'text-red': timeLogMetrics().varianceHours < 0, 'text-green': timeLogMetrics().varianceHours >= 0 }">+{{ timeLogMetrics().varianceHours }} hrs</span>
         </div>
         <div class="kpi-box">
           <span class="kpi-lbl">Billable Ratio</span>
@@ -578,24 +858,35 @@
         <table class="zoho-timelogs-table">
           <thead>
             <tr>
-              <th>Completion Date</th>
+              <th>Work Date</th>
               <th>Resource / User</th>
-              <th>Task / Description</th>
-              <th>Work Hours (P)</th>
-              <th>Timelog Total (L)</th>
-              <th>Difference (P - L)</th>
+              <th>Task</th>
+              <th>Description</th>
+              <th>Hours</th>
+              <th>Status</th>
               <th>Billing Type</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let entry of timeEntries()">
-              <td class="font-mono">{{ entry.completionDate || entry.workDate }}</td>
-              <td class="font-bold">{{ entry.userName || 'Kunal Salve' }}</td>
-              <td class="text-subtle">{{ entry.description || 'Dev Exit & Code Refactoring' }}</td>
-              <td class="font-mono">{{ entry.workHoursPlanned || (entry.totalHours + 'h') }}</td>
-              <td class="font-mono font-bold">{{ entry.timelogTotal || (entry.totalHours + 'h') }}</td>
-              <td class="font-mono text-green font-bold">{{ entry.differenceHoursFormatted || '+0h' }}</td>
-              <td><span class="status-pill green-pill">{{ entry.billingType || 'Billable' }}</span></td>
+              <td class="font-mono">{{ entry.workDate }}</td>
+              <td class="font-bold">{{ entry.userName || 'Unknown' }}</td>
+              <td class="text-subtle">{{ entry.workItemTitle || '—' }}</td>
+              <td class="text-subtle">{{ entry.description || '—' }}</td>
+              <td class="font-mono font-bold">{{ entry.totalHours }}h</td>
+              <td>
+                <span class="status-pill" [ngClass]="{
+                  'green-pill': entry.status === 'APPROVED',
+                  'blue-pill': entry.status === 'SUBMITTED',
+                  'red-pill': entry.status === 'REJECTED',
+                  'slate-pill': entry.status === 'LOGGED'
+                }">{{ entry.status }}</span>
+              </td>
+              <td><span class="status-pill" [ngClass]="{ 'green-pill': entry.billingType === 'Billable', 'blue-pill': entry.billingType === 'Non-Billable' }">{{ entry.billingType || 'Billable' }}</span></td>
+              <td>
+                <button class="btn-icon-sm btn-danger-ghost" matTooltip="Delete entry" (click)="deleteTimeEntry(entry)"><mat-icon class="xs">delete_outline</mat-icon></button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -605,89 +896,194 @@
     <!-- MODULE 7: ISSUES WORKSPACE -->
     <div class="tab-pane issues-pane" *ngIf="activeTab() === 'issues'">
       <div class="issues-master-detail-workspace">
-        <!-- Left Issues Master Scrollable Rail -->
+        <!-- Left Issues Master Rail -->
         <aside class="issues-master-rail">
           <div class="rail-header">
-            <h3>Issues mapped to Tasks</h3>
+            <h3>Issues &amp; Defects</h3>
             <button class="btn btn-primary-accent" (click)="openCreateIssueModal()"><mat-icon class="xs">add</mat-icon> Submit Issue</button>
           </div>
           <div class="issues-list">
             <div class="issue-row-card" *ngFor="let iss of issues()" [class.selected]="selectedIssue()?.id === iss.id" (click)="selectIssue(iss)">
               <div class="row-top">
                 <span class="issue-code font-bold">{{ iss.issueCode }}</span>
-                <span class="status-banner-chip red">{{ iss.status }}</span>
+                <span class="status-banner-chip" [ngClass]="{
+                  'red': iss.status === 'OPEN' || iss.status === 'REOPENED',
+                  'amber': iss.status === 'IN_PROGRESS',
+                  'green': iss.status === 'RESOLVED' || iss.status === 'CLOSED'
+                }">{{ iss.status }}</span>
               </div>
               <div class="issue-title-text">{{ iss.title || iss.description }}</div>
-              <div class="reporter-sub">{{ iss.reporterName || 'Unknown' }}</div>
+              <div class="reporter-sub">
+                <span class="severity-dot" [ngClass]="iss.severity === 'CRITICAL' ? 'sev-critical' : (iss.severity === 'HIGH' ? 'sev-high' : 'sev-default')"></span>
+                {{ iss.severity }} &bull; {{ iss.ownerName || 'Unassigned' }}
+              </div>
             </div>
-
             <div class="empty-inline" *ngIf="issues().length === 0">
               No issues recorded for this project yet.
             </div>
           </div>
         </aside>
 
-        <!-- Right Selected Issue Full Detail Pane -->
-        <main class="issue-detail-pane" *ngIf="issues().length">
+        <!-- Right Selected Issue Detail Pane -->
+        <main class="issue-detail-pane" *ngIf="selectedIssue() as iss">
           <div class="issue-detail-header">
             <div class="title-meta">
-              <h2>{{ selectedIssue()?.title || issues()[0].title }}</h2>
-              <div class="breadcrumb-chip">By {{ selectedIssue()?.reporterName || issues()[0].reporterName || 'Unknown' }} &bull; {{ selectedIssue()?.projectName || project()?.name || '' }}</div>
+              <h2>{{ iss.title || iss.description }}</h2>
+              <div class="breadcrumb-chip">
+                By {{ iss.ownerName || 'Unassigned' }} &bull; {{ iss.projectName || project()?.name || '' }}
+              </div>
+            </div>
+            <div class="header-actions">
+              <button class="btn btn-sm btn-secondary" (click)="openUpdateIssueModal(iss)"><mat-icon class="xs">edit</mat-icon> Edit</button>
+              <button class="btn btn-sm btn-danger" (click)="deleteIssue(iss)"><mat-icon class="xs">delete_outline</mat-icon> Delete</button>
             </div>
           </div>
 
-          <div class="status-banner red-banner">
-            STATUS: <strong>{{ selectedIssue()?.status || issues()[0].status }}</strong>
+          <div class="status-banner" [ngClass]="{
+            'red-banner': iss.status === 'OPEN' || iss.status === 'REOPENED',
+            'amber-banner': iss.status === 'IN_PROGRESS',
+            'green-banner': iss.status === 'RESOLVED' || iss.status === 'CLOSED'
+          }">
+            STATUS: <strong>{{ iss.status }}</strong>
+            <div class="status-actions">
+              <button class="status-action-btn" *ngIf="iss.status !== 'IN_PROGRESS'" (click)="updateIssueStatus(iss, 'IN_PROGRESS')">Start</button>
+              <button class="status-action-btn" *ngIf="iss.status !== 'RESOLVED'" (click)="updateIssueStatus(iss, 'RESOLVED')">Resolve</button>
+              <button class="status-action-btn" *ngIf="iss.status !== 'CLOSED'" (click)="updateIssueStatus(iss, 'CLOSED')">Close</button>
+            </div>
           </div>
 
           <div class="issue-section">
             <h4>Description</h4>
-            <p>{{ selectedIssue()?.description || issues()[0].description }}</p>
-            <div class="steps-box" *ngIf="selectedIssue()?.stepsToReproduce">
+            <p>{{ iss.description }}</p>
+            <div class="steps-box" *ngIf="iss.stepsToReproduce">
               <strong>Steps to Reproduce:</strong>
-              <pre>{{ selectedIssue()?.stepsToReproduce }}</pre>
+              <pre>{{ iss.stepsToReproduce }}</pre>
             </div>
           </div>
 
           <div class="issue-section grid-fields">
             <h4>Issue Information</h4>
-            <div class="field-item"><span class="lbl">Associated Team</span><span class="val">{{ selectedIssue()?.associatedTeam || '—' }}</span></div>
-            <div class="field-item"><span class="lbl">Assignee</span><span class="val">{{ selectedIssue()?.assigneeName || '—' }}</span></div>
-            <div class="field-item"><span class="lbl">Severity</span><span class="val text-red font-bold">{{ selectedIssue()?.severity || issues()[0].severity }}</span></div>
-            <div class="field-item"><span class="lbl">Classification</span><span class="val">{{ selectedIssue()?.classification || '—' }}</span></div>
-            <div class="field-item"><span class="lbl">Reproducible</span><span class="val">{{ selectedIssue()?.reproducible || '—' }}</span></div>
-            <div class="field-item"><span class="lbl">CR Value</span><span class="val font-mono">{{ selectedIssue()?.crValue ? (selectedIssue()!.crValue! | currency) : '—' }}</span></div>
+            <div class="field-item"><span class="lbl">Severity</span><span class="val text-red font-bold">{{ iss.severity }}</span></div>
+            <div class="field-item"><span class="lbl">Classification</span><span class="val">{{ iss.classification || '—' }}</span></div>
+            <div class="field-item"><span class="lbl">Reproducible</span><span class="val">{{ iss.reproducible || '—' }}</span></div>
+            <div class="field-item"><span class="lbl">Associated Team</span><span class="val">{{ iss.associatedTeam || '—' }}</span></div>
+            <div class="field-item"><span class="lbl">Assignee</span><span class="val">{{ iss.assigneeName || '—' }}</span></div>
+            <div class="field-item"><span class="lbl">CR Value</span><span class="val font-mono">{{ iss.crValue ? (iss.crValue! | currency) : '—' }}</span></div>
+            <div class="field-item"><span class="lbl">Resolution</span><span class="val">{{ iss.resolution || '—' }}</span></div>
+            <div class="field-item"><span class="lbl">Created</span><span class="val font-mono">{{ iss.createdAt || '—' }}</span></div>
           </div>
         </main>
 
-        <main class="issue-detail-pane" *ngIf="issues().length === 0">
-          <div class="empty-inline">
-            Select an issue from the list to view its details.
-          </div>
+        <main class="issue-detail-pane" *ngIf="!selectedIssue()">
+          <div class="empty-inline">Select an issue from the list to view its details.</div>
         </main>
+      </div>
+
+      <!-- Update Issue Modal -->
+      <div class="modal-backdrop" *ngIf="showUpdateIssueModal()">
+        <div class="modal-card card-panel modal-lg">
+          <div class="modal-header">
+            <div class="modal-title-wrap">
+              <mat-icon class="text-indigo">edit</mat-icon>
+              <div>
+                <h3>Update Issue</h3>
+                <span class="sub-text">Edit severity, status, classification, and resolution</span>
+              </div>
+            </div>
+            <button class="icon-btn" (click)="closeUpdateIssueModal()"><mat-icon>close</mat-icon></button>
+          </div>
+          <div class="modal-body scrollable-y">
+            <div class="form-group">
+              <label>Title</label>
+              <input type="text" class="form-control" [(ngModel)]="issueEditForm.title">
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label>Severity</label>
+                <select class="form-control" [(ngModel)]="issueEditForm.severity">
+                  <option value="LOW">LOW</option>
+                  <option value="MEDIUM">MEDIUM</option>
+                  <option value="HIGH">HIGH</option>
+                  <option value="CRITICAL">CRITICAL</option>
+                </select>
+              </div>
+              <div class="form-group flex-1">
+                <label>Status</label>
+                <select class="form-control" [(ngModel)]="issueEditForm.status">
+                  <option value="OPEN">OPEN</option>
+                  <option value="IN_PROGRESS">IN_PROGRESS</option>
+                  <option value="RESOLVED">RESOLVED</option>
+                  <option value="CLOSED">CLOSED</option>
+                  <option value="REOPENED">REOPENED</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <textarea class="form-control" rows="2" [(ngModel)]="issueEditForm.description"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Steps to Reproduce</label>
+              <textarea class="form-control" rows="2" [(ngModel)]="issueEditForm.stepsToReproduce"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label>Classification</label>
+                <input type="text" class="form-control" [(ngModel)]="issueEditForm.classification" placeholder="e.g. UI, Backend">
+              </div>
+              <div class="form-group flex-1">
+                <label>Resolution</label>
+                <input type="text" class="form-control" [(ngModel)]="issueEditForm.resolution" placeholder="e.g. Fixed in v2.1">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label>CR Value</label>
+                <input type="number" class="form-control" [(ngModel)]="issueEditForm.crValue">
+              </div>
+              <div class="form-group flex-1">
+                <label>CR Man-Days</label>
+                <input type="number" class="form-control" [(ngModel)]="issueEditForm.crManDays">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-sm btn-ghost" (click)="closeUpdateIssueModal()">Cancel</button>
+            <button class="btn btn-sm btn-primary" (click)="submitUpdateIssue()">
+              <mat-icon class="xs">save</mat-icon> Save Changes
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- MODULE 8: COMMENTS / PROJECT DISCUSSION (CHAT) -->
+    <!-- MODULE 8: COMMENTS / ACTIVITY STREAM -->
     <div class="tab-pane comments-pane" *ngIf="activeTab() === 'comments'">
       <div class="comments-chat-box">
         <div class="chat-header">
           <div class="chat-title-wrap">
             <mat-icon class="chat-title-icon">chat</mat-icon>
             <div>
-              <h3>Project Discussion</h3>
-              <span class="chat-sub">Author, added time and edit history are tracked for every comment</span>
+              <h3>Project Discussion &amp; Activity</h3>
+              <span class="chat-sub">Comments and full audit trail of project events</span>
             </div>
           </div>
-          <span class="chat-count-pill">Comments ({{ comments().length }})</span>
+          <div class="comments-view-toggle">
+            <button class="view-toggle-btn" [class.active]="commentsView() === 'discussion'" (click)="setCommentsView('discussion')">
+              <mat-icon class="xs">forum</mat-icon> Discussion ({{ comments().length }})
+            </button>
+            <button class="view-toggle-btn" [class.active]="commentsView() === 'activity'" (click)="setCommentsView('activity')">
+              <mat-icon class="xs">history</mat-icon> Activity ({{ auditLogs().length }})
+            </button>
+          </div>
         </div>
 
-        <div class="chat-messages-stream">
+        <!-- Discussion View -->
+        <div class="chat-messages-stream" *ngIf="commentsView() === 'discussion'">
           <div class="chat-message-item" *ngFor="let c of comments()">
             <div class="msg-avatar" [style.background-color]="avatarColor(c.authorName)">
               {{ c.authorName ? c.authorName.charAt(0).toUpperCase() : '?' }}
             </div>
-
             <div class="msg-content-wrap">
               <div class="msg-meta">
                 <span class="msg-author">{{ c.authorName || 'Anonymous' }}</span>
@@ -697,11 +1093,7 @@
                   Edited {{ formatChatTime(c.updatedAt) }}{{ c.updatedBy ? ' by ' + c.updatedBy : '' }}
                 </span>
               </div>
-
-              <div class="msg-bubble" *ngIf="editingCommentId() !== c.id">
-                {{ c.content }}
-              </div>
-
+              <div class="msg-bubble" *ngIf="editingCommentId() !== c.id">{{ c.content }}</div>
               <div class="chat-edit-box" *ngIf="editingCommentId() === c.id">
                 <textarea rows="3" class="form-control" [(ngModel)]="commentEditText"></textarea>
                 <div class="chat-edit-actions">
@@ -711,25 +1103,37 @@
                   </button>
                 </div>
               </div>
-
               <div class="msg-actions" *ngIf="editingCommentId() !== c.id">
-                <button class="msg-action-btn" (click)="startEditComment(c)" matTooltip="Edit comment">
-                  <mat-icon>edit</mat-icon> Edit
-                </button>
-                <button class="msg-action-btn danger" (click)="deleteComment(c)" matTooltip="Delete comment">
-                  <mat-icon>delete_outline</mat-icon> Delete
-                </button>
+                <button class="msg-action-btn" (click)="startEditComment(c)" matTooltip="Edit comment"><mat-icon>edit</mat-icon> Edit</button>
+                <button class="msg-action-btn danger" (click)="deleteComment(c)" matTooltip="Delete comment"><mat-icon>delete_outline</mat-icon> Delete</button>
               </div>
             </div>
           </div>
-
           <div class="chat-empty" *ngIf="comments().length === 0">
             <mat-icon>forum</mat-icon>
             <span>No comments yet — start the project discussion below.</span>
           </div>
         </div>
 
-        <div class="chat-composer">
+        <!-- Activity Stream View -->
+        <div class="activity-stream" *ngIf="commentsView() === 'activity'">
+          <div class="feed-list scrollable" *ngIf="auditLogs().length">
+            <div class="feed-item" *ngFor="let a of auditLogs()">
+              <span class="feed-icon"><mat-icon>{{ activityTypeIcon(a.eventType) }}</mat-icon></span>
+              <div class="feed-body">
+                <p class="feed-text">{{ a.summary }}</p>
+                <span class="feed-meta">{{ a.performedByName || 'System' }} &bull; {{ formatChatTime(a.createdAt) }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="chat-empty" *ngIf="!auditLogs().length">
+            <mat-icon>history</mat-icon>
+            <span>No activity recorded yet for this project.</span>
+          </div>
+        </div>
+
+        <!-- Composer (Discussion view only) -->
+        <div class="chat-composer" *ngIf="commentsView() === 'discussion'">
           <div class="composer-avatar" [style.background-color]="avatarColor(users().length > 0 ? users()[0].fullName : '')">
             {{ users().length > 0 ? users()[0].fullName.charAt(0).toUpperCase() : 'U' }}
           </div>

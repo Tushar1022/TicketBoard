@@ -1,12 +1,15 @@
 package com.aurionpro.ticketboard.dashboard.controller;
 
 import com.aurionpro.ticketboard.common.response.ApiResponse;
+import com.aurionpro.ticketboard.dashboard.dto.ReportCatalogItemDto;
 import com.aurionpro.ticketboard.dashboard.dto.ReportDataResponse;
 import com.aurionpro.ticketboard.dashboard.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/reports")
@@ -15,6 +18,11 @@ import org.springframework.web.bind.annotation.*;
 public class ReportController {
 
     private final ReportService reportService;
+
+    @GetMapping("/catalog")
+    public ResponseEntity<ApiResponse<List<ReportCatalogItemDto>>> getReportCatalog() {
+        return ResponseEntity.ok(ApiResponse.ok("Report catalog loaded successfully", reportService.getReportCatalog()));
+    }
 
     @GetMapping("/data/{category}")
     public ResponseEntity<ApiResponse<ReportDataResponse>> getReportData(

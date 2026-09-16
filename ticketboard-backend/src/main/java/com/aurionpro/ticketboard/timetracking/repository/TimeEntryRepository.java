@@ -41,4 +41,22 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, Long> {
 
     @Query("SELECT SUM(t.totalHours) FROM TimeEntry t")
     Double sumTotalHoursLogged();
+
+    @Query("SELECT t.workDate, SUM(t.totalHours) FROM TimeEntry t GROUP BY t.workDate ORDER BY t.workDate")
+    List<Object[]> hoursGroupedByDate();
+
+    @Query("SELECT t.workDate, SUM(t.totalHours) FROM TimeEntry t WHERE t.project.id = :projectId GROUP BY t.workDate ORDER BY t.workDate")
+    List<Object[]> hoursGroupedByDateForProject(@Param("projectId") Long projectId);
+
+    @Query("SELECT t.status, COUNT(t) FROM TimeEntry t GROUP BY t.status")
+    List<Object[]> countByStatusGrouped();
+
+    @Query("SELECT t.status, COUNT(t) FROM TimeEntry t WHERE t.project.id = :projectId GROUP BY t.status")
+    List<Object[]> countByStatusGroupedForProject(@Param("projectId") Long projectId);
+
+    @Query("SELECT t.user.id, SUM(t.totalHours) FROM TimeEntry t WHERE t.user IS NOT NULL GROUP BY t.user.id")
+    List<Object[]> hoursGroupedByUser();
+
+    @Query("SELECT t.user.id, SUM(t.totalHours) FROM TimeEntry t WHERE t.project.id = :projectId AND t.user IS NOT NULL GROUP BY t.user.id")
+    List<Object[]> hoursGroupedByUserForProject(@Param("projectId") Long projectId);
 }

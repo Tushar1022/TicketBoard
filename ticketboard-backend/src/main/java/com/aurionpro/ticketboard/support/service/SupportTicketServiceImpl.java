@@ -13,7 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,6 +26,7 @@ public class SupportTicketServiceImpl implements SupportTicketService {
     private final SupportTicketRepository ticketRepository;
     private final TicketCommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final com.aurionpro.ticketboard.document.storage.DocumentStorageService documentStorageService;
 
     @Override
     public SupportTicketDto createTicket(CreateSupportTicketRequest request, String currentUserEmail) {
@@ -49,6 +52,10 @@ public class SupportTicketServiceImpl implements SupportTicketService {
                 .createdByEmail(currentUserEmail)
                 .description(request.getDescription())
                 .systemDiagnostics(request.getSystemDiagnostics() != null ? request.getSystemDiagnostics() : "")
+                .customCategoryName(request.getCustomCategoryName())
+                .projectId(request.getProjectId())
+                .projectName(request.getProjectName())
+                .moduleName(request.getModuleName())
                 .build();
 
         ticket.setCreatedBy(currentUserEmail);
@@ -56,6 +63,24 @@ public class SupportTicketServiceImpl implements SupportTicketService {
 
         SupportTicket saved = ticketRepository.save(ticket);
         return mapToDto(saved);
+    }
+
+    @Override
+    public SupportTicketDto uploadAttachment(Long ticketId, org.springframework.web.multipart.MultipartFile file, String currentUserEmail) {
+        SupportTicket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("SupportTicket", "id", ticketId));
+
+        String storedPath = documentStorageService.store(file, "support-tickets");
+        String downloadUrl = "http://localhost:8080/uploads/" + storedPath;
+
+        if (ticket.getAttachments() == null) {
+            ticket.setAttachments(new java.util.ArrayList<>());
+        }
+        ticket.getAttachments().add(downloadUrl);
+        ticket.setUpdatedBy(currentUserEmail);
+
+        SupportTicket updated = ticketRepository.save(ticket);
+        return mapToDto(updated);
     }
 
     @Override
@@ -144,6 +169,46 @@ public class SupportTicketServiceImpl implements SupportTicketService {
         return ticketRepository.countByStatusIn(Arrays.asList(TicketStatus.OPEN, TicketStatus.IN_REVIEW));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public SupportStatsDto getStats() {
+        Map<TicketStatus, Long> byStatus = new EnumMap<>(TicketStatus.class);
+        for (TicketStatus status : TicketStatus.values()) {
+            byStatus.put(status, ticketRepository.countByStatus(status));
+        }
+
+        Map<TicketPriority, Long> byPriority = new EnumMap<>(TicketPriority.class);
+        for (TicketPriority priority : TicketPriority.values()) {
+            byPriority.put(priority, ticketRepository.countByPriority(priority));
+        }
+
+        Map<SupportCategory, Long> byCategory = new EnumMap<>(SupportCategory.class);
+        for (SupportCategory category : SupportCategory.values()) {
+            byCategory.put(category, ticketRepository.countByCategory(category));
+        }
+
+        Map<String, Long> byTargetRole = new java.util.LinkedHashMap<>();
+        byTargetRole.put("ROLE_SUPER_ADMIN", ticketRepository.countByTargetRole("ROLE_SUPER_ADMIN"));
+        byTargetRole.put("ROLE_ADMIN", ticketRepository.countByTargetRole("ROLE_ADMIN"));
+
+        return SupportStatsDto.builder()
+                .totalTickets(ticketRepository.count())
+                .openTickets(byStatus.getOrDefault(TicketStatus.OPEN, 0L))
+                .inReviewTickets(byStatus.getOrDefault(TicketStatus.IN_REVIEW, 0L))
+                .resolvedTickets(byStatus.getOrDefault(TicketStatus.RESOLVED, 0L))
+                .closedTickets(byStatus.getOrDefault(TicketStatus.CLOSED, 0L))
+                .urgentTickets(byPriority.getOrDefault(TicketPriority.URGENT, 0L))
+                .highPriorityTickets(byPriority.getOrDefault(TicketPriority.HIGH, 0L))
+                .mediumPriorityTickets(byPriority.getOrDefault(TicketPriority.MEDIUM, 0L))
+                .lowPriorityTickets(byPriority.getOrDefault(TicketPriority.LOW, 0L))
+                .unassignedTickets(ticketRepository.countByAssignedToIdIsNull())
+                .byStatus(byStatus)
+                .byPriority(byPriority)
+                .byCategory(byCategory)
+                .byTargetRole(byTargetRole)
+                .build();
+    }
+
     private SupportTicketDto mapToDto(SupportTicket t) {
         List<TicketCommentDto> commentDtos = t.getComments() != null ?
                 t.getComments().stream().map(this::mapToCommentDto).collect(Collectors.toList()) :
@@ -165,6 +230,11 @@ public class SupportTicketServiceImpl implements SupportTicketService {
                 .description(t.getDescription())
                 .resolutionNotes(t.getResolutionNotes())
                 .systemDiagnostics(t.getSystemDiagnostics())
+                .customCategoryName(t.getCustomCategoryName())
+                .projectId(t.getProjectId())
+                .projectName(t.getProjectName())
+                .moduleName(t.getModuleName())
+                .attachments(t.getAttachments() != null ? new java.util.ArrayList<>(t.getAttachments()) : List.of())
                 .comments(commentDtos)
                 .createdAt(t.getCreatedAt())
                 .updatedAt(t.getUpdatedAt())
@@ -182,4 +252,27 @@ public class SupportTicketServiceImpl implements SupportTicketService {
                 .createdAt(c.getCreatedAt())
                 .build();
     }
+}
+
+    // ═══ Phase 3.1: ticket ACTIVITY — now real (write + read) ═══
+
+    private SupportTicketActivityLogRepository activityLogRepository;
+
+    /**
+     * Append an immutable activity-row reflecting the just-applied change.
+     * Only rows that carry a USER-VISIBLE "what changed" meaning are written
+     * (status/priority transition, assignment, colocated comment, attachment);
+     * this is what feeds GET /{id}/history and the admin/user timeline.
+     */
+    private void recordActivity(SupportTicketActivityLog log) {
+        activityLogRepository.save(log);
+    }
+
+    public List<SupportTicketActivityLogDto> getActivityLogForTicket(Long ticketId) {
+        return activityLogRepository.findByTicketIdOrderByActivityTimeDesc(ticketId)
+                .stream()
+                .map(SupportTicketActivityLogMapper.INSTANCE::toDto)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
 }

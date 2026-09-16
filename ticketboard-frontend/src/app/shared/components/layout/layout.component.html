@@ -193,11 +193,7 @@
         </div>
 
         <nav class="nav-group secondary">
-          <a routerLink="/tasks" routerLinkActive="active" class="nav-item sub" *ngIf="authService.hasPermission('workitem:view')">
-            <mat-icon>check_circle</mat-icon>
-            <span class="nav-label">Tasks</span>
-            <span class="nav-pill-badge" *ngIf="!sidebarCollapsed()">198</span>
-          </a>
+
           <a routerLink="/risks" routerLinkActive="active" class="nav-item sub" *ngIf="authService.hasPermission('risk:view')">
             <mat-icon>gpp_maybe</mat-icon>
             <span class="nav-label">Issues</span>
@@ -242,7 +238,7 @@
           </div>
 
           <nav class="nav-group secondary">
-            <a routerLink="/support/tickets" [queryParams]="{ view: 'admin' }" routerLinkActive="active" class="nav-item sub admin-highlight">
+            <a routerLink="/admin/support-tickets" routerLinkActive="active" class="nav-item sub admin-highlight">
               <mat-icon class="text-purple">headset_mic</mat-icon>
               <span class="nav-label">Admin Ticket Queue</span>
               <span class="nav-pill-badge red" *ngIf="!sidebarCollapsed() && openSupportTicketsCount() > 0">

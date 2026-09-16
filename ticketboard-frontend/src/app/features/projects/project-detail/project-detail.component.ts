@@ -28,6 +28,7 @@ import {
   Issue,
   Milestone,
   Project,
+  ProjectStats,
   ProjectDocument,
   Release,
   Requirement,
@@ -38,6 +39,9 @@ import {
   WorkItemStatus
 } from '../../../core/models/api.models';
 import { LogTimeDialogComponent } from '../../../shared/components/log-time-dialog/log-time-dialog.component';
+import { ExportService } from '../../../core/services/export.service';
+import { ExportDocument, ExportColumn, ExportOptions } from '../../../core/models/report.models';
+import { DocumentPreviewDialogComponent } from '../../../shared/components/document-preview/document-preview-dialog.component';
 
 @Component({
   selector: 'app-project-detail',
@@ -48,6 +52,7 @@ import { LogTimeDialogComponent } from '../../../shared/components/log-time-dial
 })
 export class ProjectDetailComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
+  public Math = Math;
   public projectId: number = 1;
   public project = signal<Project | null>(null);
   public users = signal<User[]>([]);
@@ -64,6 +69,22 @@ export class ProjectDetailComponent implements OnInit {
   public activeTab = signal<string>('dashboard');
   public isLoading = signal<boolean>(true);
   public loadError = signal<string>('');
+  public projectStats = signal<ProjectStats | null>(null);
+
+  // Reports workbench
+  public selectedPlotOption = signal<'count' | 'percent'>('count');
+
+  // Milestone create modal
+  public showCreateMilestoneModal = signal<boolean>(false);
+  public newMilestone: any = { name: '', description: '', ownerId: null, planDate: '', plannedDate: '', completionPercentage: 0 };
+
+  // Issues state
+  public showUpdateIssueModal = signal<boolean>(false);
+  public editingIssueId = signal<number | null>(null);
+  public issueEditForm: any = { title: '', description: '', severity: 'MEDIUM', status: 'OPEN', resolution: '', classification: '', stepsToReproduce: '', crValue: null, crManDays: null, ownerId: null };
+
+  // Comments view toggle
+  public commentsView = signal<'discussion' | 'activity'>('discussion');
 
   // Task Filtering Dropdown & View Mode State
   public selectedTaskFilter = signal<string>('ALL');
@@ -90,6 +111,16 @@ export class ProjectDetailComponent implements OnInit {
     });
   });
 
+  public kanbanBoardData = computed(() => {
+    const kbData: Record<string, WorkItem[]> = {};
+    const tasks = this.filteredTasks();
+    const cols = boardStatuses().map((c) => ({ status: c.value, label: c.label, badgeClass: c.badgeClass }));
+    cols.forEach(col => {
+      kbData[col.status] = tasks.filter(t => this.normalizeStatus(t.status) === this.normalizeStatus(col.status));
+    });
+    return kbData;
+  });
+
   // Milestones KPIs
   public milestoneKPIs = computed(() => {
     const list = this.project()?.milestones || [];
@@ -108,9 +139,9 @@ export class ProjectDetailComponent implements OnInit {
     const billableCount = entries.filter((e) => e.billingType === 'Billable').length;
     const billableRatio = entries.length ? Math.round((billableCount / entries.length) * 100) : 100;
     return {
-      totalLogged: totalLogged.toFixed(1),
-      plannedHours: (totalLogged * 1.1).toFixed(1),
-      varianceHours: (totalLogged * 0.1).toFixed(1),
+      totalLogged: Math.round(totalLogged * 10) / 10,
+      plannedHours: Math.round(totalLogged * 1.1 * 10) / 10,
+      varianceHours: Math.round(totalLogged * 0.1 * 10) / 10,
       billableRatio
     };
   });
@@ -132,6 +163,20 @@ export class ProjectDetailComponent implements OnInit {
       (t) => t.dueDate === today && t.status !== 'COMPLETED' && t.status !== 'CLOSED'
     ).length;
   });
+
+  public openTasksCount = computed(() => this.projectStats()?.openTasks ?? this.tasks().filter(
+    (t) => t.status !== 'COMPLETED' && t.status !== 'CLOSED'
+  ).length);
+  public openBugs = computed(() => this.projectStats()?.openBugs ?? this.tasks().filter(
+    (t) => t.type === 'BUG' && t.status !== 'COMPLETED' && t.status !== 'CLOSED'
+  ).length);
+  public reqCount = computed(() => this.projectStats()?.totalRequirements ?? this.requirements().length);
+  public milestoneCount = computed(() => this.projectStats()?.totalMilestones ?? this.project()?.milestones?.length ?? 0);
+  public memberCount = computed(() => this.projectStats()?.totalMembers ?? this.project()?.members?.length ?? 0);
+  public milestoneAchieved = computed(() => this.projectStats()?.achievedMilestones ?? this.milestoneKPIs().achieved);
+  public completionPct = computed(() => this.projectStats()?.completionPercentage ?? this.project()?.completionPercentage ?? 0);
+  public totalPlannedHours = computed(() => this.projectStats()?.totalEstimatedHours ?? this.project()?.estimatedHours ?? 0);
+  public totalLoggedHours = computed(() => this.projectStats()?.totalActualHours ?? this.project()?.actualHours ?? 0);
 
   public taskCount = computed(() => this.tasks().length);
   public taskStatusSummary = computed(() => {
@@ -198,6 +243,151 @@ export class ProjectDetailComponent implements OnInit {
     }
   }
 
+  public taskPrioritySummary = computed(() => {
+    const order = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+    const counts = new Map<string, number>();
+    for (const t of this.tasks()) {
+      const prio = t.priority || 'MEDIUM';
+      counts.set(prio, (counts.get(prio) || 0) + 1);
+    }
+    const list = Array.from(counts.entries()).map(([label, count]) => ({ label, count }));
+    list.sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label));
+    return list;
+  });
+
+  public issueSeveritySummary = computed(() => {
+    const order = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+    const counts = new Map<string, number>();
+    for (const i of this.issues()) {
+      const sev = i.severity || 'MEDIUM';
+      counts.set(sev, (counts.get(sev) || 0) + 1);
+    }
+    const list = Array.from(counts.entries()).map(([label, count]) => ({ label, count }));
+    list.sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label));
+    return list;
+  });
+
+  public reportSeries = computed(() => {
+    const plot = this.selectedPlotOption();
+    const mapSeries = (items: { label: string; count: number }[], total: number) =>
+      items.map(s => ({
+        label: s.label,
+        value: plot === 'percent' ? Math.round((s.count / (total || 1)) * 100) : s.count,
+        rawCount: s.count,
+        isPercent: plot === 'percent'
+      }));
+
+    if (this.selectedReportCategory() === 'Issue Basic Reports') {
+      const total = this.issues().length;
+      const source = this.selectedReportName() === 'Severity' ? this.issueSeveritySummary() : this.issueStatusSummary();
+      return mapSeries(source, total);
+    }
+    const total = this.taskStatusSummary().reduce((acc, it) => acc + it.count, 0);
+    const source = this.selectedReportName() === 'Priority' ? this.taskPrioritySummary() : this.taskStatusSummary();
+    return mapSeries(source, total);
+  });
+
+  public reportSeriesTotal = computed(() => {
+    return this.reportSeries().reduce((acc, s) => acc + s.rawCount, 0);
+  });
+
+  public reportTotal = computed(() => {
+    if (this.selectedReportCategory() === 'Issue Basic Reports') return this.issues().length;
+    return this.tasks().length;
+  });
+
+  public reportMaxValue = computed(() => {
+    const series = this.reportSeries();
+    const max = series.reduce((acc, s) => Math.max(acc, s.value), 0);
+    return max || 1;
+  });
+
+  public reportColors = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#ec4899', '#64748b', '#f97316'];
+
+  public setChartType(type: 'bar' | 'pie' | 'donut'): void {
+    this.selectedChartType.set(type);
+  }
+
+  public pieOffset(s: any, index: number): number {
+    const series = this.reportSeries();
+    let offset = 0;
+    for (let i = 0; i < index; i++) {
+      offset += series[i].value;
+    }
+    return -offset;
+  }
+
+  public setPlotOption(opt: 'count' | 'percent'): void {
+    this.selectedPlotOption.set(opt);
+  }
+
+  public buildReportDocument(): ExportDocument {
+    const project = this.project();
+    const series = this.reportSeries();
+    const isIssue = this.selectedReportCategory() === 'Issue Basic Reports';
+    const sourceName = this.selectedReportName();
+    const plot = this.selectedPlotOption();
+
+    const rows = series.map(s => ({
+      bucket: s.label,
+      value: s.rawCount,
+      share: series.length ? Math.round((s.rawCount / (this.reportTotal() || 1)) * 100) : 0
+    }));
+
+    const cols: ExportColumn[] = [
+      { key: 'bucket', label: sourceName },
+      { key: 'value', label: 'Count', align: 'right', format: 'number' },
+      { key: 'share', label: 'Distribution %', align: 'right' }
+    ];
+
+    return {
+      title: `${project?.projectCode || 'Project'} • ${sourceName}`,
+      subtitle: `${isIssue ? 'Issue' : 'Task'} distribution report — ${new Date().toISOString().substring(0, 10)}`,
+      meta: [
+        { label: 'Project', value: `${project?.projectCode || '—'} ${project?.name || ''}` },
+        { label: 'Client', value: project?.clientName || 'N/A' },
+        { label: 'Report Category', value: this.selectedReportCategory() },
+        { label: 'Plot Option', value: plot },
+        { label: 'Base Records', value: String(this.reportTotal()) }
+      ],
+      summary: rows.map(r => ({ label: r.bucket, value: `${r.value} (${r.share}%)` })),
+      sections: [
+        {
+          title: `${sourceName} — Distribution Table`,
+          description: 'Count of records per bucket with proportionate distribution shares.',
+          columns: cols,
+          rows
+        }
+      ],
+      notes: 'Generated by TicketBoard Enterprise Reports for project-level distribution analysis.'
+    };
+  }
+
+  public exportReport(format: 'pdf' | 'excel' | 'csv', options?: ExportOptions): void {
+    const doc = this.buildReportDocument();
+    const fileName = `TicketBoard_${this.project()?.projectCode || 'Project'}_${this.selectedReportName().replace(/\s+/g, '_')}_${new Date().toISOString().substring(0, 10)}`;
+    this.exportService.export(doc, format, fileName, options ? { orientation: options.orientation, layout: options.layout } : { layout: 'standard' }).then(() => {});
+  }
+
+  public previewReport(): void {
+    const doc = this.buildReportDocument();
+    const html = this.exportService.renderHtmlPreview(doc, 'pdf', { orientation: 'landscape', layout: 'standard' });
+    this.dialog.open(DocumentPreviewDialogComponent, {
+      data: {
+        title: `${this.selectedReportName()} — Print Preview`,
+        subtitle: `${this.project()?.projectCode || 'Project'}  •  Landscape A4  •  Charts + Table`,
+        html,
+        downloadLabel: 'Download PDF',
+        onDownload: () => {
+          this.exportReport('pdf', { orientation: 'landscape', layout: 'standard' });
+        }
+      },
+      width: '1080px',
+      maxWidth: '96vw',
+      panelClass: 'document-preview-panel'
+    });
+  }
+
   // Task Detail Modal State (rendered by the shared TaskDetailDialogComponent)
   public selectedTask = signal<WorkItem | null>(null);
   public showTaskDetailModal = signal<boolean>(false);
@@ -256,6 +446,7 @@ export class ProjectDetailComponent implements OnInit {
     private timeTrackingService: TimeTrackingService,
     private userService: UserService,
     private dialog: MatDialog,
+    private exportService: ExportService,
     public authService: AuthService
   ) {}
 
@@ -308,6 +499,7 @@ export class ProjectDetailComponent implements OnInit {
         this.loadComments();
         this.loadAuditLogs();
         this.loadProjectDocuments();
+        this.loadProjectStats();
         this.isLoading.set(false);
       },
       error: () => {
@@ -317,7 +509,13 @@ export class ProjectDetailComponent implements OnInit {
     });
   }
 
-
+  public loadProjectStats(): void {
+    this.projectService.getProjectStats(this.projectId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res: any) => {
+        if (res.success && res.data) this.projectStats.set(res.data);
+      }
+    });
+  }
 
   public loadComments(): void {
     this.commentService.getComments('PROJECT', this.projectId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -441,6 +639,27 @@ export class ProjectDetailComponent implements OnInit {
     });
   }
 
+  public setCommentsView(view: 'discussion' | 'activity'): void {
+    this.commentsView.set(view);
+  }
+
+  public activityTypeIcon(eventType: string): string {
+    switch (eventType) {
+      case 'CREATED': return 'add_circle';
+      case 'STATUS_CHANGED': return 'swap_horiz';
+      case 'ASSIGNED': return 'person_add';
+      case 'BLOCKED': return 'block';
+      case 'UNBLOCKED': return 'lock_open';
+      case 'COMMENT_ADDED': return 'chat_bubble';
+      case 'COMMENT_EDITED': return 'edit';
+      case 'COMMENT_DELETED': return 'delete_outline';
+      case 'DOCUMENT_ATTACHED': return 'attach_file';
+      case 'HOURS_LOGGED': return 'timer';
+      case 'RELEASED': return 'rocket_launch';
+      default: return 'schedule';
+    }
+  }
+
   public formatChatTime(iso?: string): string {
     if (!iso) return '';
     const d = new Date(iso);
@@ -493,10 +712,17 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   public deepLinkFilter(filter: string): void {
-    if (filter === 'overdue' || filter === 'open_tasks') {
+    if (filter === 'overdue' || filter === 'open_tasks' || filter === 'total_tasks') {
       this.setTab('tasks');
+      if (filter === 'overdue') this.selectedTaskFilter.set('DELAYED');
+      if (filter === 'open_tasks') this.selectedTaskFilter.set('OPEN');
+      if (filter === 'total_tasks') this.selectedTaskFilter.set('ALL');
     } else if (filter === 'total_issues' || filter === 'open_issues') {
       this.setTab('issues');
+    } else if (filter === 'requirements') {
+      this.setTab('tasks');
+    } else if (filter === 'milestones') {
+      this.setTab('milestones');
     }
   }
 
@@ -539,25 +765,12 @@ export class ProjectDetailComponent implements OnInit {
     return boardStatuses().map((c) => ({ status: c.value, label: c.label, badgeClass: c.badgeClass }));
   }
 
-  private kanbanDragActive = signal<boolean>(false);
-
-  public onKanbanDragStart(): void {
-    this.kanbanDragActive.set(true);
-  }
-
-  public onKanbanDragEnd(): void {
-    setTimeout(() => this.kanbanDragActive.set(false), 0);
-  }
-
   public openKanbanDetail(item: WorkItem): void {
-    if (this.kanbanDragActive()) return;
     this.openTaskDetail(item);
   }
 
   public getColumnItems(status: string): WorkItem[] {
-    return this.filteredTasks().filter(
-      (t) => this.normalizeStatus(t.status) === this.normalizeStatus(status)
-    );
+    return this.kanbanBoardData()[status] || [];
   }
 
   public getConnectedDropLists(): string[] {
@@ -575,19 +788,15 @@ export class ProjectDetailComponent implements OnInit {
         event.previousIndex,
         event.currentIndex
       );
-      this.updateItemStatus(movedItem, targetStatus);
+      movedItem.status = targetStatus as WorkItemStatus;
+      this.updateTaskStatus(movedItem.id, targetStatus as WorkItemStatus, true);
     }
   }
 
-  public updateItemStatus(item: WorkItem, newStatus: string): void {
-    this.workItemService.updateStatus(item.id, newStatus as any).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (res: any) => {
-        if (res.success && res.data) {
-          this.tasks.update((list) => list.map((t) => (t.id === item.id ? res.data : t)));
-          if (this.selectedTask()?.id === item.id) {
-            this.selectedTask.set(res.data);
-          }
-        }
+  public updateTaskStatus(taskId: number, status: WorkItemStatus, silent: boolean = false): void {
+    this.workItemService.updateStatus(taskId, status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        if (!silent) this.loadAllProjectData();
       }
     });
   }
@@ -623,6 +832,11 @@ export class ProjectDetailComponent implements OnInit {
     const p = this.project();
     if (!p) return;
     (p as any)[field] = value;
+    if (field === 'projectManagerId') {
+      const user = this.users().find(u => String(u.id) === String(value));
+      if (user) p.projectManagerName = user.fullName;
+      value = Number(value);
+    }
     this.project.set({ ...p });
     this.projectService.updateProject(p.id, { [field]: value }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       error: (err) => console.error('Update failed:', err)
@@ -631,13 +845,57 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   public updateMilestoneField(m: Milestone, field: string, value: any): void {
-    (m as any)[field] = value;
+    this.projectService.updateMilestone(m.id, { [field]: value }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        if (this.project()) {
+          const milestones = (this.project()?.milestones || []).map((mm) => (mm.id === m.id ? { ...mm, [field]: value } : mm));
+          this.project.set({ ...this.project()!, milestones });
+        }
+      }
+    });
     this.stopCellEdit();
   }
 
-  public updateTimeEntryField(entry: TimeEntry, field: string, value: any): void {
-    (entry as any)[field] = value;
-    this.stopCellEdit();
+  public openCreateMilestoneModal(): void {
+    this.newMilestone = { name: '', description: '', ownerId: this.authService.currentUser()?.id ?? null, plannedDate: '', completionPercentage: 0 };
+    this.showCreateMilestoneModal.set(true);
+  }
+
+  public closeCreateMilestoneModal(): void {
+    this.showCreateMilestoneModal.set(false);
+  }
+
+  public submitCreateMilestone(): void {
+    if (!this.newMilestone.name?.trim()) return;
+    const ref = this.showCreateMilestoneModal;
+    this.projectService.createMilestone({
+      projectId: this.projectId,
+      name: this.newMilestone.name.trim(),
+      description: this.newMilestone.description,
+      plannedDate: this.newMilestone.plannedDate || null,
+      completionPercentage: this.newMilestone.completionPercentage ?? 0
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          ref.set(false);
+          this.loadAllProjectData();
+        }
+      }
+    });
+  }
+
+  public deleteMilestone(m: Milestone): void {
+    if (!confirm(`Delete milestone "${m.name}"?`)) return;
+    this.projectService.deleteMilestone(m.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => this.loadAllProjectData()
+    });
+  }
+
+  public deleteTimeEntry(entry: TimeEntry): void {
+    if (!confirm(`Delete time entry for ${entry.userName || 'user'} on ${entry.workDate} (${entry.totalHours}h)?`)) return;
+    this.timeTrackingService.deleteTimeEntry(entry.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => this.loadAllProjectData()
+    });
   }
 
   public toggleTaskViewMode(mode: 'table' | 'grid' | 'kanban'): void {
@@ -685,6 +943,57 @@ export class ProjectDetailComponent implements OnInit {
           this.closeCreateIssueModal();
           this.loadAllProjectData();
         }
+      }
+    });
+  }
+
+  public openUpdateIssueModal(issue: Issue): void {
+    this.editingIssueId.set(issue.id);
+    this.issueEditForm = {
+      title: issue.title || '',
+      description: issue.description || '',
+      severity: issue.severity || 'MEDIUM',
+      status: issue.status || 'OPEN',
+      resolution: issue.resolution || '',
+      classification: issue.classification || '',
+      stepsToReproduce: issue.stepsToReproduce || '',
+      crValue: issue.crValue ?? null,
+      crManDays: issue.crManDays ?? null,
+      ownerId: issue.ownerId ?? null
+    };
+    this.showUpdateIssueModal.set(true);
+  }
+
+  public closeUpdateIssueModal(): void {
+    this.showUpdateIssueModal.set(false);
+    this.editingIssueId.set(null);
+  }
+
+  public submitUpdateIssue(): void {
+    const issueId = this.editingIssueId();
+    if (!issueId) return;
+    this.riskService.updateIssue(issueId, this.issueEditForm).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.closeUpdateIssueModal();
+          this.loadAllProjectData();
+        }
+      }
+    });
+  }
+
+  public updateIssueStatus(issue: Issue, status: string): void {
+    this.riskService.updateIssue(issue.id, { status }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => this.loadAllProjectData()
+    });
+  }
+
+  public deleteIssue(issue: Issue): void {
+    if (!confirm(`Delete issue ${issue.issueCode}? This cannot be undone.`)) return;
+    this.riskService.deleteIssue(issue.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        if (this.selectedIssue()?.id === issue.id) this.selectedIssue.set(null);
+        this.loadAllProjectData();
       }
     });
   }

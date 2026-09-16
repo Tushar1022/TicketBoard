@@ -50,13 +50,20 @@
 
   <!-- Main Table Canvas -->
   <div class="projects-table-wrapper" *ngIf="!isLoading() && filteredProjects().length > 0">
+    <div class="bulk-toolbar" *ngIf="hasSelection()">
+      <span class="bulk-count">{{ selectedIds().size }} selected</span>
+      <button class="btn btn-secondary btn-sm" (click)="clearSelection()">Clear</button>
+      <button class="btn btn-danger btn-sm" (click)="bulkDeleteSelected()">
+        <mat-icon class="xs">delete_outline</mat-icon> Delete Selected
+      </button>
+    </div>
     <table class="zoho-data-table">
       <thead>
         <tr>
-          <th class="col-check"><input type="checkbox" /></th>
-          <th class="col-id">ID <mat-icon class="sort-icon">unfold_more</mat-icon></th>
-          <th class="col-name">Project Name <mat-icon class="sort-icon">unfold_more</mat-icon></th>
-          <th class="col-pct">% <mat-icon class="sort-icon">unfold_more</mat-icon></th>
+          <th class="col-check"><input type="checkbox" [checked]="isAllSelected()" (change)="toggleAll()" /></th>
+          <th class="col-id"><span class="sort-header" (click)="sortBy('projectCode')">ID <mat-icon class="sort-icon">{{ sortIcon('projectCode') }}</mat-icon></span></th>
+          <th class="col-name"><span class="sort-header" (click)="sortBy('name')">Project Name <mat-icon class="sort-icon">{{ sortIcon('name') }}</mat-icon></span></th>
+          <th class="col-pct"><span class="sort-header" (click)="sortBy('completionPercentage')">% <mat-icon class="sort-icon">{{ sortIcon('completionPercentage') }}</mat-icon></span></th>
           <th class="col-owner">Owner</th>
           <th class="col-status">Status</th>
           <th class="col-tasks">Tasks</th>
@@ -67,8 +74,8 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let p of filteredProjects()" [routerLink]="['/projects', p.id]" class="clickable-row">
-          <td class="col-check" (click)="$event.stopPropagation()"><input type="checkbox" /></td>
+        <tr *ngFor="let p of pagedProjects()" [routerLink]="['/projects', p.id]" class="clickable-row">
+          <td class="col-check" (click)="$event.stopPropagation()"><input type="checkbox" [checked]="isSelected(p.id)" (change)="toggleRow(p.id)" /></td>
           <td class="col-id font-bold text-primary">{{ p.projectCode }}</td>
           <td class="col-name">
             <span class="project-title-link">{{ p.name }}</span>
@@ -132,11 +139,17 @@
   <div class="projects-table-footer" *ngIf="filteredProjects().length > 0">
     <span class="total-count">Total Count: {{ filteredProjects().length }}</span>
     <div class="pagination-controls">
-      <button class="page-btn"><mat-icon>first_page</mat-icon></button>
-      <button class="page-btn"><mat-icon>chevron_left</mat-icon></button>
-      <span class="page-info">1 - {{ filteredProjects().length }} of {{ filteredProjects().length }}</span>
-      <button class="page-btn"><mat-icon>chevron_right</mat-icon></button>
-      <button class="page-btn"><mat-icon>last_page</mat-icon></button>
+      <select class="page-size-select" [ngModel]="pageSize()" (ngModelChange)="setPageSize($event)">
+        <option [ngValue]="8">8 per page</option>
+        <option [ngValue]="12">12 per page</option>
+        <option [ngValue]="20">20 per page</option>
+        <option [ngValue]="50">50 per page</option>
+      </select>
+      <button class="page-btn" (click)="goToPage(1)" [disabled]="pageIndex() === 1"><mat-icon>first_page</mat-icon></button>
+      <button class="page-btn" (click)="goToPage(pageIndex() - 1)" [disabled]="pageIndex() === 1"><mat-icon>chevron_left</mat-icon></button>
+      <span class="page-info">{{ pageStart() }} - {{ pageEnd() }} of {{ filteredProjects().length }} (Page {{ pageIndex() }} / {{ totalPages() }})</span>
+      <button class="page-btn" (click)="goToPage(pageIndex() + 1)" [disabled]="pageIndex() === totalPages()"><mat-icon>chevron_right</mat-icon></button>
+      <button class="page-btn" (click)="goToPage(totalPages())" [disabled]="pageIndex() === totalPages()"><mat-icon>last_page</mat-icon></button>
     </div>
   </div>
 
@@ -161,6 +174,12 @@
           <div class="field field-full">
             <label class="field-label">Description</label>
             <textarea [(ngModel)]="newProject.description" rows="3" class="form-control"></textarea>
+          </div>
+          <div class="field field-full">
+            <label class="field-label">Project Manager / Owner <span class="required">*</span></label>
+            <select [(ngModel)]="newProject.projectManagerId" class="form-control">
+              <option *ngFor="let u of users()" [value]="u.id">{{ u.fullName }}</option>
+            </select>
           </div>
         </div>
       </div>

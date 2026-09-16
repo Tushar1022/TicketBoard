@@ -18,4 +18,7 @@ public class ReportDataResponse {
     private List<String> columns;
     private List<Map<String, Object>> rows;
     private long totalRecords;
+    private List<SeriesPointDto> reportSeries;
+    private String chartType;
+    private String orientation;
 }

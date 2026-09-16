@@ -24,6 +24,7 @@ import com.aurionpro.ticketboard.workitem.enums.WorkItemType;
 import com.aurionpro.ticketboard.workitem.repository.TaskDocumentRepository;
 import com.aurionpro.ticketboard.workitem.repository.WorkItemBlockerRepository;
 import com.aurionpro.ticketboard.workitem.repository.WorkItemDependencyRepository;
+import com.aurionpro.ticketboard.comment.repository.CommentRepository;
 import com.aurionpro.ticketboard.workitem.repository.WorkItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -53,6 +54,7 @@ public class WorkItemService {
     private final UserRepository userRepository;
     private final ProjectService projectService;
     private final ActivityLogService activityLogService;
+    private final CommentRepository commentRepository;
 
     @Transactional(readOnly = true)
     public List<WorkItemDto> getAllWorkItems() {
@@ -601,7 +603,7 @@ public class WorkItemService {
                 .blockedOwner(w.getBlockedOwner())
                 .labels(w.getLabels())
                 .documentsCount(docs.size())
-                .commentsCount(0)
+                .commentsCount((int) commentRepository.countByEntityTypeAndEntityId("WORK_ITEM", w.getId()))
                 .subtasks(subtaskDtos)
                 .dependencies(depDtos)
                 .documents(docs)

@@ -6,5 +6,6 @@ public enum SupportCategory {
     DATA_QUERY,
     PERFORMANCE_ISSUE,
     BILLING_SLA,
+    CUSTOM_ISSUE,
     OTHER
 }

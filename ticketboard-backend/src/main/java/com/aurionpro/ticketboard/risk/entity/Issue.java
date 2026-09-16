@@ -13,7 +13,8 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "issues", indexes = {
     @Index(name = "idx_issue_project_id", columnList = "project_id"),
-    @Index(name = "idx_issue_status", columnList = "status")
+    @Index(name = "idx_issue_status", columnList = "status"),
+    @Index(name = "idx_issue_severity", columnList = "severity")
 })
 @Getter
 @Setter

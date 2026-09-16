@@ -29,4 +29,12 @@ public class CreateSupportTicketRequest {
     private String description;
 
     private String systemDiagnostics;
+
+    private String customCategoryName;
+
+    private Long projectId;
+
+    private String projectName;
+
+    private String moduleName;
 }

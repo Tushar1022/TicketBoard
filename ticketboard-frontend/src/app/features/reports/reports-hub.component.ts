@@ -1,12 +1,14 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatDialogModule } from '@angular/material/dialog';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { ExportService } from '../../core/services/export.service';
-import { ExportDocument, ExportFormat, ExportColumn } from '../../core/models/report.models';
+import { ExportDocument, ExportFormat, ExportColumn, ExportOptions, ExportOrientation, ExportLayout, STATUS_OPTIONS, ReportPreset } from '../../core/models/report.models';
+import { DocumentPreviewDialogComponent } from '../../shared/components/document-preview/document-preview-dialog.component';
 
 import { ProjectService } from '../../core/services/project.service';
 import { WorkItemService } from '../../core/services/work-item.service';
@@ -31,12 +33,11 @@ interface ReportCategoryOption {
 @Component({
   selector: 'app-reports-hub',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule, MatDialogModule, MatMenuModule],
   templateUrl: './reports-hub.component.html',
   styleUrls: ['./reports-hub.component.scss']
 })
 export class ReportsHubComponent implements OnInit {
-  public activeTab = signal<'PORTFOLIO' | 'CUSTOM_BUILDER'>('PORTFOLIO');
   public toast = signal<string>('');
   public isLoadingPreview = signal<boolean>(false);
 
@@ -44,14 +45,90 @@ export class ReportsHubComponent implements OnInit {
   public selectedCategory = signal<string>('workitems');
   public filterStatus = signal<string>('ALL');
   public filterProject = signal<string>('ALL');
+  public searchQuery = signal<string>('');
+  public sortColumn = signal<string>('');
+  public sortDirection = signal<'asc' | 'desc'>('asc');
+  public selectedPreset = signal<string>('');
   public startDateInput = '';
   public endDateInput = '';
+  public exportOrientation = signal<ExportOrientation>('landscape');
+  public exportLayout = signal<ExportLayout>('standard');
+  public statusOptions = signal<string[]>([]);
+  public projectOptions = signal<{ code: string; name: string }[]>([]);
 
   // Builder Datasets
-  public categoryColumns = signal<{ key: string; label: string; selected: boolean }[]>([]);
-  public livePreviewRows = signal<Record<string, any>[]>([]);
+  public categoryColumns = signal<{ key: string; label: string; selected: boolean; group?: string }[]>([]);
+  public rawPreviewRows = signal<Record<string, any>[]>([]);
   public liveSummaryKpis = signal<{ label: string; value: any }[]>([]);
   public totalRecordCount = signal<number>(0);
+
+  // Industry-Graded Presets
+  public presets: ReportPreset[] = [
+    {
+      id: 'exec-summary',
+      name: 'Executive Overview',
+      description: 'High-level snapshot with core identifiers, project, status, and logged effort.',
+      icon: 'stars',
+      categoryId: 'workitems',
+      statusFilter: 'ALL',
+      selectedColumnKeys: ['Ticket #', 'Title', 'Project', 'Status', 'Priority', 'Assignee', 'Act Hours']
+    },
+    {
+      id: 'blockers-audit',
+      name: 'Blockers & Critical Risks',
+      description: 'Focus exclusively on blocked tasks, urgent priorities, and risk scores.',
+      icon: 'warning',
+      categoryId: 'workitems',
+      statusFilter: 'BLOCKED',
+      selectedColumnKeys: ['Ticket #', 'Title', 'Project', 'Status', 'Priority', 'Assignee']
+    },
+    {
+      id: 'effort-audit',
+      name: 'Effort & Time Audit',
+      description: 'Detailed hours breakdown comparing estimated vs logged actual hours.',
+      icon: 'hourglass_top',
+      categoryId: 'timelogs',
+      statusFilter: 'ALL',
+      selectedColumnKeys: ['ID', 'User', 'Project', 'Work Date', 'Hours', 'Status']
+    },
+    {
+      id: 'project-health',
+      name: 'Portfolio Health Dashboard',
+      description: 'Project delivery health, completion percentage, and client status.',
+      icon: 'domain',
+      categoryId: 'projects',
+      statusFilter: 'ALL',
+      selectedColumnKeys: ['Project Code', 'Project Name', 'Client', 'Status', 'Health', 'Completion %']
+    }
+  ];
+
+  public livePreviewRows = computed(() => {
+    let rows = [...this.rawPreviewRows()];
+    const query = this.searchQuery().trim().toLowerCase();
+
+    // 1. Text Search Filter across all fields
+    if (query) {
+      rows = rows.filter(row =>
+        Object.values(row).some(val => String(val || '').toLowerCase().includes(query))
+      );
+    }
+
+    // 2. Sorting
+    const sortCol = this.sortColumn();
+    const dir = this.sortDirection() === 'asc' ? 1 : -1;
+    if (sortCol) {
+      rows.sort((a, b) => {
+        const valA = a[sortCol] ?? '';
+        const valB = b[sortCol] ?? '';
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return (valA - valB) * dir;
+        }
+        return String(valA).localeCompare(String(valB)) * dir;
+      });
+    }
+
+    return rows;
+  });
 
   public formats = Object.keys(FORMATS_LABELS) as ExportFormat[];
   public formatLabel = FORMATS_LABELS;
@@ -149,26 +226,52 @@ export class ReportsHubComponent implements OnInit {
     }
   ];
 
-  public cards = [
-    { id: 'projects', icon: 'account_tree', title: 'Project Portfolio Status', description: 'Real-time health, budget, hours and milestone completion across all projects.' },
-    { id: 'workitems', icon: 'task_alt', title: 'Work Items & Delivery Board', description: 'Live tasks, bugs and stories grouped by status, priority and assignees.' },
-    { id: 'requirements', icon: 'assignment', title: 'Requirements & Scope Register', description: 'Change requests, scope-creep flags and effort variance per requirement.' },
-    { id: 'timelogs', icon: 'schedule', title: 'Time & Effort Audit Log', description: 'Estimated vs actual hours and logged effort breakdown across teams.' },
-    { id: 'capacity', icon: 'trending_up', title: 'Resource Capacity & Forecast', description: 'Team utilization, overload detection and project delivery projections.' },
-    { id: 'risks', icon: 'warning', title: 'Risk & Issue Register', description: 'Probability-impact matrix, mitigations and open issues per project.' },
-    { id: 'support-tickets', icon: 'confirmation_number', title: 'Support Tickets Telemetry', description: 'Super Admin & Admin support queries resolution times and open tickets.' }
-  ];
-
   constructor(
     private exportService: ExportService,
     private http: HttpClient,
+    private dialog: MatDialog,
     private projectService: ProjectService,
     private workItemService: WorkItemService,
     private supportTicketService: SupportTicketService
   ) {}
 
   ngOnInit(): void {
+    this.loadProjectOptions();
+    this.isLoadingPreview.set(true);
     this.onCategoryChange('workitems');
+    // Optionally schedule a realtime status refresh when preview data streams in
+  }
+
+  /** Populate the project filter from the real backend projects table (no hardcoded list). */
+  private loadProjectOptions(): void {
+    this.projectOptions.set([]);
+    this.projectService.getAllProjects().subscribe({
+      next: (res: any) => {
+        const projs: any[] = res?.data || [];
+        this.projectOptions.set(
+          projs
+            .filter((p) => p && (p.projectCode || p.code))
+            .map((p) => ({ code: p.projectCode || p.code, name: p.name }))
+        );
+      },
+      error: () => {
+        this.projectOptions.set([]); // filter simply shows "All Projects" if projects API is unavailable
+      }
+    });
+  }
+
+  /** Realtime statuses: merge the DB enum baseline with statuses actually present in the live rows. */
+  private loadRealtimeStatusOptions(): void {
+    effect(() => {
+      const live = this.livePreviewRows() || [];
+      const seen = new Set<string>(STATUS_OPTIONS);
+      live.forEach((r) => {
+        const s = r['Status'];
+        if (s && s !== 'Status' && String(s).trim()) seen.add(String(s));
+      });
+      const merged = Array.from(seen).sort();
+      this.statusOptions.set(merged);
+    }, { allowSignalWrites: true });
   }
 
   public onCategoryChange(catId: string): void {
@@ -196,19 +299,49 @@ export class ReportsHubComponent implements OnInit {
     return this.categoryColumns().filter(c => c.selected);
   });
 
+  public applyPreset(presetId: string): void {
+    const preset = this.presets.find(p => p.id === presetId);
+    if (!preset) return;
+
+    this.selectedPreset.set(presetId);
+    this.selectedCategory.set(preset.categoryId);
+    this.filterStatus.set(preset.statusFilter);
+
+    // Update column selections
+    const currentCols = this.categoryColumns();
+    const updated = currentCols.map(c => ({
+      ...c,
+      selected: preset.selectedColumnKeys.includes(c.key)
+    }));
+    this.categoryColumns.set(updated);
+
+    this.fetchCustomReportData();
+    this.toast.set(`Applied report preset: ${preset.name}`);
+  }
+
   public fetchCustomReportData(): void {
     this.isLoadingPreview.set(true);
     const cat = this.selectedCategory();
     const status = this.filterStatus();
+    const project = this.filterProject();
 
     // Try fetching from Spring Boot REST API (/api/v1/reports/data/{category}) with fallback
-    this.http.get<any>(`/api/v1/reports/data/${cat}?status=${status}`).subscribe({
+    let url = `/api/v1/reports/data/${cat}?status=${status}`;
+    const params: string[] = [];
+    if (project && project !== 'ALL') params.push(`projectCode=${encodeURIComponent(project)}`);
+    if (this.startDateInput) params.push(`startDate=${encodeURIComponent(this.startDateInput)}`);
+    if (this.endDateInput) params.push(`endDate=${encodeURIComponent(this.endDateInput)}`);
+    url += params.length ? '&' + params.join('&') : '';
+
+    this.http.get<any>(url).subscribe({
       next: (res) => {
         this.isLoadingPreview.set(false);
         if (res?.data) {
-          this.livePreviewRows.set(res.data.rows || []);
+          let rows = res.data.rows || [];
+          rows = this.applyClientFilters(rows);
+          this.rawPreviewRows.set(rows);
           this.liveSummaryKpis.set(res.data.summaryKpis || []);
-          this.totalRecordCount.set(res.data.totalRecords || (res.data.rows ? res.data.rows.length : 0));
+          this.totalRecordCount.set(rows.length);
         } else {
           this.loadFallbackData(cat);
         }
@@ -218,6 +351,31 @@ export class ReportsHubComponent implements OnInit {
         this.loadFallbackData(cat);
       }
     });
+  }
+
+  private applyClientFilters(rows: Record<string, any>[]): Record<string, any>[] {
+    let filtered = rows;
+    const project = this.filterProject();
+    if (project && project !== 'ALL') {
+      filtered = filtered.filter(r => {
+        const proj = r['Project'] ?? r['Project Code'];
+        return String(proj).toUpperCase().includes(String(project).toUpperCase());
+      });
+    }
+    const start = this.startDateInput ? new Date(this.startDateInput).getTime() : null;
+    const end = this.endDateInput ? new Date(this.endDateInput).getTime() : null;
+    if (start || end) {
+      filtered = filtered.filter((r) => {
+        const candidates = [r['Work Date'], r['Created'], r['Due Date'], r['Planned Date']];
+        const val = candidates.find((c) => c && !isNaN(new Date(c).getTime()));
+        if (val === undefined) return true;
+        const t = new Date(val).getTime();
+        if (start && t < start) return false;
+        if (end && t > end) return false;
+        return true;
+      });
+    }
+    return filtered;
   }
 
   private loadFallbackData(cat: string): void {
@@ -237,12 +395,10 @@ export class ReportsHubComponent implements OnInit {
           'Billing Type': w.billingType || 'Billable',
           'Jira ID': w.jiraTaskId || '-'
         }));
-        this.livePreviewRows.set(rows);
-        this.liveSummaryKpis.set([
-          { label: 'Total Tasks & Bugs', value: rows.length },
-          { label: 'Completed Deliveries', value: items.filter((i: any) => i.status === 'COMPLETED' || i.status === 'UAT_EXIT').length }
-        ]);
-        this.totalRecordCount.set(rows.length);
+        const filtered = this.applyClientFilters(rows);
+        this.rawPreviewRows.set(filtered);
+        this.liveSummaryKpis.set([]);
+        this.totalRecordCount.set(filtered.length);
       });
     } else if (cat === 'projects') {
       this.projectService.getAllProjects().subscribe((res: any) => {
@@ -257,12 +413,10 @@ export class ReportsHubComponent implements OnInit {
           'Estimated Hours': p.estimatedHours || 0,
           'Actual Hours': p.actualHours || 0
         }));
-        this.livePreviewRows.set(rows);
-        this.liveSummaryKpis.set([
-          { label: 'Total Projects', value: rows.length },
-          { label: 'Active Delivery Projects', value: projs.filter((p: any) => p.status === 'IN_PROGRESS' || p.status === 'APPROVED').length }
-        ]);
-        this.totalRecordCount.set(rows.length);
+        const filtered = this.applyClientFilters(rows);
+        this.rawPreviewRows.set(filtered);
+        this.liveSummaryKpis.set([]);
+        this.totalRecordCount.set(filtered.length);
       });
     } else if (cat === 'support-tickets') {
       const tickets = this.supportTicketService.tickets();
@@ -276,16 +430,14 @@ export class ReportsHubComponent implements OnInit {
         'Raised By': t.createdByName,
         'Assigned Admin': t.assignedToName || ''
       }));
-      this.livePreviewRows.set(rows);
-      this.liveSummaryKpis.set([
-        { label: 'Total Support Tickets', value: rows.length },
-        { label: 'Active Open Queries', value: tickets.filter(t => t.status === 'OPEN' || t.status === 'IN_REVIEW').length }
-      ]);
-      this.totalRecordCount.set(rows.length);
+      const filtered = this.applyClientFilters(rows);
+      this.rawPreviewRows.set(filtered);
+      this.liveSummaryKpis.set([]);
+      this.totalRecordCount.set(filtered.length);
     }
   }
 
-  public async exportCustomReport(format: ExportFormat): Promise<void> {
+  public async exportCustomReport(format: ExportFormat, options?: ExportOptions): Promise<void> {
     const selectedCols = this.selectedColumnsList();
     if (selectedCols.length === 0) {
       this.toast.set('Please select at least one field column to export.');
@@ -302,6 +454,12 @@ export class ReportsHubComponent implements OnInit {
     const doc: ExportDocument = {
       title: `${this.categories.find(c => c.id === this.selectedCategory())?.name || 'Custom'} Delivery Report`,
       subtitle: `Real-time database generated report`,
+      meta: [
+        { label: 'Category', value: this.categories.find(c => c.id === this.selectedCategory())?.name || this.selectedCategory() },
+        { label: 'Status Filter', value: this.filterStatus() },
+        { label: 'Project', value: this.filterProject() },
+        { label: 'Record Count', value: String(this.totalRecordCount()) }
+      ],
       summary: this.liveSummaryKpis(),
       sections: [
         {
@@ -316,15 +474,77 @@ export class ReportsHubComponent implements OnInit {
 
     try {
       this.toast.set(`Generating ${format.toUpperCase()} export...`);
-      await this.exportService.export(doc, format, fileName);
+      await this.exportService.export(doc, format, fileName, options || {
+        orientation: this.exportOrientation(),
+        layout: this.exportLayout()
+      });
       this.toast.set(`Report exported successfully as ${format.toUpperCase()}!`);
     } catch (err: any) {
       this.toast.set('Export failed: ' + (err?.message || 'Unexpected error'));
     }
   }
 
-  public async previewCard(cardId: string, format: ExportFormat): Promise<void> {
-    this.onCategoryChange(cardId);
-    this.activeTab.set('CUSTOM_BUILDER');
+  public previewCustom(): void {
+    const selectedCols = this.selectedColumnsList();
+    if (selectedCols.length === 0) {
+      this.toast.set('Please select at least one field column to preview.');
+      return;
+    }
+
+    const exportCols: ExportColumn[] = selectedCols.map(c => ({
+      key: c.key,
+      label: c.label
+    }));
+
+    const doc: ExportDocument = {
+      title: `${this.categories.find(c => c.id === this.selectedCategory())?.name || 'Custom'} Delivery Report`,
+      subtitle: `Real-time database generated report`,
+      meta: [
+        { label: 'Category', value: this.categories.find(c => c.id === this.selectedCategory())?.name || this.selectedCategory() },
+        { label: 'Record Count', value: String(this.livePreviewRows().length) }
+      ],
+      summary: this.liveSummaryKpis(),
+      sections: [
+        {
+          title: 'Custom Filtered Data Records',
+          columns: exportCols,
+          rows: this.livePreviewRows()
+        }
+      ]
+    };
+
+    const html = this.exportService.renderHtmlPreview(doc, 'pdf', {
+      orientation: this.exportOrientation(),
+      layout: this.exportLayout()
+    });
+
+    const opts = {
+      orientation: this.exportOrientation(),
+      layout: this.exportLayout()
+    };
+
+    this.dialog.open(DocumentPreviewDialogComponent, {
+      data: {
+        title: doc.title,
+        subtitle: `${opts.orientation.toUpperCase()}  •  ${opts.layout.toUpperCase()} layout  •  Live preview`,
+        html,
+        downloadLabel: 'Download PDF',
+        onDownload: () => {
+          this.exportCustomReport('pdf', opts).then(() => {});
+        }
+      },
+      width: '1080px',
+      maxWidth: '96vw',
+      panelClass: 'document-preview-panel'
+    });
+  }
+
+  public clearFilters(): void {
+    this.filterStatus.set('ALL');
+    this.filterProject.set('ALL');
+    this.startDateInput = '';
+    this.endDateInput = '';
+    this.fetchCustomReportData();
+    this.toast.set('All report filters have been reset.');
   }
 }

@@ -927,20 +927,58 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
 
-      h2 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 700;
+      .report-result-titles {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        h2 {
+          margin: 0;
+          font-size: 1.1rem;
+          font-weight: 700;
+        }
+
+        .total-badge {
+          font-weight: 800;
+          font-size: 0.8rem;
+          color: #2563eb;
+          background-color: #eff6ff;
+          padding: 4px 10px;
+          border-radius: 4px;
+        }
       }
 
-      .total-badge {
-        font-weight: 800;
-        font-size: 0.8rem;
-        color: #2563eb;
-        background-color: #eff6ff;
-        padding: 4px 10px;
-        border-radius: 4px;
+      .report-export-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+
+        .export-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 6px 12px;
+          font-size: 0.75rem;
+          font-weight: 800;
+          border-radius: 6px;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
+          color: #475569;
+          cursor: pointer;
+          transition: all 0.15s ease;
+
+          mat-icon { font-size: 15px; height: 15px; width: 15px; }
+
+          &:hover { border-color: #6366f1; color: #3730a3; background: #eef2ff; }
+
+          &.pdf-btn { color: #dc2626; &:hover { background: #fef2f2; border-color: #fca5a5; } }
+          &.xls-btn { color: #059669; &:hover { background: #ecfdf5; border-color: #6ee7b7; } }
+          &.csv-btn { color: #334155; &:hover { background: #f1f5f9; border-color: #94a3b8; } }
+        }
       }
     }
 
@@ -2076,6 +2114,620 @@ mat-icon.xs,
       }
     }
   }
+}
+
+/* ====================================================================
+   DASHBOARD ENHANCEMENTS — Overview Strip, 8-tile grid, Members,
+   Milestone Progress, Effort Consumption, Activity Stream
+======================================================================== */
+
+.dashboard-pane {
+  .kpi-tiles-eight {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.overview-strip {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+
+  .ov-block {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 14px;
+    border-right: 1px solid #e2e8f0;
+
+    &:last-child { border-right: none; }
+
+    &.ov-primary {
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      border-right: none;
+
+      .ov-code {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #2563eb;
+        background-color: #eff6ff;
+        padding: 2px 8px;
+        border-radius: 4px;
+      }
+    }
+
+    .ov-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .ov-value {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      .health-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+
+        &.health-green { background-color: #10b981; }
+        &.health-amber { background-color: #f59e0b; }
+        &.health-red   { background-color: #ef4444; }
+      }
+    }
+
+    &.ov-progress {
+      flex: 1;
+      min-width: 140px;
+      border-right: none;
+
+      .ov-value {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .ov-progress-track {
+        flex: 1;
+        height: 6px;
+        background-color: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+
+        .ov-progress-fill {
+          height: 100%;
+          background-color: #22c55e;
+          border-radius: 3px;
+          transition: width 0.4s ease;
+        }
+      }
+
+      .ov-progress-val {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #22c55e;
+        white-space: nowrap;
+      }
+    }
+  }
+}
+
+/* Utility text colors */
+.text-purple { color: #7c3aed; }
+.text-slate  { color: #475569; }
+
+/* Members List (Dashboard widget) */
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+
+  .member-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #f1f5f9;
+
+    &:hover { background-color: #f8fafc; }
+
+    .member-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #ffffff;
+      flex-shrink: 0;
+    }
+
+    .member-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+
+      strong {
+        font-size: 0.78rem;
+        color: #0f172a;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      span {
+        font-size: 0.68rem;
+        color: #64748b;
+      }
+    }
+
+    .member-hours {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #64748b;
+      white-space: nowrap;
+    }
+  }
+}
+
+/* Milestone Delivery Progress (Dashboard widget) */
+.milestone-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ms-progress-ring-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+
+  .ms-ring-wrap {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    flex-shrink: 0;
+
+    .circular-chart {
+      width: 100px;
+      height: 100px;
+      transform: rotate(-90deg);
+    }
+
+    .ms-ring-label {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+  }
+
+  .ms-detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    .ms-detail-item {
+      .pill-green {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #065f46;
+        background-color: #ecfdf5;
+        padding: 3px 8px;
+        border-radius: 4px;
+      }
+
+      .pill-blue {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #1e40af;
+        background-color: #eff6ff;
+        padding: 3px 8px;
+        border-radius: 4px;
+      }
+
+      .pill-red {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #991b1b;
+        background-color: #fef2f2;
+        padding: 3px 8px;
+        border-radius: 4px;
+      }
+    }
+  }
+}
+
+/* Dashboard Bottom Grid (effort + activity) */
+.dashboard-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+
+  .widget-card {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+.effort-row {
+  display: flex;
+  gap: 20px;
+
+  .effort-block {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .effort-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+
+    .effort-value {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+  }
+}
+
+.effort-track {
+  height: 8px;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+
+  .effort-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2563eb, #6366f1);
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+}
+
+/* Activity Stream (Dashboard widget + Comments tab) */
+.feed-list {
+  display: flex;
+  flex-direction: column;
+
+  .feed-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 4px;
+    border-bottom: 1px solid #f1f5f9;
+
+    &:last-child { border-bottom: none; }
+
+    .feed-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background-color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+
+      mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+        color: #64748b;
+      }
+    }
+
+    .feed-body {
+      flex: 1;
+      min-width: 0;
+
+      .feed-text {
+        margin: 0;
+        font-size: 0.78rem;
+        color: #334155;
+        line-height: 1.4;
+      }
+
+      .feed-meta {
+        font-size: 0.68rem;
+        color: #94a3b8;
+        margin-top: 2px;
+        display: block;
+      }
+    }
+  }
+}
+
+.view-all-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+  border-radius: 4px;
+
+  &:hover { background-color: #eff6ff; }
+}
+
+/* ====================================================================
+   REPORTS ENHANCEMENTS — Pie/donut chart, distribution bar, config hints
+======================================================================== */
+
+.center-chart-box {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.pie-chart-wrap {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+
+  .donut-chart-container {
+    width: 140px;
+    height: 140px;
+    flex-shrink: 0;
+  }
+}
+
+.zoho-report-table {
+  .dist-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .dist-bar-track {
+      flex: 1;
+      height: 6px;
+      background-color: #e2e8f0;
+      border-radius: 3px;
+      overflow: hidden;
+
+      .dist-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+    }
+
+    .dist-pct {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #64748b;
+      white-space: nowrap;
+      min-width: 32px;
+      text-align: right;
+    }
+  }
+}
+
+.chart-config-rail {
+  .config-hint {
+    display: block;
+    font-size: 0.68rem;
+    color: #94a3b8;
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  .config-source {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+    margin-top: 2px;
+  }
+}
+
+/* ====================================================================
+   MILESTONES — Card header actions, icon button, delete ghost
+======================================================================== */
+
+.card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-icon-sm {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  padding: 3px;
+  display: inline-flex;
+  border-radius: 4px;
+  min-width: 24px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+
+  mat-icon { font-size: 14px; width: 14px; height: 14px; }
+  &:hover { background-color: #fee2e2; color: #dc2626; }
+}
+
+.btn-danger-ghost {
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 2px 4px;
+  display: inline-flex;
+  border-radius: 4px;
+
+  mat-icon { font-size: 14px; width: 14px; height: 14px; }
+  &:hover { background-color: #fef2f2; color: #dc2626; border-color: #fecaca; }
+}
+
+/* ====================================================================
+   ISSUES — Severity dot, dynamic banner, status actions, header actions
+======================================================================== */
+
+.severity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 2px;
+
+  &.sev-critical { background-color: #dc2626; }
+  &.sev-high     { background-color: #f97316; }
+  &.sev-default  { background-color: #94a3b8; }
+}
+
+.green-banner {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.amber-banner {
+  background-color: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.status-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+
+  .status-action-btn {
+    background: none;
+    border: 1px solid currentColor;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    opacity: 0.8;
+
+    &:hover { opacity: 1; background-color: rgba(255,255,255,0.3); }
+  }
+}
+
+.header-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.status-banner-chip {
+  &.green { background-color: #ecfdf5; color: #065f46; }
+  &.amber { background-color: #fffbeb; color: #92400e; }
+}
+
+/* ====================================================================
+   COMMENTS — View toggle, activity stream wrapper
+======================================================================== */
+
+.comments-view-toggle {
+  display: flex;
+  gap: 2px;
+  background-color: #f1f5f9;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.view-toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  padding: 5px 12px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+
+  &:hover { color: #334155; }
+  &.active {
+    background-color: #ffffff;
+    color: #2563eb;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+}
+
+.activity-stream {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.status-banner {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+
+  &.red-banner {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+  }
+}
+
+.scrollable {
+  overflow-y: auto;
+}
+
+.scrollable-x {
+  overflow-x: auto;
 }
 
 

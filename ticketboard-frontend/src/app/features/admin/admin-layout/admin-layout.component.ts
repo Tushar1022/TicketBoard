@@ -54,6 +54,14 @@ import { AuthService } from '../../../core/services/auth.service';
             <mat-icon>admin_panel_settings</mat-icon>
             <span>Roles &amp; Permissions</span>
           </a>
+          <a
+            routerLink="/admin/support-tickets"
+            routerLinkActive="active"
+            class="admin-tab"
+          >
+            <mat-icon>headset_mic</mat-icon>
+            <span>Support Tickets</span>
+          </a>
         </nav>
       </header>
 

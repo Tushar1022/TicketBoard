@@ -1,7 +1,8 @@
 package com.aurionpro.ticketboard.dashboard.service;
 
-import com.aurionpro.ticketboard.dashboard.dto.ReportDataResponse;
+import com.aurionpro.ticketboard.dashboard.dto.*;
 import com.aurionpro.ticketboard.project.entity.Project;
+import com.aurionpro.ticketboard.project.repository.MilestoneRepository;
 import com.aurionpro.ticketboard.project.repository.ProjectRepository;
 import com.aurionpro.ticketboard.requirement.entity.Requirement;
 import com.aurionpro.ticketboard.requirement.repository.RequirementRepository;
@@ -19,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -34,6 +36,7 @@ public class ReportServiceImpl implements ReportService {
     private final RiskRepository riskRepository;
     private final IssueRepository issueRepository;
     private final SupportTicketRepository supportTicketRepository;
+    private final MilestoneRepository milestoneRepository;
 
     @Override
     public ReportDataResponse getReportData(String category, Long projectId, String status, String startDate, String endDate) {
@@ -58,6 +61,138 @@ public class ReportServiceImpl implements ReportService {
             default:
                 return buildWorkItemsReport(projectId, status);
         }
+    }
+
+    @Override
+    public List<ReportCatalogItemDto> getReportCatalog() {
+        return List.of(
+                ReportCatalogItemDto.builder()
+                        .category("projects")
+                        .title("Project Portfolio Status Report")
+                        .subtitle("Real-time delivery progress, health indicators, and effort variance across projects")
+                        .chartType("bar")
+                        .orientation("landscape")
+                        .summaryLabels(List.of("Total Projects", "Active Delivery Projects", "Average Portfolio Completion"))
+                        .columns(columnDefs(
+                                col("projectCode", "Project Code"),
+                                col("projectName", "Project Name"),
+                                col("client", "Client Name"),
+                                col("status", "Status"),
+                                col("health", "Delivery Health"),
+                                col("completion", "Completion %"),
+                                col("estimatedHours", "Est Budget Hours", "number"),
+                                col("actualHours", "Logged Hours", "number")))
+                        .build(),
+                ReportCatalogItemDto.builder()
+                        .category("workitems")
+                        .title("Work Items & Delivery Board Report")
+                        .subtitle("Real-time tracking of tasks, bugs, assignees, and effort hours")
+                        .chartType("bar")
+                        .orientation("landscape")
+                        .summaryLabels(List.of("Total Tasks & Bugs", "Delivered / Closed", "Total Estimated Hours", "Total Logged Hours"))
+                        .columns(columnDefs(
+                                col("ticketNumber", "Ticket #"),
+                                col("title", "Title"),
+                                col("project", "Project"),
+                                col("status", "Status"),
+                                col("priority", "Priority"),
+                                col("assignee", "Assignee"),
+                                col("estimatedHours", "Est Hours", "number"),
+                                col("actualHours", "Act Hours", "number"),
+                                col("billingType", "Billing Type"),
+                                col("jiraId", "Jira ID")))
+                        .build(),
+                ReportCatalogItemDto.builder()
+                        .category("requirements")
+                        .title("Requirements & Scope Register Report")
+                        .subtitle("Change requests, approval statuses, and effort variance")
+                        .chartType("donut")
+                        .orientation("portrait")
+                        .summaryLabels(List.of("Total Requirements", "Approved Requirements"))
+                        .columns(columnDefs(
+                                col("reqNumber", "Req Number"),
+                                col("title", "Title"),
+                                col("project", "Project"),
+                                col("status", "Status"),
+                                col("priority", "Priority"),
+                                col("requester", "Requester"),
+                                col("estimatedEffort", "Est Effort", "number"),
+                                col("actualEffort", "Actual Effort", "number")))
+                        .build(),
+                ReportCatalogItemDto.builder()
+                        .category("timelogs")
+                        .title("Time Tracking & Effort Audit Report")
+                        .subtitle("Logged hours, work dates, and approval tracking")
+                        .chartType("area")
+                        .orientation("landscape")
+                        .summaryLabels(List.of("Total Time Log Entries", "Total Logged Effort"))
+                        .columns(columnDefs(
+                                col("id", "Log ID", "number"),
+                                col("user", "Employee Name"),
+                                col("project", "Project"),
+                                col("workDate", "Work Date", "date"),
+                                col("hours", "Logged Hours", "number"),
+                                col("description", "Task Activity"),
+                                col("status", "Approval Status")))
+                        .build(),
+                ReportCatalogItemDto.builder()
+                        .category("risks")
+                        .title("Risks & Issues Register Report")
+                        .subtitle("Risk matrix, open issues, severity scoring, and mitigation ownership")
+                        .chartType("donut")
+                        .orientation("portrait")
+                        .summaryLabels(List.of("Identified Risks", "Active Issues"))
+                        .columns(columnDefs(
+                                col("code", "Code"),
+                                col("type", "Type (Risk/Issue)"),
+                                col("project", "Project"),
+                                col("description", "Description"),
+                                col("severity", "Severity Score"),
+                                col("status", "Status"),
+                                col("owner", "Risk Owner")))
+                        .build(),
+                ReportCatalogItemDto.builder()
+                        .category("support-tickets")
+                        .title("Support Tickets & Queries Report")
+                        .subtitle("Real-time support ticket resolution telemetry for Super Admin & Admin queues")
+                        .chartType("bar")
+                        .orientation("landscape")
+                        .summaryLabels(List.of("Total Support Tickets", "Active Open Queries"))
+                        .columns(columnDefs(
+                                col("ticketCode", "Ticket Code"),
+                                col("subject", "Subject"),
+                                col("category", "Category"),
+                                col("priority", "Priority"),
+                                col("targetRole", "Target Admin Role"),
+                                col("status", "Resolution Status"),
+                                col("raisedBy", "Raised By User"),
+                                col("assignedAdmin", "Assigned Admin")))
+                        .build()
+        );
+    }
+
+    private static List<ReportColumnDefDto> columnDefs(ReportColumnDefDto... cols) {
+        return Arrays.asList(cols);
+    }
+
+    private static ReportColumnDefDto col(String key, String label) {
+        return ReportColumnDefDto.builder().key(key).label(label).align("left").format("text").build();
+    }
+
+    private static ReportColumnDefDto col(String key, String label, String format) {
+        return ReportColumnDefDto.builder().key(key).label(label).align("right").format(format).build();
+    }
+
+    private static List<SeriesPointDto> toSeries(List<Object[]> grouped) {
+        if (grouped == null) {
+            return new ArrayList<>();
+        }
+        return grouped.stream()
+                .map(o -> SeriesPointDto.builder()
+                        .label(String.valueOf(o[0]))
+                        .count(((Number) o[1]).longValue())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private ReportDataResponse buildProjectsReport(String statusFilter) {
@@ -100,6 +235,9 @@ public class ReportServiceImpl implements ReportService {
                 .columns(cols)
                 .rows(rows)
                 .totalRecords(rows.size())
+                .reportSeries(toSeries(projectRepository.countByStatusGrouped()))
+                .chartType("bar")
+                .orientation("landscape")
                 .build();
     }
 
@@ -149,6 +287,11 @@ public class ReportServiceImpl implements ReportService {
                 .columns(cols)
                 .rows(rows)
                 .totalRecords(rows.size())
+                .reportSeries(projectId != null
+                        ? toSeries(workItemRepository.countByStatusGroupedForProject(projectId))
+                        : toSeries(workItemRepository.countByStatusGrouped()))
+                .chartType("bar")
+                .orientation("landscape")
                 .build();
     }
 
@@ -187,11 +330,20 @@ public class ReportServiceImpl implements ReportService {
                 .columns(cols)
                 .rows(rows)
                 .totalRecords(rows.size())
+                .reportSeries(projectId != null
+                        ? toSeries(requirementRepository.countByStatusGroupedForProject(projectId))
+                        : toSeries(requirementRepository.countByStatusGrouped()))
+                .chartType("donut")
+                .orientation("portrait")
                 .build();
     }
 
     private ReportDataResponse buildTimeLogsReport(Long projectId) {
         List<TimeEntry> entries = timeEntryRepository.findAll();
+
+        if (projectId != null) {
+            entries = entries.stream().filter(e -> e.getProject() != null && e.getProject().getId().equals(projectId)).collect(Collectors.toList());
+        }
 
         double totalHours = entries.stream().mapToDouble(TimeEntry::getTotalHours).sum();
 
@@ -222,7 +374,24 @@ public class ReportServiceImpl implements ReportService {
                 .columns(cols)
                 .rows(rows)
                 .totalRecords(rows.size())
+                .reportSeries(projectId != null
+                        ? toHoursSeries(timeEntryRepository.hoursGroupedByDateForProject(projectId))
+                        : toHoursSeries(timeEntryRepository.hoursGroupedByDate()))
+                .chartType("area")
+                .orientation("landscape")
                 .build();
+    }
+
+    private static List<SeriesPointDto> toHoursSeries(List<Object[]> grouped) {
+        if (grouped == null) {
+            return new ArrayList<>();
+        }
+        return grouped.stream()
+                .map(o -> SeriesPointDto.builder()
+                        .label(String.valueOf(o[0]))
+                        .count(((Number) o[1]).longValue())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private ReportDataResponse buildRisksAndIssuesReport(Long projectId) {
@@ -262,6 +431,10 @@ public class ReportServiceImpl implements ReportService {
             rows.add(map);
         }
 
+        List<SeriesPointDto> series = new ArrayList<>();
+        series.addAll(toSeries(projectId != null ? riskRepository.countByStatusGroupedForProject(projectId) : riskRepository.countByStatusGrouped()));
+        series.addAll(toSeries(projectId != null ? issueRepository.countBySeverityGroupedForProject(projectId) : issueRepository.countBySeverityGrouped()));
+
         return ReportDataResponse.builder()
                 .reportCategory("risks")
                 .title("Risks & Issues Register Report")
@@ -270,6 +443,9 @@ public class ReportServiceImpl implements ReportService {
                 .columns(cols)
                 .rows(rows)
                 .totalRecords(rows.size())
+                .reportSeries(series)
+                .chartType("donut")
+                .orientation("portrait")
                 .build();
     }
 
@@ -310,6 +486,9 @@ public class ReportServiceImpl implements ReportService {
                 .columns(cols)
                 .rows(rows)
                 .totalRecords(rows.size())
+                .reportSeries(toSeries(supportTicketRepository.countByStatusGrouped()))
+                .chartType("bar")
+                .orientation("landscape")
                 .build();
     }
 }

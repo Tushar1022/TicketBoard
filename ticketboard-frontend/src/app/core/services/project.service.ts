@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ApiResponse, Milestone, Project } from '../models/api.models';
+import { ApiResponse, Milestone, Project, ProjectStats } from '../models/api.models';
 
 @Injectable({
   providedIn: 'root'
@@ -11,6 +11,10 @@ export class ProjectService {
   private readonly milestoneUrl = 'http://localhost:8080/api/v1/milestones';
 
   constructor(private http: HttpClient) {}
+
+  public getProjectStats(id: number): Observable<ApiResponse<ProjectStats>> {
+    return this.http.get<ApiResponse<ProjectStats>>(`${this.baseUrl}/${id}/stats`);
+  }
 
   public getAllProjects(params?: { status?: string; managerId?: number; userId?: number }): Observable<ApiResponse<Project[]>> {
     let httpParams = new HttpParams();
@@ -55,5 +59,9 @@ export class ProjectService {
 
   public updateMilestone(id: number, payload: any): Observable<ApiResponse<Milestone>> {
     return this.http.put<ApiResponse<Milestone>>(`${this.milestoneUrl}/${id}`, payload);
+  }
+
+  public deleteMilestone(id: number): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.milestoneUrl}/${id}`);
   }
 }

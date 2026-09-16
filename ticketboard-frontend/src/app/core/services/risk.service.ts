@@ -40,4 +40,8 @@ export class RiskService {
   public updateIssue(id: number, payload: any): Observable<ApiResponse<Issue>> {
     return this.http.put<ApiResponse<Issue>>(`${this.baseUrl}/issues/${id}`, payload);
   }
+
+  public deleteIssue(id: number): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/issues/${id}`);
+  }
 }

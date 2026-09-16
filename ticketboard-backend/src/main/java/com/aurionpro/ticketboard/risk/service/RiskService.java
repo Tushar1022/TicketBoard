@@ -184,6 +184,21 @@ public class RiskService {
         return mapIssueToDto(issueRepository.save(issue));
     }
 
+    @Transactional(readOnly = true)
+    public IssueDto getIssueById(Long id) {
+        Issue issue = issueRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Issue", "id", id));
+        return mapIssueToDto(issue);
+    }
+
+    @Transactional
+    public void deleteIssue(Long id) {
+        if (!issueRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Issue", "id", id);
+        }
+        issueRepository.deleteById(id);
+    }
+
     @Transactional
     public void deleteRisk(Long id) {
         if (!riskRepository.existsById(id)) {

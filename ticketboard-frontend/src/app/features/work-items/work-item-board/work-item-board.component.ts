@@ -60,6 +60,9 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
   // View Mode: LIST, KANBAN, GANTT
   public viewMode = signal<'LIST' | 'KANBAN' | 'GANTT'>('LIST');
 
+  // Kanban Data
+  public kanbanBoardData = signal<Record<string, WorkItem[]>>({});
+
   // Inline Cell Editing State
   public inlineEditing = signal<{ id: number; field: string } | null>(null);
 
@@ -263,11 +266,18 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
     }
 
     this.filteredWorkItems.set(items);
+    
+    // Update Kanban Board Data
+    const kbData: Record<string, WorkItem[]> = {};
+    this.kanbanColumns.forEach(col => {
+      kbData[col.status] = items.filter(i => i.status === col.status);
+    });
+    this.kanbanBoardData.set(kbData);
   }
 
   // Kanban Column Helpers
   public getColumnItems(status: WorkItemStatus): WorkItem[] {
-    return this.filteredWorkItems().filter((item) => item.status === status);
+    return this.kanbanBoardData()[status] || [];
   }
 
   public getConnectedDropLists(): string[] {
@@ -275,18 +285,7 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
   }
 
   // Distinguish a genuine drag from a simple click so cards only open when clicked
-  private kanbanDragActive = signal<boolean>(false);
-
-  public onKanbanDragStart(): void {
-    this.kanbanDragActive.set(true);
-  }
-
-  public onKanbanDragEnd(): void {
-    setTimeout(() => this.kanbanDragActive.set(false), 0);
-  }
-
   public openKanbanDetail(item: WorkItem): void {
-    if (this.kanbanDragActive()) return;
     this.openTaskDrawer(item);
   }
 
@@ -301,11 +300,12 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
         event.previousIndex,
         event.currentIndex
       );
-      this.updateItemStatus(movedItem, targetStatus);
+      movedItem.status = targetStatus as WorkItemStatus;
+      this.updateItemStatus(movedItem, targetStatus, true);
     }
   }
 
-  public updateItemStatus(item: WorkItem, newStatus: WorkItemStatus): void {
+  public updateItemStatus(item: WorkItem, newStatus: WorkItemStatus, silent: boolean = false): void {
     if (newStatus === 'BLOCKED') {
       this.openBlockerModal(item);
       return;
@@ -314,7 +314,7 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
     this.workItemService.updateStatus(item.id, newStatus).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res: any) => {
         if (res.success && res.data) {
-          this.loadWorkItems();
+          if (!silent) this.loadWorkItems();
           if (this.selectedTask() && this.selectedTask()!.id === item.id) {
             this.selectedTask.set(res.data);
             if (this.editForm()) {

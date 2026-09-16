@@ -261,7 +261,7 @@
         <div class="kanban-column-header">
           <div class="col-title-wrap">
             <span class="badge" [ngClass]="col.badgeClass">{{ col.label }}</span>
-            <span class="count-pill">{{ getColumnItems(col.status).length }}</span>
+            <span class="count-pill">{{ kanbanBoardData()[col.status].length }}</span>
           </div>
         </div>
 
@@ -269,15 +269,14 @@
           class="kanban-cards-list"
           cdkDropList
           [id]="'cdk-drop-list-' + col.status"
-          [cdkDropListData]="getColumnItems(col.status)"
+          [cdkDropListData]="kanbanBoardData()[col.status]"
+          [cdkDropListConnectedTo]="getConnectedDropLists()"
           (cdkDropListDropped)="onKanbanDrop($event, col.status)"
         >
           <div
             class="kanban-card card-panel"
-            *ngFor="let item of getColumnItems(col.status)"
+            *ngFor="let item of kanbanBoardData()[col.status]"
             cdkDrag
-            (cdkDragStarted)="onKanbanDragStart()"
-            (cdkDragEnded)="onKanbanDragEnd()"
             (click)="openKanbanDetail(item)"
             matTooltip="Drag to move between stages • Click to open details"
           >
@@ -329,7 +328,7 @@
             </div>
           </div>
 
-          <div class="empty-column-placeholder" *ngIf="getColumnItems(col.status).length === 0">
+          <div class="empty-column-placeholder" *ngIf="kanbanBoardData()[col.status].length === 0">
             <span>No tasks in {{ col.label }}</span>
           </div>
         </div>
