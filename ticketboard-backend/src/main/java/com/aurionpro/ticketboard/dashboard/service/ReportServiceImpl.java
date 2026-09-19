@@ -427,7 +427,7 @@ public class ReportServiceImpl implements ReportService {
             map.put("Description", i.getDescription());
             map.put("Severity / Score", i.getSeverity() != null ? i.getSeverity().name() : "HIGH");
             map.put("Status", i.getStatus() != null ? i.getStatus().name() : "OPEN");
-            map.put("Owner", i.getOwner() != null ? i.getOwner().getFirstName() + " " + i.getOwner().getLastName() : "N/A");
+            map.put("Owner", i.getReporter() != null ? i.getReporter().getFirstName() + " " + i.getReporter().getLastName() : "N/A");
             rows.add(map);
         }
 

@@ -250,6 +250,63 @@ public class SecurityDataInitializer implements CommandLineRunner {
                 entry("IBM MQ", "IBM MQ", 20, null)
         ));
 
+        seedCategory("MILESTONE_STATUS", List.of(
+                entry("PLANNED", "Planned", 1, "#64748B"),
+                entry("IN_PROGRESS", "In Progress", 2, "#3B82F6"),
+                entry("ACHIEVED", "Achieved", 3, "#10B981"),
+                entry("DELAYED", "Delayed / Missed", 4, "#EF4444"),
+                entry("CANCELLED", "Cancelled", 5, "#9E9E9E")
+        ));
+
+        seedCategory("MILESTONE_FLAG", List.of(
+                entry("RELEASE_MILESTONE", "Release Milestone", 1, "#9C27B0"),
+                entry("AFFECTED_MILESTONE", "Affected Milestone", 2, "#F44336")
+        ));
+
+        seedCategory("ISSUE_STATUS", List.of(
+                entry("OPEN", "Open", 1, "#EF4444"),
+                entry("IN_PROGRESS", "In Progress", 2, "#F59E0B"),
+                entry("RESOLVED", "Resolved", 3, "#10B981"),
+                entry("CLOSED", "Closed", 4, "#64748B"),
+                entry("REOPENED", "Reopened", 5, "#E91E63")
+        ));
+
+        seedCategory("ISSUE_SEVERITY", List.of(
+                entry("LOW", "Low", 1, "#10B981"),
+                entry("MEDIUM", "Medium", 2, "#3B82F6"),
+                entry("HIGH", "High", 3, "#F59E0B"),
+                entry("CRITICAL", "Critical", 4, "#EF4444")
+        ));
+
+        seedCategory("ISSUE_CLASSIFICATION", List.of(
+                entry("FUNCTIONAL_DEFECT", "Functional Defect", 1, "#EF4444"),
+                entry("UI_DEFECT", "UI / UX Defect", 2, "#F59E0B"),
+                entry("DATA_INTEGRITY", "Data Integrity", 3, "#3B82F6"),
+                entry("BACKEND_LOGIC", "Backend Logic", 4, "#8B5CF6"),
+                entry("REPORTING", "Reporting / Export", 5, "#06B6D4"),
+                entry("PERFORMANCE_LOAD", "Performance / Load", 6, "#EC4899"),
+                entry("SECURITY_VULNERABILITY", "Security Vulnerability", 7, "#DC2626"),
+                entry("REQUIREMENTS_GAP", "Requirements Gap", 8, "#0D9488"),
+                entry("ENVIRONMENT_CONFIG", "Environment / Configuration", 9, "#6366F1"),
+                entry("DOCUMENTATION", "Documentation", 10, "#64748B")
+        ));
+
+        seedCategory("RISK_PROBABILITY", List.of(
+                entry("1", "Rare", 1, "#10B981"),
+                entry("2", "Unlikely", 2, "#3B82F6"),
+                entry("3", "Moderate", 3, "#F59E0B"),
+                entry("4", "Likely", 4, "#FF9800"),
+                entry("5", "Almost Certain", 5, "#EF4444")
+        ));
+
+        seedCategory("RISK_IMPACT", List.of(
+                entry("1", "Negligible", 1, "#10B981"),
+                entry("2", "Minor", 2, "#3B82F6"),
+                entry("3", "Moderate", 3, "#F59E0B"),
+                entry("4", "Major", 4, "#FF9800"),
+                entry("5", "Catastrophic", 5, "#EF4444")
+        ));
+
         log.info("Lookup Data initialization complete.");
     }
 

@@ -20,13 +20,13 @@ import { WorkItemService } from '../../../core/services/work-item.service';
 import { CommentService } from '../../../core/services/comment.service';
 import { DocumentService } from '../../../core/services/document.service';
 import { TimeTrackingService } from '../../../core/services/timetracking.service';
-import { RiskService } from '../../../core/services/risk.service';
+import { IssueWorkbenchComponent } from '../issue-workbench/issue-workbench.component';
+import { ToastService } from '../toast/toast.service';
 import {
   ActivityLog,
   Comment,
   DependencyDto,
   DependencyType,
-  Issue,
   Project,
   TaskDocument,
   TimeEntry,
@@ -43,7 +43,7 @@ export interface BoardColumn {
 @Component({
   selector: 'app-task-detail-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule],
+  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule, IssueWorkbenchComponent],
   templateUrl: './task-detail-dialog.component.html',
   styleUrls: ['./task-detail-dialog.component.scss']
 })
@@ -61,7 +61,7 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
   private commentService = inject(CommentService);
   private documentService = inject(DocumentService);
   private timeTrackingService = inject(TimeTrackingService);
-  private riskService = inject(RiskService);
+  private toastService = inject(ToastService);
 
   public currentTask = signal<WorkItem>(this.task);
   public editForm = signal<any>(null);
@@ -78,7 +78,6 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
   public taskAuditLogs = signal<ActivityLog[]>([]);
   public taskDocuments = signal<TaskDocument[]>([]);
   public taskTimeEntries = signal<TimeEntry[]>([]);
-  public taskIssues = signal<Issue[]>([]);
   public newCommentText = signal<string>('');
 
   // Subtask creation form (creates a child task linked to the current parent)
@@ -94,30 +93,6 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
   public newDepTargetId = signal<number | null>(null);
   public newDepType = signal<DependencyType>('BLOCKS');
   public dependencyTypes: DependencyType[] = ['BLOCKS', 'BLOCKED_BY', 'DEPENDS_ON', 'RELATED_TO', 'DUPLICATES'];
-
-  // Issue / defect submission form
-  public showIssueForm = signal<boolean>(false);
-  public issueSubmitting = signal<boolean>(false);
-  public newIssueForm: {
-    title: string;
-    description: string;
-    severity: string;
-    classification: string;
-    stepsToReproduce: string;
-    crValue: number | null;
-    crManDays: number | null;
-    dueDate: string;
-  } = {
-    title: '',
-    description: '',
-    severity: 'MEDIUM',
-    classification: 'Functional Defect',
-    stepsToReproduce: '',
-    crValue: null,
-    crManDays: null,
-    dueDate: ''
-  };
-  public readonly issueClassifications = ['Functional Defect', 'UI Defect', 'Data Integrity', 'Backend Logic', 'Reporting'];
 
   public selectedDocFile = signal<File | null>(null);
 
@@ -166,6 +141,7 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
       if (res.success && res.data) {
         this.currentTask.set(res.data);
         this.editForm.update((f) => ({ ...f, status: res.data.status }));
+        this.toastService.info(`Task ${this.task.ticketNumber} status changed to ${newStatus.replace(/_/g, ' ')}.`);
         this.saveMessage.set('Status updated');
         this.saved.emit();
       }
@@ -235,12 +211,14 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
           this.currentTask.set(res.data);
           this.editForm.set({ ...res.data });
           this.syncDescriptionEditor();
+          this.toastService.success(`Task ${this.task.ticketNumber} changes were saved.`);
           this.saveMessage.set('Saved');
           this.saved.emit();
         }
       },
       error: () => {
         this.isSavingDrawer.set(false);
+        this.toastService.error('Failed to save task changes.');
         this.saveMessage.set('Save failed');
       }
     });
@@ -258,7 +236,6 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
   public loadTaskDetails(taskId: number): void {
     const task = this.currentTask();
     this.taskTimeEntries.set([]);
-    this.taskIssues.set([]);
 
     this.commentService.getComments('WORK_ITEM', taskId).subscribe({
       next: (res: any) => {
@@ -286,16 +263,6 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
               res.data.filter(
                 (e: TimeEntry) => e.workItemId === taskId || e.workItemTicketNumber === task.ticketNumber
               )
-            );
-          }
-        }
-      });
-
-      this.riskService.getIssuesByProject(task.projectId).subscribe({
-        next: (res: any) => {
-          if (res.success && res.data) {
-            this.taskIssues.set(
-              res.data.filter((i: Issue) => i.linkedTaskIds && i.linkedTaskIds.includes(task.ticketNumber))
             );
           }
         }
@@ -346,9 +313,11 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
         if (res.success && res.data) {
           this.currentTask.set(res.data);
           this.editForm.set({ ...res.data });
+          this.toastService.success('Task synchronized with JIRA successfully.');
           this.saved.emit();
         }
-      }
+      },
+      error: () => this.toastService.error('JIRA synchronization failed.')
     });
   }
 
@@ -361,10 +330,12 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
       .subscribe({
         next: (res: any) => {
           if (res.success) {
+            this.toastService.success('Comment added to the task.');
             this.newCommentText.set('');
             this.loadTaskDetails(task.id);
           }
-        }
+        },
+        error: () => this.toastService.error('Failed to add comment.')
       });
   }
 
@@ -382,11 +353,13 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
     this.workItemService.uploadDocument(task.id, file).subscribe({
       next: (res: any) => {
         if (res.success) {
+          this.toastService.success('Document uploaded and attached to the task.');
           this.selectedDocFile.set(null);
           this.loadTaskDetails(task.id);
           this.saved.emit();
         }
-      }
+      },
+      error: () => this.toastService.error('Document upload failed.')
     });
   }
 
@@ -402,7 +375,11 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
     if (!task) return;
 
     this.workItemService.deleteDocument(docId).subscribe({
-      next: () => this.loadTaskDetails(task.id)
+      next: () => {
+        this.toastService.success('Document removed from the task.');
+        this.loadTaskDetails(task.id);
+      },
+      error: () => this.toastService.error('Failed to delete the document.')
     });
   }
 
@@ -413,10 +390,12 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
     this.workItemService.unblockWorkItem(task.id, { reason: 'Resolved by team engineer' }).subscribe({
       next: (res: any) => {
         if (res.success) {
+          this.toastService.success('Task unblocked successfully.');
           this.refreshCurrentTask(res.data);
           this.saved.emit();
         }
-      }
+      },
+      error: () => this.toastService.error('Failed to unblock the task.')
     });
   }
 
@@ -444,6 +423,7 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
       .subscribe({
         next: (res: any) => {
           if (res.success) {
+            this.toastService.success('Subtask created successfully.');
             this.newSubtaskTitle.set('');
             this.newSubtaskDescription.set('');
             this.newSubtaskHours.set(4.0);
@@ -455,6 +435,7 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
           }
         },
         error: (err: any) => {
+          this.toastService.error('Failed to create subtask — please try again.');
           this.saveMessage.set('Failed to create subtask — please try again.');
           setTimeout(() => this.saveMessage.set(''), 6000);
         }
@@ -497,11 +478,13 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
       .subscribe({
         next: (res: any) => {
           if (res.success) {
+            this.toastService.success('Dependency added to the task.');
             this.newDepTargetId.set(null);
             this.refreshCurrentTask();
             this.saved.emit();
           }
-        }
+        },
+        error: () => this.toastService.error('Failed to add dependency.')
       });
   }
 
@@ -509,66 +492,12 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
     if (!depId) return;
     this.workItemService.deleteDependency(depId).subscribe({
       next: () => {
+        this.toastService.success('Dependency removed.');
         this.refreshCurrentTask();
         this.saved.emit();
-      }
+      },
+      error: () => this.toastService.error('Failed to remove dependency.')
     });
-  }
-
-  /* ── Issue / defect submission ── */
-
-  public toggleIssueForm(): void {
-    if (this.showIssueForm()) {
-      this.newIssueForm = {
-        title: '',
-        description: '',
-        severity: 'MEDIUM',
-        classification: 'Functional Defect',
-        stepsToReproduce: '',
-        crValue: null,
-        crManDays: null,
-        dueDate: ''
-      };
-    }
-    this.showIssueForm.update((v) => !v);
-  }
-
-  public submitTaskIssue(): void {
-    const task = this.currentTask();
-    if (!task || this.issueSubmitting()) return;
-
-    this.issueSubmitting.set(true);
-    this.riskService
-      .createIssue({
-        projectId: task.projectId,
-        title: this.newIssueForm.title.trim(),
-        description: this.newIssueForm.description.trim(),
-        severity: this.newIssueForm.severity,
-        status: 'OPEN',
-        classification: this.newIssueForm.classification,
-        stepsToReproduce: this.newIssueForm.stepsToReproduce.trim() || null,
-        crValue: this.newIssueForm.crValue,
-        crManDays: this.newIssueForm.crManDays,
-        dueDate: this.newIssueForm.dueDate || null,
-        linkedTaskIds: [task.ticketNumber]
-      })
-      .subscribe({
-        next: (res: any) => {
-          this.issueSubmitting.set(false);
-          if (res.success) {
-            this.saveMessage.set('Defect / issue ticket submitted and linked to ' + task.ticketNumber);
-            setTimeout(() => this.saveMessage.set(''), 6000);
-            this.toggleIssueForm();
-            this.loadTaskDetails(task.id);
-            this.saved.emit();
-          }
-        },
-        error: (err: any) => {
-          this.issueSubmitting.set(false);
-          this.saveMessage.set('Failed to submit issue — please try again.');
-          setTimeout(() => this.saveMessage.set(''), 6000);
-        }
-      });
   }
 
   /* ── Date helpers ── */

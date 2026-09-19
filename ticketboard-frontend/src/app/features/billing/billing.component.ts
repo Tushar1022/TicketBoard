@@ -18,6 +18,7 @@ import {
   InvoiceStatus,
   Project
 } from '../../core/models/api.models';
+import { ToastService } from '../../shared/components/toast/toast.service';
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: 'badge-slate',
@@ -65,7 +66,8 @@ export class BillingComponent implements OnInit {
     private billingService: BillingService,
     private projectService: ProjectService,
     private exportService: ExportService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -138,6 +140,7 @@ export class BillingComponent implements OnInit {
       next: (res: any) => {
         this.creating.set(false);
         if (res.success && res.data) {
+          this.toastService.success(`Invoice ${res.data.invoiceNumber} was generated successfully.`);
           this.preview.set(null);
           this.loadData();
           this.selectInvoice(res.data);
@@ -146,6 +149,7 @@ export class BillingComponent implements OnInit {
       error: (err: any) => {
         this.creating.set(false);
         this.previewError.set(err?.error?.message || 'Invoice creation failed.');
+        this.toastService.error('Invoice creation failed.');
       }
     });
   }
@@ -158,10 +162,12 @@ export class BillingComponent implements OnInit {
     this.billingService.updateStatus(inv.id, status).subscribe({
       next: (res: any) => {
         if (res.success) {
+          this.toastService.success(`Invoice ${inv.invoiceNumber} status updated to ${status.replace(/_/g, ' ')}.`);
           this.loadData();
           this.statusUpdateFor.set(null);
         }
-      }
+      },
+      error: () => this.toastService.error('Failed to update invoice status.')
     });
   }
 
@@ -169,9 +175,11 @@ export class BillingComponent implements OnInit {
     if (!confirm(`Delete invoice ${inv.invoiceNumber}? This cannot be undone.`)) return;
     this.billingService.deleteInvoice(inv.id).subscribe({
       next: () => {
+        this.toastService.success(`Invoice ${inv.invoiceNumber} was deleted.`);
         if (this.selectedInvoice()?.id === inv.id) this.selectedInvoice.set(null);
         this.loadData();
-      }
+      },
+      error: () => this.toastService.error('Failed to delete the invoice.')
     });
   }
 

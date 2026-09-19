@@ -46,12 +46,12 @@
       </button>
     </div>
     <div class="control-actions">
-      <button class="btn btn-primary-accent" (click)="openCreateTaskModal()" *ngIf="activeTab() === 'tasks'">
+      <!-- <button class="btn btn-primary-accent" (click)="openCreateTaskModal()" *ngIf="activeTab() === 'tasks'">
         <mat-icon class="xs">add</mat-icon> Add Task
-      </button>
-      <button class="btn btn-primary-accent" (click)="openCreateIssueModal()" *ngIf="activeTab() === 'issues'">
+      </button> -->
+      <!-- <button class="btn btn-primary-accent" (click)="openCreateIssueModal()" *ngIf="activeTab() === 'issues'">
         <mat-icon class="xs">add</mat-icon> Submit Issue
-      </button>
+      </button> -->
     </div>
   </div>
 
@@ -555,9 +555,25 @@
               <span class="total-badge">TOTAL: {{ reportTotal() }}</span>
             </div>
             <div class="report-export-actions">
-              <button class="export-btn" matTooltip="Print preview (landscape A4)" (click)="previewReport()">
+              <button class="export-btn" [matMenuTriggerFor]="previewMenu" matTooltip="Print preview (WYSIWYG)">
                 <mat-icon class="sm">pageview</mat-icon><span>Preview</span>
+                <mat-icon class="sm">arrow_drop_down</mat-icon>
               </button>
+              <mat-menu #previewMenu="matMenu" xPosition="after">
+                <button mat-menu-item (click)="previewReport('pdf', { orientation: 'landscape', layout: 'standard' })">
+                  <mat-icon>picture_as_pdf</mat-icon><span>Preview as PDF (Landscape)</span>
+                </button>
+                <button mat-menu-item (click)="previewReport('pdf', { orientation: 'portrait', layout: 'custom' })">
+                  <mat-icon>picture_as_pdf</mat-icon><span>Preview as PDF (Portrait)</span>
+                </button>
+                <mat-divider></mat-divider>
+                <button mat-menu-item (click)="previewReport('excel')">
+                  <mat-icon>table_view</mat-icon><span>Preview as Excel</span>
+                </button>
+                <button mat-menu-item (click)="previewReport('csv')">
+                  <mat-icon>text_snippet</mat-icon><span>Preview as CSV</span>
+                </button>
+              </mat-menu>
               <button class="export-btn pdf-btn" matTooltip="Download PDF (landscape)" (click)="exportReport('pdf', { orientation: 'landscape', layout: 'standard' })">
                 <mat-icon class="sm">picture_as_pdf</mat-icon><span>PDF</span>
               </button>
@@ -698,76 +714,152 @@
 
     <!-- MODULE 5: MILESTONES -->
     <div class="tab-pane milestones-pane" *ngIf="activeTab() === 'milestones'">
-      <div class="milestones-toolbar">
-        <div>
-          <h2>Milestones &amp; Delivery Release Gates</h2>
-          <span class="sub-text">Track phase gates, planned target dates, and completion status</span>
+      <div class="ms-header">
+        <div class="ms-heading">
+          <div class="ms-heading-icon gr-indigo"><mat-icon>flag</mat-icon></div>
+          <div>
+            <h2>Milestones &amp; Delivery Release Gates</h2>
+            <span class="sub-text">Track phase gates, planned target dates, and completion status</span>
+          </div>
         </div>
         <button class="btn btn-accent-primary" (click)="openCreateMilestoneModal()"><mat-icon class="xs">add</mat-icon> Add Milestone</button>
       </div>
 
-      <!-- Milestone Summary KPI Bar -->
-      <div class="milestones-kpi-bar">
-        <div class="kpi-box">
-          <span class="kpi-lbl">Total Milestones</span>
-          <span class="kpi-num">{{ milestoneKPIs().total }}</span>
+      <!-- KPI Rail -->
+      <div class="ms-kpis">
+        <div class="ms-kpi">
+          <div class="kpi-icon gr-indigo"><mat-icon>flag</mat-icon></div>
+          <div class="kpi-txt"><span>Total Milestones</span><b>{{ milestoneKPIs().total }}</b></div>
         </div>
-        <div class="kpi-box">
-          <span class="kpi-lbl">Achieved</span>
-          <span class="kpi-num text-green">{{ milestoneKPIs().achieved }}</span>
+        <div class="ms-kpi">
+          <div class="kpi-icon gr-sky"><mat-icon>sync</mat-icon></div>
+          <div class="kpi-txt"><span>In Progress</span><b>{{ milestoneKPIs().inProgress }}</b></div>
         </div>
-        <div class="kpi-box">
-          <span class="kpi-lbl">In Progress</span>
-          <span class="kpi-num text-blue">{{ milestoneKPIs().inProgress }}</span>
+        <div class="ms-kpi">
+          <div class="kpi-icon gr-emerald"><mat-icon>check_circle</mat-icon></div>
+          <div class="kpi-txt"><span>Achieved</span><b>{{ milestoneKPIs().achieved }}</b></div>
         </div>
-        <div class="kpi-box">
-          <span class="kpi-lbl">Overdue / Missed</span>
-          <span class="kpi-num text-red">{{ milestoneKPIs().missed }}</span>
+        <div class="ms-kpi">
+          <div class="kpi-icon gr-amber"><mat-icon>warning</mat-icon></div>
+          <div class="kpi-txt"><span>Delayed</span><b>{{ milestoneKPIs().delayed }}</b></div>
+        </div>
+        <div class="ms-kpi">
+          <div class="kpi-icon gr-rose"><mat-icon>cancel</mat-icon></div>
+          <div class="kpi-txt"><span>Cancelled</span><b>{{ milestoneKPIs().cancelled }}</b></div>
+        </div>
+      </div>
+
+      <!-- Status Distribution Bar -->
+      <div class="ms-dist card-panel" *ngIf="project()?.milestones?.length">
+        <div class="dist-bar">
+          <ng-container *ngFor="let s of milestoneStatuses()">
+            <div *ngIf="distCount(s.value) > 0" class="dist-seg"
+                 [style.flex]="distCount(s.value)"
+                 [style.background-color]="s.colorCode || '#cbd5e1'"
+                 [matTooltip]="s.label + ': ' + distCount(s.value)"></div>
+          </ng-container>
+        </div>
+        <div class="dist-legend">
+          <ng-container *ngFor="let s of milestoneStatuses()">
+            <span class="legend-item" *ngIf="distCount(s.value) > 0">
+              <i [style.background-color]="s.colorCode || '#cbd5e1'"></i>{{ s.label }} <b>{{ distCount(s.value) }}</b>
+            </span>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- Delivery Timeline Strip -->
+      <div class="ms-timeline card-panel" *ngIf="milestoneTimeline().length">
+        <div class="tls-top">
+          <h4><mat-icon class="xs">timeline</mat-icon> Delivery Timeline</h4>
+          <span class="sub-text">Milestones ordered by planned date</span>
+        </div>
+        <div class="tls-track">
+          <div class="tls-tick" *ngFor="let m of milestoneTimeline()" matTooltip="{{ m.name }} — {{ m.plannedDate }}">
+            <span class="tls-node" [style.background-color]="lookupColor('MILESTONE_STATUS', m.status)" [class.done]="m.status === 'ACHIEVED'"><mat-icon *ngIf="m.status === 'ACHIEVED'">check</mat-icon></span>
+            <span class="tls-code">{{ m.milestoneCode || ('MS-' + m.id) }}</span>
+            <span class="tls-title">{{ m.name }}</span>
+            <span class="tls-date">{{ m.plannedDate }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Toolbar -->
+      <div class="ms-filterbar">
+        <div class="seg-filter">
+          <button class="seg-btn" [class.active]="milestoneFilterStatus() === 'ALL'" (click)="milestoneFilterStatus.set('ALL')">All</button>
+          <button class="seg-btn" *ngFor="let s of milestoneStatuses()" [class.active]="milestoneFilterStatus() === s.value" (click)="milestoneFilterStatus.set(s.value)">
+            <i class="seg-dot" [style.background-color]="s.colorCode || '#cbd5e1'"></i>{{ s.label }}
+          </button>
+        </div>
+        <div class="filter-right">
+          <label class="toggle-switch">
+            <input type="checkbox" [ngModel]="milestoneFilterOverdue()" (ngModelChange)="milestoneFilterOverdue.set($event)" />
+            <span class="switch-track"></span>
+            <span class="switch-lbl">{{ milestoneFilterOverdue() ? 'Showing overdue' : 'Show overdue only' }}</span>
+          </label>
+          <span class="result-count">{{ filteredMilestones().length }} / {{ project()?.milestones?.length || 0 }} shown</span>
         </div>
       </div>
 
       <div class="empty-state" *ngIf="!project()?.milestones?.length">
-        <mat-icon>flag</mat-icon>
+        <div class="empty-icon gr-indigo"><mat-icon>flag</mat-icon></div>
         <h3>No milestones scheduled</h3>
         <p>Click "Add Milestone" above to plan your first project phase gate.</p>
       </div>
 
-      <!-- Milestone Cards Grid with Click-to-Edit + Delete -->
-      <div class="milestones-grid-layout" *ngIf="project()?.milestones?.length">
-        <div class="milestone-card" *ngFor="let m of project()?.milestones">
-          <div class="card-header">
-            <span class="ms-id font-mono">{{ m.milestoneId || ('MS-' + m.id) }}</span>
-            <div class="card-header-actions">
-              <span class="status-pill" [ngClass]="m.status === 'ACHIEVED' ? 'green-pill' : (m.status === 'IN_PROGRESS' ? 'blue-pill' : 'slate-pill')">{{ m.status }}</span>
-              <button class="btn-icon-sm btn-danger-ghost" matTooltip="Delete milestone" (click)="$event.stopPropagation(); deleteMilestone(m)"><mat-icon class="xs">delete_outline</mat-icon></button>
+      <!-- Milestone Cards Grid -->
+      <div class="mc-grid" *ngIf="filteredMilestones().length">
+        <div class="mc-card" *ngFor="let m of filteredMilestones()">
+          <div class="mc-accent" [ngClass]="statusGradient(m.status)"></div>
+          <div class="mc-head">
+            <span class="mc-code" [style.background-color]="lookupColor('MILESTONE_STATUS', m.status)">{{ m.milestoneCode || m.milestoneId || ('MS-' + m.id) }}</span>
+            <span class="mc-status">{{ lookupLabel('MILESTONE_STATUS', m.status, m.status) }}</span>
+            <button class="btn-icon-sm btn-danger-ghost" matTooltip="Delete milestone" (click)="deleteMilestone(m)"><mat-icon class="xs">delete_outline</mat-icon></button>
+          </div>
+
+          <h3 class="mc-title editable-cell" (click)="startCellEdit('milestone', m.id, 'name', $event)">
+            <ng-container *ngIf="!isEditingCell('milestone', m.id, 'name')">{{ m.name }}</ng-container>
+            <input *ngIf="isEditingCell('milestone', m.id, 'name')" type="text" class="cell-input" [value]="m.name" (blur)="updateMilestoneField(m, 'name', $any($event.target).value)" (keydown.enter)="updateMilestoneField(m, 'name', $any($event.target).value)" (click)="$event.stopPropagation()" autofocus />
+          </h3>
+
+          <div class="mc-owner">
+            <span class="avatar-mini" [style.background-color]="avatarColor(m.ownerName)">{{ initials(m.ownerName) }}</span>
+            <span>{{ m.ownerName || 'Unassigned' }}</span>
+          </div>
+
+          <div class="mc-dates">
+            <div class="mc-date"><mat-icon>flag</mat-icon><div><span>Planned</span><b class="font-mono">{{ m.plannedDate || '—' }}</b></div></div>
+            <div class="mc-date" *ngIf="m.startDate"><mat-icon>play_circle</mat-icon><div><span>Start</span><b class="font-mono">{{ m.startDate }}</b></div></div>
+            <div class="mc-date" *ngIf="m.targetDate"><mat-icon>track_changes</mat-icon><div><span>Target</span><b class="font-mono">{{ m.targetDate }}</b></div></div>
+          </div>
+
+          <div class="mc-progress">
+            <svg class="mc-ring" viewBox="0 0 44 44">
+              <circle class="mc-ring-bg" cx="22" cy="22" r="17"></circle>
+              <circle class="mc-ring-fg" cx="22" cy="22" r="17"
+                [attr.stroke-dasharray]="milestoneRingC"
+                [attr.stroke-dashoffset]="ringOffset(m.completionPercentage)"
+                [style.stroke]="lookupColor('MILESTONE_STATUS', m.status)"></circle>
+              <text class="mc-ring-text" x="22" y="25" text-anchor="middle">{{ m.completionPercentage || 0 }}%</text>
+            </svg>
+            <div class="mc-prog-info">
+              <div class="mc-prog-lbl"><span>Completion</span><span class="text-subtle">{{ m.progressSource === 'AUTO' ? 'auto·tasks' : 'manual' }}</span></div>
+              <div class="mc-prog-track"><div class="mc-prog-fill" [style.width.%]="m.completionPercentage || 0" [style.background-color]="lookupColor('MILESTONE_STATUS', m.status)"></div></div>
             </div>
           </div>
 
-          <div class="card-body">
-            <h3 class="ms-title editable-cell" (click)="startCellEdit('milestone', m.id, 'name', $event)">
-              <ng-container *ngIf="!isEditingCell('milestone', m.id, 'name')">{{ m.name }}</ng-container>
-              <input *ngIf="isEditingCell('milestone', m.id, 'name')" type="text" class="cell-input" [value]="m.name" (blur)="updateMilestoneField(m, 'name', $any($event.target).value)" (keydown.enter)="updateMilestoneField(m, 'name', $any($event.target).value)" (click)="$event.stopPropagation()" autofocus />
-            </h3>
-
-            <div class="ms-meta-row">
-              <span class="meta-item"><mat-icon class="xs">person</mat-icon> {{ m.ownerName || 'Unassigned' }}</span>
-              <span class="meta-item font-mono"><mat-icon class="xs">calendar_today</mat-icon> {{ m.plannedDate }}</span>
-            </div>
-
-            <div class="ms-progress-wrap">
-              <div class="progress-lbl">
-                <span>Completion</span>
-                <span class="font-bold">{{ m.completionPercentage || 0 }}%</span>
-              </div>
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill" [style.width.%]="m.completionPercentage || 0"></div>
-              </div>
-            </div>
+          <div class="mc-tags" *ngIf="m.priority || m.flag || m.parentName || m.releaseVersion">
+            <span class="mc-tag" *ngIf="m.priority" [style.background-color]="lookupColor('PRIORITY', m.priority)"><mat-icon class="xs">priority_high</mat-icon> {{ lookupLabel('PRIORITY', m.priority) }}</span>
+            <span class="mc-tag" *ngIf="m.flag"><mat-icon class="xs">flag</mat-icon> {{ lookupLabel('MILESTONE_FLAG', m.flag, m.flag) }}</span>
+            <span class="mc-tag neutral" *ngIf="m.parentName"><mat-icon class="xs">account_tree</mat-icon> {{ m.parentName }}</span>
+            <span class="mc-tag neutral" *ngIf="m.releaseVersion"><mat-icon class="xs">rocket_launch</mat-icon> {{ m.releaseVersion }}</span>
           </div>
 
-          <div class="card-footer">
-            <span class="flag-chip" *ngIf="m.flag"><mat-icon class="xs">flag</mat-icon> {{ m.flag }}</span>
-            <span class="linked-count">{{ m.linkedTaskCount ?? 0 }} Tasks &bull; {{ m.linkedIssueCount ?? 0 }} Issues</span>
+          <div class="mc-foot">
+            <span class="mc-count"><mat-icon class="xs">task_alt</mat-icon> {{ m.linkedTaskCount ?? 0 }} tasks</span>
+            <span class="mc-count"><mat-icon class="xs">bug_report</mat-icon> {{ m.linkedIssueCount ?? 0 }} issues</span>
+            <span class="mc-state" *ngIf="m.status === 'DELAYED'"><mat-icon class="xs">warning</mat-icon> Delayed</span>
           </div>
         </div>
       </div>
@@ -792,15 +884,50 @@
             </div>
             <div class="form-row">
               <div class="form-group flex-1">
+                <label>Start Date</label>
+                <input type="date" class="form-control" [(ngModel)]="newMilestone.startDate">
+              </div>
+              <div class="form-group flex-1">
                 <label>Planned Date <span class="required">*</span></label>
                 <input type="date" class="form-control" [(ngModel)]="newMilestone.plannedDate">
               </div>
               <div class="form-group flex-1">
+                <label>Target Date</label>
+                <input type="date" class="form-control" [(ngModel)]="newMilestone.targetDate">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-1">
                 <label>Status</label>
                 <select class="form-control" [(ngModel)]="newMilestone.status">
-                  <option value="PLANNED">PLANNED</option>
-                  <option value="IN_PROGRESS">IN_PROGRESS</option>
+                  <option *ngFor="let s of milestoneStatuses()" [value]="s.value">{{ s.label }}</option>
                 </select>
+              </div>
+              <div class="form-group flex-1">
+                <label>Priority</label>
+                <select class="form-control" [(ngModel)]="newMilestone.priority">
+                  <option *ngFor="let p of priorities()" [value]="p.value">{{ p.label }}</option>
+                </select>
+              </div>
+              <div class="form-group flex-1">
+                <label>Flag</label>
+                <select class="form-control" [(ngModel)]="newMilestone.flag">
+                  <option value="">None</option>
+                  <option *ngFor="let f of milestoneFlags()" [value]="f.value">{{ f.label }}</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label>Progress Mode</label>
+                <select class="form-control" [(ngModel)]="newMilestone.progressSource">
+                  <option value="MANUAL">Manual</option>
+                  <option value="AUTO">Auto (from linked tasks)</option>
+                </select>
+              </div>
+              <div class="form-group flex-1">
+                <label>Completion %</label>
+                <input type="number" class="form-control" min="0" max="100" [(ngModel)]="newMilestone.completionPercentage">
               </div>
             </div>
             <div class="form-group">
@@ -895,166 +1022,7 @@
 
     <!-- MODULE 7: ISSUES WORKSPACE -->
     <div class="tab-pane issues-pane" *ngIf="activeTab() === 'issues'">
-      <div class="issues-master-detail-workspace">
-        <!-- Left Issues Master Rail -->
-        <aside class="issues-master-rail">
-          <div class="rail-header">
-            <h3>Issues &amp; Defects</h3>
-            <button class="btn btn-primary-accent" (click)="openCreateIssueModal()"><mat-icon class="xs">add</mat-icon> Submit Issue</button>
-          </div>
-          <div class="issues-list">
-            <div class="issue-row-card" *ngFor="let iss of issues()" [class.selected]="selectedIssue()?.id === iss.id" (click)="selectIssue(iss)">
-              <div class="row-top">
-                <span class="issue-code font-bold">{{ iss.issueCode }}</span>
-                <span class="status-banner-chip" [ngClass]="{
-                  'red': iss.status === 'OPEN' || iss.status === 'REOPENED',
-                  'amber': iss.status === 'IN_PROGRESS',
-                  'green': iss.status === 'RESOLVED' || iss.status === 'CLOSED'
-                }">{{ iss.status }}</span>
-              </div>
-              <div class="issue-title-text">{{ iss.title || iss.description }}</div>
-              <div class="reporter-sub">
-                <span class="severity-dot" [ngClass]="iss.severity === 'CRITICAL' ? 'sev-critical' : (iss.severity === 'HIGH' ? 'sev-high' : 'sev-default')"></span>
-                {{ iss.severity }} &bull; {{ iss.ownerName || 'Unassigned' }}
-              </div>
-            </div>
-            <div class="empty-inline" *ngIf="issues().length === 0">
-              No issues recorded for this project yet.
-            </div>
-          </div>
-        </aside>
-
-        <!-- Right Selected Issue Detail Pane -->
-        <main class="issue-detail-pane" *ngIf="selectedIssue() as iss">
-          <div class="issue-detail-header">
-            <div class="title-meta">
-              <h2>{{ iss.title || iss.description }}</h2>
-              <div class="breadcrumb-chip">
-                By {{ iss.ownerName || 'Unassigned' }} &bull; {{ iss.projectName || project()?.name || '' }}
-              </div>
-            </div>
-            <div class="header-actions">
-              <button class="btn btn-sm btn-secondary" (click)="openUpdateIssueModal(iss)"><mat-icon class="xs">edit</mat-icon> Edit</button>
-              <button class="btn btn-sm btn-danger" (click)="deleteIssue(iss)"><mat-icon class="xs">delete_outline</mat-icon> Delete</button>
-            </div>
-          </div>
-
-          <div class="status-banner" [ngClass]="{
-            'red-banner': iss.status === 'OPEN' || iss.status === 'REOPENED',
-            'amber-banner': iss.status === 'IN_PROGRESS',
-            'green-banner': iss.status === 'RESOLVED' || iss.status === 'CLOSED'
-          }">
-            STATUS: <strong>{{ iss.status }}</strong>
-            <div class="status-actions">
-              <button class="status-action-btn" *ngIf="iss.status !== 'IN_PROGRESS'" (click)="updateIssueStatus(iss, 'IN_PROGRESS')">Start</button>
-              <button class="status-action-btn" *ngIf="iss.status !== 'RESOLVED'" (click)="updateIssueStatus(iss, 'RESOLVED')">Resolve</button>
-              <button class="status-action-btn" *ngIf="iss.status !== 'CLOSED'" (click)="updateIssueStatus(iss, 'CLOSED')">Close</button>
-            </div>
-          </div>
-
-          <div class="issue-section">
-            <h4>Description</h4>
-            <p>{{ iss.description }}</p>
-            <div class="steps-box" *ngIf="iss.stepsToReproduce">
-              <strong>Steps to Reproduce:</strong>
-              <pre>{{ iss.stepsToReproduce }}</pre>
-            </div>
-          </div>
-
-          <div class="issue-section grid-fields">
-            <h4>Issue Information</h4>
-            <div class="field-item"><span class="lbl">Severity</span><span class="val text-red font-bold">{{ iss.severity }}</span></div>
-            <div class="field-item"><span class="lbl">Classification</span><span class="val">{{ iss.classification || '—' }}</span></div>
-            <div class="field-item"><span class="lbl">Reproducible</span><span class="val">{{ iss.reproducible || '—' }}</span></div>
-            <div class="field-item"><span class="lbl">Associated Team</span><span class="val">{{ iss.associatedTeam || '—' }}</span></div>
-            <div class="field-item"><span class="lbl">Assignee</span><span class="val">{{ iss.assigneeName || '—' }}</span></div>
-            <div class="field-item"><span class="lbl">CR Value</span><span class="val font-mono">{{ iss.crValue ? (iss.crValue! | currency) : '—' }}</span></div>
-            <div class="field-item"><span class="lbl">Resolution</span><span class="val">{{ iss.resolution || '—' }}</span></div>
-            <div class="field-item"><span class="lbl">Created</span><span class="val font-mono">{{ iss.createdAt || '—' }}</span></div>
-          </div>
-        </main>
-
-        <main class="issue-detail-pane" *ngIf="!selectedIssue()">
-          <div class="empty-inline">Select an issue from the list to view its details.</div>
-        </main>
-      </div>
-
-      <!-- Update Issue Modal -->
-      <div class="modal-backdrop" *ngIf="showUpdateIssueModal()">
-        <div class="modal-card card-panel modal-lg">
-          <div class="modal-header">
-            <div class="modal-title-wrap">
-              <mat-icon class="text-indigo">edit</mat-icon>
-              <div>
-                <h3>Update Issue</h3>
-                <span class="sub-text">Edit severity, status, classification, and resolution</span>
-              </div>
-            </div>
-            <button class="icon-btn" (click)="closeUpdateIssueModal()"><mat-icon>close</mat-icon></button>
-          </div>
-          <div class="modal-body scrollable-y">
-            <div class="form-group">
-              <label>Title</label>
-              <input type="text" class="form-control" [(ngModel)]="issueEditForm.title">
-            </div>
-            <div class="form-row">
-              <div class="form-group flex-1">
-                <label>Severity</label>
-                <select class="form-control" [(ngModel)]="issueEditForm.severity">
-                  <option value="LOW">LOW</option>
-                  <option value="MEDIUM">MEDIUM</option>
-                  <option value="HIGH">HIGH</option>
-                  <option value="CRITICAL">CRITICAL</option>
-                </select>
-              </div>
-              <div class="form-group flex-1">
-                <label>Status</label>
-                <select class="form-control" [(ngModel)]="issueEditForm.status">
-                  <option value="OPEN">OPEN</option>
-                  <option value="IN_PROGRESS">IN_PROGRESS</option>
-                  <option value="RESOLVED">RESOLVED</option>
-                  <option value="CLOSED">CLOSED</option>
-                  <option value="REOPENED">REOPENED</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Description</label>
-              <textarea class="form-control" rows="2" [(ngModel)]="issueEditForm.description"></textarea>
-            </div>
-            <div class="form-group">
-              <label>Steps to Reproduce</label>
-              <textarea class="form-control" rows="2" [(ngModel)]="issueEditForm.stepsToReproduce"></textarea>
-            </div>
-            <div class="form-row">
-              <div class="form-group flex-1">
-                <label>Classification</label>
-                <input type="text" class="form-control" [(ngModel)]="issueEditForm.classification" placeholder="e.g. UI, Backend">
-              </div>
-              <div class="form-group flex-1">
-                <label>Resolution</label>
-                <input type="text" class="form-control" [(ngModel)]="issueEditForm.resolution" placeholder="e.g. Fixed in v2.1">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group flex-1">
-                <label>CR Value</label>
-                <input type="number" class="form-control" [(ngModel)]="issueEditForm.crValue">
-              </div>
-              <div class="form-group flex-1">
-                <label>CR Man-Days</label>
-                <input type="number" class="form-control" [(ngModel)]="issueEditForm.crManDays">
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-sm btn-ghost" (click)="closeUpdateIssueModal()">Cancel</button>
-            <button class="btn btn-sm btn-primary" (click)="submitUpdateIssue()">
-              <mat-icon class="xs">save</mat-icon> Save Changes
-            </button>
-          </div>
-        </div>
-      </div>
+      <app-issue-workbench [projectId]="projectId" (changed)="loadAllProjectData()" />
     </div>
 
     <!-- MODULE 8: COMMENTS / ACTIVITY STREAM -->
@@ -1174,7 +1142,7 @@
           <mat-icon class="text-indigo">add_task</mat-icon>
           <div>
             <h3>Create Enterprise Delivery Task</h3>
-            <span class="sub-text">Define task lifecycle, delivery exit gates, effort hours, and assignment</span>
+            <span class="sub-text">Define task lifecycle, delivery exit gates, effort hours, ownership, and assignment</span>
           </div>
         </div>
         <button class="icon-btn" (click)="closeCreateTaskModal()"><mat-icon>close</mat-icon></button>
@@ -1185,20 +1153,20 @@
         <div class="form-section-title">
           <mat-icon class="xs">info</mat-icon> 1. Task Identity &amp; Classification
         </div>
-        
-        <div class="form-group">
-          <label>Task Title / Summary <span class="required">*</span></label>
-          <input type="text" [(ngModel)]="newTask.title" placeholder="e.g. CFE > VAN > Status Management >> Advanced Search validation" class="form-control" />
-        </div>
 
-        <div class="form-group">
-          <label>Task Description &amp; Scope</label>
-          <textarea [(ngModel)]="newTask.description" rows="2" class="form-control" placeholder="Detailed technical specification, acceptance criteria, and requirements..."></textarea>
-        </div>
+        <div class="form-grid">
+          <div class="field field-full">
+            <label class="field-label">Task Title / Summary <span class="required">*</span></label>
+            <input type="text" [(ngModel)]="newTask.title" placeholder="e.g. CFE > VAN > Status Management >> Advanced Search validation" class="form-control" />
+          </div>
 
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label>Priority</label>
+          <div class="field field-full">
+            <label class="field-label">Task Description &amp; Scope</label>
+            <textarea [(ngModel)]="newTask.description" rows="3" class="form-control" placeholder="Detailed technical specification, acceptance criteria, and requirements..."></textarea>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Priority</label>
             <select [(ngModel)]="newTask.priority" class="form-control">
               <option value="LOW">Low</option>
               <option value="MEDIUM">Medium</option>
@@ -1206,8 +1174,9 @@
               <option value="CRITICAL">Critical</option>
             </select>
           </div>
-          <div class="form-group flex-1">
-            <label>Status Lifecycle Stage</label>
+
+          <div class="field">
+            <label class="field-label">Status Lifecycle Stage</label>
             <select [(ngModel)]="newTask.status" class="form-control">
               <option value="TODO">TODO</option>
               <option value="IN_ANALYSIS">In Analysis</option>
@@ -1220,51 +1189,9 @@
               <option value="GO_LIVE">Go-Live / Prod</option>
             </select>
           </div>
-        </div>
 
-        <!-- Section 2: Enterprise Delivery Milestones -->
-        <div class="form-section-title">
-          <mat-icon class="xs">flag</mat-icon> 2. Enterprise Delivery Exit Gates
-        </div>
-
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label>Dev Exit Date</label>
-            <input type="date" [(ngModel)]="newTask.devExitDate" class="form-control" />
-          </div>
-          <div class="form-group flex-1">
-            <label>SIT Exit Date</label>
-            <input type="date" [(ngModel)]="newTask.sitExitDate" class="form-control" />
-          </div>
-          <div class="form-group flex-1">
-            <label>UAT Exit Date</label>
-            <input type="date" [(ngModel)]="newTask.uatExitDate" class="form-control" />
-          </div>
-        </div>
-
-        <!-- Section 3: Ownership & Effort -->
-        <div class="form-section-title">
-          <mat-icon class="xs">person</mat-icon> 3. Ownership, Effort &amp; Scheduling
-        </div>
-
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label>Allocated BA</label>
-            <input type="text" [(ngModel)]="newTask.allocatedBa" placeholder="e.g. Kunal Salve" class="form-control" />
-          </div>
-          <div class="form-group flex-1">
-            <label>Associated Team</label>
-            <input type="text" [(ngModel)]="newTask.associatedTeam" placeholder="e.g. Payments Core Team" class="form-control" />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label>Planned Work Hours (P)</label>
-            <input type="number" [(ngModel)]="newTask.estimatedHours" class="form-control" />
-          </div>
-          <div class="form-group flex-1">
-            <label>Billing Type</label>
+          <div class="field">
+            <label class="field-label">Billing Type</label>
             <select [(ngModel)]="newTask.billingType" class="form-control">
               <option value="Billable">Billable</option>
               <option value="Non-Billable">Non-Billable</option>
@@ -1273,13 +1200,98 @@
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label>Start Date</label>
+        <!-- Section 2: Enterprise Delivery Milestones -->
+        <div class="form-section-title">
+          <mat-icon class="xs">flag</mat-icon> 2. Enterprise Delivery Exit Gates
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label class="field-label">Dev Exit Date</label>
+            <input type="date" [(ngModel)]="newTask.devExitDate" class="form-control" />
+          </div>
+          <div class="field">
+            <label class="field-label">SIT Exit Date</label>
+            <input type="date" [(ngModel)]="newTask.sitExitDate" class="form-control" />
+          </div>
+          <div class="field">
+            <label class="field-label">UAT Exit Date</label>
+            <input type="date" [(ngModel)]="newTask.uatExitDate" class="form-control" />
+          </div>
+          <div class="field">
+            <label class="field-label">SD Delivery Date</label>
+            <input type="date" [(ngModel)]="newTask.sdDeliveryDate" class="form-control" />
+          </div>
+          <div class="field">
+            <label class="field-label">Go-Live / Prod Date</label>
+            <input type="date" [(ngModel)]="newTask.goLiveDate" class="form-control" />
+          </div>
+        </div>
+
+        <!-- Section 3: Ownership & Effort -->
+        <div class="form-section-title">
+          <mat-icon class="xs">person</mat-icon> 3. Ownership, Effort &amp; Scheduling
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label class="field-label">Allocated BA</label>
+            <select *ngIf="newTaskBaSelect !== '__CUSTOM__'"
+                    class="form-control"
+                    [ngModel]="newTaskBaSelect"
+                    (ngModelChange)="onBaSelect($event)">
+              <option [ngValue]="null">Select a BA…</option>
+              <option *ngFor="let ba of baUsers()" [ngValue]="ba.fullName">{{ ba.fullName }}</option>
+              <option value="__CUSTOM__">✎ Custom / Other…</option>
+            </select>
+            <input *ngIf="newTaskBaSelect === '__CUSTOM__'"
+                   type="text" [(ngModel)]="newTaskCustomBa"
+                   placeholder="Type the BA name…" class="form-control" />
+            <span class="field-hint" *ngIf="baUsers().length === 0">No business analysts are active yet — use Custom to enter one.</span>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Associated Team</label>
+            <select *ngIf="newTaskTeamSelect !== '__CUSTOM__'"
+                    class="form-control"
+                    [ngModel]="newTaskTeamSelect"
+                    (ngModelChange)="onTeamSelect($event)">
+              <option [ngValue]="null">Select a team…</option>
+              <option *ngFor="let t of availableTeams()" [ngValue]="t">{{ t }}</option>
+              <option value="__CUSTOM__">✎ Custom / Other…</option>
+            </select>
+            <input *ngIf="newTaskTeamSelect === '__CUSTOM__'"
+                   type="text" [(ngModel)]="newTaskCustomTeam"
+                   placeholder="Type the team name…" class="form-control" />
+          </div>
+
+          <div class="field">
+            <label class="field-label">Planned Work Hours (P)</label>
+            <input type="number" [(ngModel)]="newTask.estimatedHours" class="form-control" />
+          </div>
+
+          <div class="field">
+            <label class="field-label">Dev Effort (Days)</label>
+            <input type="number" [(ngModel)]="newTask.devEffortDays" class="form-control" />
+          </div>
+
+          <div class="field">
+            <label class="field-label">QC Effort (Days)</label>
+            <input type="number" [(ngModel)]="newTask.qcEffortDays" class="form-control" />
+          </div>
+
+          <div class="field">
+            <label class="field-label">Duration (Calendar Days)</label>
+            <input type="number" min="1" [(ngModel)]="newTask.durationDays" class="form-control" />
+          </div>
+
+          <div class="field">
+            <label class="field-label">Start Date</label>
             <input type="date" [(ngModel)]="newTask.startDate" class="form-control" />
           </div>
-          <div class="form-group flex-1">
-            <label>Target Due Date</label>
+
+          <div class="field">
+            <label class="field-label">Target Due Date</label>
             <input type="date" [(ngModel)]="newTask.dueDate" class="form-control" />
           </div>
         </div>
@@ -1287,95 +1299,11 @@
 
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="closeCreateTaskModal()">Cancel</button>
-        <button class="btn btn-primary" (click)="submitCreateTask()">Create Task</button>
+        <button class="btn btn-primary" (click)="submitCreateTask()" [disabled]="!newTask.title.trim()">
+          <mat-icon class="xs">add_task</mat-icon> Create Task
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- CREATE ISSUE MODAL (STRUCTURED MULTI-COLUMN FORM) -->
-  <div class="modal-backdrop" *ngIf="showCreateIssueModal()">
-    <div class="modal-card card-panel modal-lg">
-      <div class="modal-header">
-        <div class="modal-title-wrap">
-          <mat-icon class="text-red">bug_report</mat-icon>
-          <div>
-            <h3>Submit Defect / Issue Ticket</h3>
-            <span class="sub-text">Record defect details, severity, steps to reproduce, and CR financial value</span>
-          </div>
-        </div>
-        <button class="icon-btn" (click)="closeCreateIssueModal()"><mat-icon>close</mat-icon></button>
-      </div>
-
-      <div class="modal-body scrollable-y">
-        <div class="form-section-title">
-          <mat-icon class="xs">report</mat-icon> 1. Issue Specification &amp; Severity
-        </div>
-
-        <div class="form-group">
-          <label>Issue Headline / Summary <span class="required">*</span></label>
-          <input type="text" [(ngModel)]="newIssue.title" placeholder="Short summary of defect..." class="form-control" />
-        </div>
-
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label>Severity Level</label>
-            <select [(ngModel)]="newIssue.severity" class="form-control">
-              <option value="LOW">Low</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="HIGH">High</option>
-              <option value="CRITICAL">Critical</option>
-            </select>
-          </div>
-          <div class="form-group flex-1">
-            <label>Classification</label>
-            <select [(ngModel)]="newIssue.classification" class="form-control">
-              <option value="Functional Defect">Functional Defect</option>
-              <option value="UI Defect">UI Defect</option>
-              <option value="Data Integrity">Data Integrity</option>
-              <option value="Backend Logic">Backend Logic</option>
-              <option value="Reporting">Reporting</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-section-title">
-          <mat-icon class="xs">description</mat-icon> 2. Reproduction &amp; Behavior
-        </div>
-
-        <div class="form-group">
-          <label>Detailed Description</label>
-          <textarea [(ngModel)]="newIssue.description" rows="2" class="form-control" placeholder="Context of when defect occurs..."></textarea>
-        </div>
-
-        <div class="form-group">
-          <label>Steps to Reproduce</label>
-          <textarea [(ngModel)]="newIssue.stepsToReproduce" rows="2" class="form-control" placeholder="1. Navigate to module... 2. Click search..."></textarea>
-        </div>
-
-        <div class="form-section-title">
-          <mat-icon class="xs">attach_money</mat-icon> 3. CR Financial Impact &amp; Target Date
-        </div>
-
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label>CR Financial Value (₹)</label>
-            <input type="number" [(ngModel)]="newIssue.crValue" placeholder="150000" class="form-control" />
-          </div>
-          <div class="form-group flex-1">
-            <label>CR Effort (Man Days)</label>
-            <input type="number" [(ngModel)]="newIssue.crManDays" placeholder="12.5" class="form-control" />
-          </div>
-          <div class="form-group flex-1">
-            <label>Target Resolution Date</label>
-            <input type="date" [(ngModel)]="newIssue.dueDate" class="form-control" />
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="closeCreateIssueModal()">Cancel</button>
-        <button class="btn btn-danger" (click)="submitCreateIssue()">Submit Issue</button>
-      </div>
-    </div>
-  </div>
 </div>

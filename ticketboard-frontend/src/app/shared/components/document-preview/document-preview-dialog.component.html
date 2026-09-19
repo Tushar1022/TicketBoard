@@ -20,17 +20,10 @@
 
   <div class="preview-stage">
     <iframe
-      *ngIf="pdfUrl; else htmlPreview"
+      *ngIf="pdfUrl"
       id="preview-frame"
       class="preview-iframe"
       [src]="pdfUrl"
       title="Document preview"></iframe>
-    <ng-template #htmlPreview>
-      <iframe
-        id="preview-frame"
-        class="preview-iframe"
-        [srcdoc]="data.html || ''"
-        title="Document preview"></iframe>
-    </ng-template>
   </div>
 </div>

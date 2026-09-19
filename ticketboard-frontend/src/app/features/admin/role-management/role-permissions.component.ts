@@ -4,11 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
 import { RoleDto, PermissionDto } from '../../../core/models/api.models';
+import { ToastService } from '../../../shared/components/toast/toast.service';
 
 @Component({
   selector: 'app-role-permissions',
@@ -19,7 +19,6 @@ import { RoleDto, PermissionDto } from '../../../core/models/api.models';
     MatButtonModule,
     MatIconModule,
     MatCheckboxModule,
-    MatSnackBarModule,
     MatTooltipModule
   ],
   templateUrl: './role-permissions.component.html',
@@ -36,7 +35,7 @@ export class RolePermissionsComponent implements OnInit {
 
   constructor(
     private userService: UserService,
-    private snackBar: MatSnackBar,
+    private toastService: ToastService,
     public authService: AuthService
   ) {}
 
@@ -146,13 +145,13 @@ export class RolePermissionsComponent implements OnInit {
             list.map(r => r.id === updated.id ? { ...r, permissions: updated.permissions } : r)
           );
           this.selectRole(updated);
-          this.snackBar.open('Permissions saved successfully', 'Close', { duration: 3000 });
+          this.toastService.success('Permissions saved successfully.');
         }
         this.saving.set(false);
       },
       error: (err) => {
         this.saving.set(false);
-        this.snackBar.open(err.error?.message || 'Failed to save permissions', 'Close', { duration: 4000 });
+        this.toastService.error(err.error?.message || 'Failed to save permissions');
       }
     });
   }

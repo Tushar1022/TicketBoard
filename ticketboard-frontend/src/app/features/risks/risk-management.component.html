@@ -133,12 +133,9 @@
       <div class="modal-body">
         <div class="form-row">
           <div class="form-group flex-1">
-            <label>Risk Code <span class="required">*</span></label>
-            <input type="text" [(ngModel)]="newRisk.riskCode" placeholder="e.g. RSK-104" class="form-control premium-input" />
-          </div>
-          <div class="form-group flex-1">
             <label>Project</label>
             <select [(ngModel)]="newRisk.projectId" class="form-control premium-input">
+              <option [ngValue]="null">Select a project…</option>
               <option *ngFor="let p of projects()" [ngValue]="p.id">[{{ p.projectCode }}] {{ p.name }}</option>
             </select>
           </div>
@@ -153,22 +150,14 @@
           <div class="form-group flex-1">
             <label>Probability (1=Rare, 5=Almost Certain)</label>
             <select [(ngModel)]="newRisk.probability" class="form-control premium-input">
-              <option [ngValue]="1">1 - Very Low</option>
-              <option [ngValue]="2">2 - Low</option>
-              <option [ngValue]="3">3 - Medium</option>
-              <option [ngValue]="4">4 - High</option>
-              <option [ngValue]="5">5 - Critical / Imminent</option>
+              <option *ngFor="let p of riskProbabilities()" [ngValue]="Number(p.value)">{{ p.value }} - {{ p.label }}</option>
             </select>
           </div>
 
           <div class="form-group flex-1">
             <label>Impact (1=Negligible, 5=Catastrophic)</label>
             <select [(ngModel)]="newRisk.impact" class="form-control premium-input">
-              <option [ngValue]="1">1 - Negligible</option>
-              <option [ngValue]="2">2 - Minor</option>
-              <option [ngValue]="3">3 - Moderate</option>
-              <option [ngValue]="4">4 - Major</option>
-              <option [ngValue]="5">5 - Critical / Showstopper</option>
+              <option *ngFor="let i of riskImpacts()" [ngValue]="Number(i.value)">{{ i.value }} - {{ i.label }}</option>
             </select>
           </div>
         </div>

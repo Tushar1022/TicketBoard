@@ -159,6 +159,19 @@
               <mat-icon>text_snippet</mat-icon>
               <span>CSV Data</span>
             </button>
+            <mat-divider></mat-divider>
+            <button mat-menu-item (click)="previewCustom('pdf')">
+              <mat-icon>pageview</mat-icon>
+              <span>Preview as PDF</span>
+            </button>
+            <button mat-menu-item (click)="previewCustom('excel')">
+              <mat-icon>pageview</mat-icon>
+              <span>Preview as Excel</span>
+            </button>
+            <button mat-menu-item (click)="previewCustom('csv')">
+              <mat-icon>pageview</mat-icon>
+              <span>Preview as CSV</span>
+            </button>
           </mat-menu>
         </div>
       </div>

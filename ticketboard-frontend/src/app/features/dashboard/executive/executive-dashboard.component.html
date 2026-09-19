@@ -283,7 +283,7 @@
         </div>
 
         <div class="list-scroll">
-          <div class="employee-row" *ngFor="let emp of topEmployees()">
+          <div class="employee-row" *ngFor="let emp of employees()">
             <div class="emp-avatar" [style.background-color]="'hsl(' + ((emp.id * 37) % 360) + ', 60%, 85%)'" [style.color]="'hsl(' + ((emp.id * 37) % 360) + ', 60%, 25%)'">
               {{ initials(emp.fullName) }}
             </div>
@@ -294,9 +294,6 @@
             <span class="status-dot" [class.active]="emp.status === 'ACTIVE'" [class.inactive]="emp.status !== 'ACTIVE'"></span>
           </div>
 
-          <div class="more-hint" *ngIf="employees().length > 14">
-            + {{ employees().length - 14 }} more employees
-          </div>
           <div class="empty-inline" *ngIf="employees().length === 0">No employees registered.</div>
         </div>
       </div>

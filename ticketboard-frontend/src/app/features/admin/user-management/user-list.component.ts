@@ -9,7 +9,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatMenuModule } from '@angular/material/menu';
@@ -18,6 +17,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
 import { User, RoleType, Department, Team } from '../../../core/models/api.models';
 import { UserFormDialogComponent } from './user-form-dialog.component';
+import { ToastService } from '../../../shared/components/toast/toast.service';
 
 @Component({
   selector: 'app-user-list',
@@ -32,7 +32,6 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
     MatSelectModule,
     MatTooltipModule,
     MatDialogModule,
-    MatSnackBarModule,
     MatTableModule,
     MatChipsModule,
     MatMenuModule,
@@ -43,6 +42,7 @@ import { UserFormDialogComponent } from './user-form-dialog.component';
 })
 export class UserListComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
+  private toastService = inject(ToastService);
   public users = signal<User[]>([]);
   public filteredUsers = signal<User[]>([]);
   public departments = signal<Department[]>([]);
@@ -59,7 +59,6 @@ export class UserListComponent implements OnInit {
   constructor(
     private userService: UserService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar,
     public authService: AuthService
   ) {}
 
@@ -80,7 +79,7 @@ export class UserListComponent implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('Failed to load users', 'Close', { duration: 3000 });
+        this.toastService.error('Failed to load users');
       }
     });
   }
@@ -142,9 +141,9 @@ export class UserListComponent implements OnInit {
     });
     dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
       if (result?.error) {
-        this.snackBar.open(result.error, 'Close', { duration: 4000 });
+        this.toastService.error(result.error);
       } else if (result === true) {
-        this.snackBar.open('User created successfully', 'Close', { duration: 3000 });
+        this.toastService.success('User created successfully.');
         this.loadUsers();
       }
     });
@@ -162,9 +161,9 @@ export class UserListComponent implements OnInit {
     });
     dialogRef.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
       if (result?.error) {
-        this.snackBar.open(result.error, 'Close', { duration: 4000 });
+        this.toastService.error(result.error);
       } else if (result === true) {
-        this.snackBar.open('User updated successfully', 'Close', { duration: 3000 });
+        this.toastService.success('User updated successfully.');
         this.loadUsers();
       }
     });
@@ -174,10 +173,10 @@ export class UserListComponent implements OnInit {
     const newStatus = user.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     this.userService.toggleStatus(user.id, newStatus).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
-        this.snackBar.open(`${user.fullName} set to ${newStatus}`, 'Close', { duration: 3000 });
+        this.toastService.success(`${user.fullName} set to ${newStatus}.`);
         this.loadUsers();
       },
-      error: (err) => this.snackBar.open(err.error?.message || 'Failed to update status', 'Close', { duration: 4000 })
+      error: (err) => this.toastService.error(err.error?.message || 'Failed to update status')
     });
   }
 

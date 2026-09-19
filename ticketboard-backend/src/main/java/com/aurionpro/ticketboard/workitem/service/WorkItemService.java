@@ -4,6 +4,7 @@ import com.aurionpro.ticketboard.audit.enums.TimelineEventType;
 import com.aurionpro.ticketboard.audit.service.ActivityLogService;
 import com.aurionpro.ticketboard.common.exception.BadRequestException;
 import com.aurionpro.ticketboard.common.exception.ResourceNotFoundException;
+import com.aurionpro.ticketboard.document.storage.StoredDocumentInfo;
 import com.aurionpro.ticketboard.document.storage.DocumentStorageService;
 import com.aurionpro.ticketboard.project.entity.Project;
 import com.aurionpro.ticketboard.project.repository.ProjectRepository;
@@ -27,7 +28,6 @@ import com.aurionpro.ticketboard.workitem.repository.WorkItemDependencyRepositor
 import com.aurionpro.ticketboard.comment.repository.CommentRepository;
 import com.aurionpro.ticketboard.workitem.repository.WorkItemRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.Resource;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -161,6 +161,7 @@ public class WorkItemService {
                 .completionPercentage(dto.getCompletionPercentage() != null ? dto.getCompletionPercentage() : 0)
                 .billingType(dto.getBillingType() != null ? dto.getBillingType() : "None")
                 .associatedTeam(dto.getAssociatedTeam() != null ? dto.getAssociatedTeam() : null)
+                .allocatedBa(dto.getAllocatedBa() != null ? dto.getAllocatedBa() : null)
                 .jiraTaskId(dto.getJiraTaskId())
                 .jiraStatus(dto.getJiraStatus() != null ? dto.getJiraStatus() : "Not Created")
                 .tags(dto.getTags() != null ? dto.getTags() : "P1")
@@ -212,6 +213,7 @@ public class WorkItemService {
         if (dto.getCompletionPercentage() != null) item.setCompletionPercentage(dto.getCompletionPercentage());
         if (dto.getBillingType() != null) item.setBillingType(dto.getBillingType());
         if (dto.getAssociatedTeam() != null) item.setAssociatedTeam(dto.getAssociatedTeam());
+        if (dto.getAllocatedBa() != null) item.setAllocatedBa(dto.getAllocatedBa());
         if (dto.getJiraTaskId() != null) item.setJiraTaskId(dto.getJiraTaskId());
         if (dto.getJiraStatus() != null) item.setJiraStatus(dto.getJiraStatus());
         if (dto.getTags() != null) item.setTags(dto.getTags());
@@ -421,13 +423,13 @@ public class WorkItemService {
     }
 
     @Transactional
-    public com.aurionpro.ticketboard.document.storage.StoredDocumentInfo loadDocument(Long docId) {
+    public StoredDocumentInfo loadDocument(Long docId) {
         TaskDocument doc = getDocumentEntity(docId);
         if (doc.getFilePath() == null || doc.getFilePath().isBlank()) {
             throw new BadRequestException("Document was attached as a link without stored file");
         }
         org.springframework.core.io.Resource resource = documentStorageService.loadAsResource(doc.getFilePath());
-        return new com.aurionpro.ticketboard.document.storage.StoredDocumentInfo(
+        return new StoredDocumentInfo(
                 doc.getFileName(),
                 doc.getFileType() != null ? doc.getFileType() : "application/octet-stream",
                 resource);
@@ -593,6 +595,7 @@ public class WorkItemService {
                 .completionPercentage(w.getCompletionPercentage() != null ? w.getCompletionPercentage() : 0)
                 .billingType(w.getBillingType() != null ? w.getBillingType() : "None")
                 .associatedTeam(w.getAssociatedTeam() != null ? w.getAssociatedTeam() : null)
+                .allocatedBa(w.getAllocatedBa() != null ? w.getAllocatedBa() : null)
                 .jiraTaskId(w.getJiraTaskId())
                 .jiraStatus(w.getJiraStatus() != null ? w.getJiraStatus() : "Not Created")
                 .tags(w.getTags())

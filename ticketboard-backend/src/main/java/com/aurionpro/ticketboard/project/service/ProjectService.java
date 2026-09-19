@@ -48,6 +48,7 @@ public class ProjectService {
     private final IssueRepository issueRepository;
     private final CommentRepository commentRepository;
     private final ActivityLogService activityLogService;
+    private final MilestoneService milestoneService;
 
     @Transactional(readOnly = true)
     public List<ProjectDto> getAllProjects() {
@@ -324,18 +325,7 @@ public class ProjectService {
                 project.getMembers().stream().map(this::mapToMemberDto).collect(Collectors.toList()) : List.of();
 
         List<MilestoneDto> milestoneDtos = project.getMilestones() != null ?
-                project.getMilestones().stream().map(m -> MilestoneDto.builder()
-                        .id(m.getId())
-                        .projectId(project.getId())
-                        .name(m.getName())
-                        .description(m.getDescription())
-                        .plannedDate(m.getPlannedDate())
-                        .actualDate(m.getActualDate())
-                        .ownerId(m.getOwner() != null ? m.getOwner().getId() : null)
-                        .ownerName(m.getOwner() != null ? m.getOwner().getFullName() : null)
-                        .status(m.getStatus())
-                        .completionPercentage(m.getCompletionPercentage())
-                        .build()).collect(Collectors.toList()) : List.of();
+                project.getMilestones().stream().map(milestoneService::mapToDto).collect(Collectors.toList()) : List.of();
 
         return ProjectDto.builder()
                 .id(project.getId())

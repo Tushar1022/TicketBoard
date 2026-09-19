@@ -6,6 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { ReleaseService } from '../../../core/services/release.service';
 import { ProjectService } from '../../../core/services/project.service';
 import { Project, Release, ReleaseEnvironment, ReleaseStatus } from '../../../core/models/api.models';
+import { ToastService } from '../../../shared/components/toast/toast.service';
 
 @Component({
   selector: 'app-release-list',
@@ -43,7 +44,8 @@ export class ReleaseListComponent implements OnInit {
 
   constructor(
     private releaseService: ReleaseService,
-    private projectService: ProjectService
+    private projectService: ProjectService,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -91,10 +93,14 @@ export class ReleaseListComponent implements OnInit {
     this.releaseService.createRelease(this.newRelease).subscribe({
       next: (res: any) => {
         if (res.success) {
+          this.toastService.success(`Release ${res.data?.releaseVersion || this.newRelease.releaseVersion} was created successfully.`);
           this.closeCreateModal();
           this.loadReleases();
+        } else {
+          this.toastService.error(res.message || 'Failed to create the release.');
         }
-      }
+      },
+      error: () => this.toastService.error('Release creation failed. Please try again.')
     });
   }
 }

@@ -25,6 +25,8 @@ public class IssueDto {
     private Long projectId;
     private String projectCode;
     private String projectName;
+    private Long milestoneId;
+    private String milestoneName;
 
     private String title;
 
@@ -33,14 +35,32 @@ public class IssueDto {
 
     private IssueSeverity severity;
     private IssueStatus status;
-    private Long ownerId;
-    private String ownerName;
-    private String resolution;
+    private Long reporterId;
+    private String reporterName;
+    private Long assigneeId;
+    private String assigneeName;
+    private String priority;
     private String classification;
+    private String category;
+    private String environment;
+    private String affectedModule;
+    private String affectedVersion;
+    private String expectedBehavior;
+    private String actualBehavior;
     private String stepsToReproduce;
+    private String resolution;
+    private String acceptanceCriteria;
     private Double crValue;
     private Double crManDays;
+    private Double estimatedFixHours;
+    private Integer percentage;
     private LocalDate dueDate;
+    private LocalDateTime resolvedAt;
+    private LocalDateTime closedAt;
     private List<String> linkedTaskIds;
+    private List<String> linkedIssueIds;
+    private Long commentCount;
+    private Long watcherCount;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

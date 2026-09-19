@@ -1,6 +1,7 @@
 package com.aurionpro.ticketboard.workitem.controller;
 
 import com.aurionpro.ticketboard.common.response.ApiResponse;
+import com.aurionpro.ticketboard.document.storage.StoredDocumentInfo;
 import com.aurionpro.ticketboard.workitem.dto.*;
 import com.aurionpro.ticketboard.workitem.service.WorkItemService;
 import jakarta.validation.Valid;
@@ -107,7 +108,7 @@ public class WorkItemController {
     @GetMapping("/documents/{docId}/download")
     public org.springframework.http.ResponseEntity<org.springframework.core.io.Resource> downloadDocument(
             @PathVariable Long docId) {
-        com.aurionpro.ticketboard.document.storage.StoredDocumentInfo info = workItemService.loadDocument(docId);
+        StoredDocumentInfo info = workItemService.loadDocument(docId);
         return org.springframework.http.ResponseEntity.ok()
                 .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + info.fileName() + "\"")

@@ -7,6 +7,7 @@ import { SupportTicketService } from '../../../core/services/support-ticket.serv
 import { AuthService } from '../../../core/services/auth.service';
 import { ProjectService } from '../../../core/services/project.service';
 import { SupportCategory, SupportTicket, TicketPriority, Project } from '../../../core/models/api.models';
+import { ToastService } from '../../../shared/components/toast/toast.service';
 
 @Component({
   selector: 'app-raise-ticket-dialog',
@@ -37,7 +38,8 @@ export class RaiseTicketDialogComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: any,
     private supportTicketService: SupportTicketService,
     private authService: AuthService,
-    private projectService: ProjectService
+    private projectService: ProjectService,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -131,6 +133,7 @@ export class RaiseTicketDialogComponent implements OnInit {
       error: (err: any) => {
         this.isSubmitting.set(false);
         this.errorMessage.set(err?.message || 'Failed to submit support ticket.');
+        this.toastService.error('Failed to submit support ticket.');
       }
     });
   }
@@ -138,6 +141,7 @@ export class RaiseTicketDialogComponent implements OnInit {
   private finishSuccess(ticket: SupportTicket): void {
     this.isSubmitting.set(false);
     this.successMessage.set(`Support ticket ${ticket.ticketCode} raised successfully!`);
+    this.toastService.success(`Support ticket ${ticket.ticketCode} was raised successfully.`);
     setTimeout(() => {
       this.dialogRef.close(ticket);
     }, 1200);

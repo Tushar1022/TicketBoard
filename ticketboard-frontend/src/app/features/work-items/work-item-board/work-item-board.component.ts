@@ -32,6 +32,7 @@ import {
   WorkItemStatus,
   WorkItemType
 } from '../../../core/models/api.models';
+import { ToastService } from '../../../shared/components/toast/toast.service';
 
 @Component({
   selector: 'app-work-item-board',
@@ -153,7 +154,8 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
     private timeTrackingService: TimeTrackingService,
     private riskService: RiskService,
     private userService: UserService,
-    public authService: AuthService
+    public authService: AuthService,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -314,6 +316,7 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
     this.workItemService.updateStatus(item.id, newStatus).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res: any) => {
         if (res.success && res.data) {
+          this.toastService.info(`Task ${item.ticketNumber} status changed to ${newStatus.replace(/_/g, ' ')}.`);
           if (!silent) this.loadWorkItems();
           if (this.selectedTask() && this.selectedTask()!.id === item.id) {
             this.selectedTask.set(res.data);
@@ -322,7 +325,8 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
             }
           }
         }
-      }
+      },
+      error: () => this.toastService.error(`Failed to update status of ${item.ticketNumber}.`)
     });
   }
 
@@ -390,6 +394,7 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
       next: (res: any) => {
         this.isSavingDrawer.set(false);
         if (res.success && res.data) {
+          this.toastService.success(`Task ${task.ticketNumber} changes were saved.`);
           this.selectedTask.set(res.data);
           this.editForm.set({ ...res.data });
           this.saveMessage.set('Saved');
@@ -398,6 +403,7 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
       },
       error: () => {
         this.isSavingDrawer.set(false);
+        this.toastService.error('Failed to save task changes.');
         this.saveMessage.set('Save failed');
       }
     });
@@ -533,11 +539,13 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
     this.workItemService.syncWithJira(task.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res: any) => {
         if (res.success && res.data) {
+          this.toastService.success('Task synchronized with JIRA successfully.');
           this.selectedTask.set(res.data);
           this.loadWorkItems();
           this.loadDrawerDetails(task.id);
         }
-      }
+      },
+      error: () => this.toastService.error('JIRA synchronization failed.')
     });
   }
 
@@ -555,10 +563,12 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (res: any) => {
           if (res.success) {
+            this.toastService.success('Comment added to the task.');
             this.newCommentText.set('');
             this.loadDrawerDetails(task.id);
           }
-        }
+        },
+        error: () => this.toastService.error('Failed to add comment.')
       });
   }
 
@@ -577,11 +587,13 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
     this.workItemService.uploadDocument(task.id, file).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res: any) => {
         if (res.success) {
+          this.toastService.success('Document uploaded and attached to the task.');
           this.selectedDocFile.set(null);
           this.loadDrawerDetails(task.id);
           this.loadWorkItems();
         }
-      }
+      },
+      error: () => this.toastService.error('Document upload failed.')
     });
   }
 
@@ -598,8 +610,10 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
 
     this.workItemService.deleteDocument(docId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
+        this.toastService.success('Document removed from the task.');
         this.loadDrawerDetails(task.id);
-      }
+      },
+      error: () => this.toastService.error('Failed to delete the document.')
     });
   }
 
@@ -623,6 +637,7 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (res: any) => {
           if (res.success) {
+            this.toastService.success('Subtask created successfully.');
             this.newSubtaskTitle.set('');
             this.newSubtaskHours.set(4.0);
             if (this.selectedTask()?.id === task.id) {
@@ -632,7 +647,8 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
             }
             this.loadWorkItems();
           }
-        }
+        },
+        error: () => this.toastService.error('Failed to create subtask.')
       });
   }
 
@@ -649,10 +665,14 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
     this.workItemService.createWorkItem(this.newTask).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res: any) => {
         if (res.success) {
+          this.toastService.success(`Task ${res.data?.ticketNumber || ''} was created successfully.`);
           this.closeCreateModal();
           this.loadWorkItems();
+        } else {
+          this.toastService.error(res.message || 'Failed to create the task.');
         }
-      }
+      },
+      error: () => this.toastService.error('Task creation failed. Please try again.')
     });
   }
 
@@ -681,10 +701,12 @@ export class WorkItemBoardComponent implements OnDestroy, OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (res: any) => {
           if (res.success) {
+            this.toastService.success(`Task ${task.ticketNumber} is blocked.`);
             this.closeBlockerModal();
             this.loadWorkItems();
           }
-        }
+        },
+        error: () => this.toastService.error('Failed to block the task.')
       });
   }
 

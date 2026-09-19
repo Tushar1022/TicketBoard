@@ -8,6 +8,7 @@ import { TimeTrackingService } from '../../core/services/timetracking.service';
 import { AuthService } from '../../core/services/auth.service';
 import { EffortVariance, TimeEntry, Timesheet } from '../../core/models/api.models';
 import { LogTimeDialogComponent } from '../../shared/components/log-time-dialog/log-time-dialog.component';
+import { ToastService } from '../../shared/components/toast/toast.service';
 
 @Component({
   selector: 'app-timetracking',
@@ -36,7 +37,8 @@ export class TimetrackingComponent implements OnInit {
   constructor(
     private timeTrackingService: TimeTrackingService,
     public authService: AuthService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -103,9 +105,11 @@ export class TimetrackingComponent implements OnInit {
     this.timeTrackingService.submitTimesheet(sheet.id).subscribe({
       next: (res: any) => {
         if (res.success) {
+          this.toastService.success('Timesheet submitted for approval.');
           this.loadTimesheetData();
         }
-      }
+      },
+      error: () => this.toastService.error('Failed to submit the timesheet.')
     });
   }
 
@@ -113,9 +117,11 @@ export class TimetrackingComponent implements OnInit {
     this.timeTrackingService.reviewTimesheet(sheet.id, 'APPROVED').subscribe({
       next: (res: any) => {
         if (res.success) {
+          this.toastService.success(`Timesheet for ${sheet.userName} (${sheet.startDate} – ${sheet.endDate}) was approved.`);
           this.loadPendingTimesheets();
         }
-      }
+      },
+      error: () => this.toastService.error('Failed to approve the timesheet.')
     });
   }
 
@@ -137,10 +143,12 @@ export class TimetrackingComponent implements OnInit {
     this.timeTrackingService.reviewTimesheet(sheet.id, 'REJECTED', this.rejectionReason()).subscribe({
       next: (res: any) => {
         if (res.success) {
+          this.toastService.success('Timesheet was rejected.');
           this.closeRejectModal();
           this.loadPendingTimesheets();
         }
-      }
+      },
+      error: () => this.toastService.error('Failed to reject the timesheet.')
     });
   }
 }

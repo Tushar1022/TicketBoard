@@ -11,6 +11,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { User, RoleType } from '../../../core/models/api.models';
 import { UserService } from '../../../core/services/user.service';
+import { ToastService } from '../../../shared/components/toast/toast.service';
 
 export interface UserFormData {
   user?: User;
@@ -287,7 +288,8 @@ export class UserFormDialogComponent implements OnInit {
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: UserFormData,
     private dialogRef: MatDialogRef<UserFormDialogComponent>,
-    private userService: UserService
+    private userService: UserService,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -348,13 +350,25 @@ export class UserFormDialogComponent implements OnInit {
     if (this.data.user) {
       delete payload.password;
       this.userService.updateUser(this.data.user.id, payload).subscribe({
-        next: () => this.dialogRef.close(true),
-        error: (err) => this.dialogRef.close({ error: err.error?.message || 'Failed to update user' })
+        next: () => {
+          this.toastService.success(`User ${this.form.firstName} ${this.form.lastName} was updated.`);
+          this.dialogRef.close(true);
+        },
+        error: (err) => {
+          this.toastService.error(err.error?.message || 'Failed to update user');
+          this.dialogRef.close({ error: err.error?.message || 'Failed to update user' });
+        }
       });
     } else {
       this.userService.createUser(payload).subscribe({
-        next: () => this.dialogRef.close(true),
-        error: (err) => this.dialogRef.close({ error: err.error?.message || 'Failed to create user' })
+        next: () => {
+          this.toastService.success(`User ${this.form.firstName} ${this.form.lastName} was created.`);
+          this.dialogRef.close(true);
+        },
+        error: (err) => {
+          this.toastService.error(err.error?.message || 'Failed to create user');
+          this.dialogRef.close({ error: err.error?.message || 'Failed to create user' });
+        }
       });
     }
   }

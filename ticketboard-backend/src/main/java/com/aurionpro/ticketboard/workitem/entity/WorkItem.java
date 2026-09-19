@@ -1,6 +1,7 @@
 package com.aurionpro.ticketboard.workitem.entity;
 
 import com.aurionpro.ticketboard.common.entity.BaseEntity;
+import com.aurionpro.ticketboard.project.entity.Milestone;
 import com.aurionpro.ticketboard.project.entity.Project;
 import com.aurionpro.ticketboard.requirement.entity.Requirement;
 import com.aurionpro.ticketboard.user.entity.User;
@@ -73,6 +74,10 @@ public class WorkItem extends BaseEntity {
     private Requirement requirement;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "milestone_id")
+    private Milestone milestone;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_task_id")
     private WorkItem parentTask;
 
@@ -140,6 +145,9 @@ public class WorkItem extends BaseEntity {
 
     @Column(name = "associated_team", length = 150)
     private String associatedTeam;
+
+    @Column(name = "allocated_ba", length = 150)
+    private String allocatedBa;
 
     @Column(name = "jira_task_id", length = 50)
     private String jiraTaskId;

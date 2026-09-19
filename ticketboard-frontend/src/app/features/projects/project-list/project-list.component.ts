@@ -8,6 +8,8 @@ import { ProjectService } from '../../../core/services/project.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
 import { Project, User } from '../../../core/models/api.models';
+import { ToastService } from '../../../shared/components/toast/toast.service';
+import { inject } from '@angular/core';
 
 @Component({
   selector: 'app-project-list',
@@ -17,6 +19,7 @@ import { Project, User } from '../../../core/models/api.models';
   styleUrls: ['./project-list.component.scss']
 })
 export class ProjectListComponent implements OnInit {
+  private toastService = inject(ToastService);
   public projects = signal<Project[]>([]);
   public filteredProjects = signal<Project[]>([]);
   public users = signal<User[]>([]);
@@ -201,6 +204,7 @@ export class ProjectListComponent implements OnInit {
         next: () => {
           remaining -= 1;
           if (remaining === 0) {
+            this.toastService.success(`${ids.length} project(s) deleted successfully.`);
             this.clearSelection();
             this.loadProjects();
           }
@@ -208,6 +212,7 @@ export class ProjectListComponent implements OnInit {
         error: () => {
           remaining -= 1;
           if (remaining === 0) {
+            this.toastService.error('Failed to delete some selected projects.');
             this.clearSelection();
             this.loadProjects();
           }
@@ -263,10 +268,14 @@ export class ProjectListComponent implements OnInit {
     this.projectService.createProject(this.newProject).subscribe({
       next: (res: any) => {
         if (res.success) {
+          this.toastService.success(`Project ${res.data?.projectCode || this.newProject.projectCode} was created successfully.`);
           this.closeCreateModal();
           this.loadProjects();
+        } else {
+          this.toastService.error(res.message || 'Failed to create the project.');
         }
-      }
+      },
+      error: () => this.toastService.error('Project creation failed. Please try again.')
     });
   }
 }

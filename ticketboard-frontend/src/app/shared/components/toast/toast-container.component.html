@@ -1,0 +1,16 @@
+<div class="tb-toast-viewport" role="status" aria-live="polite">
+  <div
+    class="tb-toast"
+    *ngFor="let toast of toastService.toasts()"
+    [class]="'tb-toast--' + toast.type"
+    [class.leaving]="false"
+  >
+    <span class="tb-toast__icon">{{ toastIcon(toast.type) }}</span>
+    <div class="tb-toast__content">
+      <span class="tb-toast__title">{{ toast.title }}</span>
+      <span class="tb-toast__message">{{ toast.message }}</span>
+    </div>
+    <button class="tb-toast__close" (click)="toastService.dismiss(toast.id)" aria-label="Dismiss">✕</button>
+    <span class="tb-toast__progress" [style.animation-duration.ms]="toast.duration"></span>
+  </div>
+</div>

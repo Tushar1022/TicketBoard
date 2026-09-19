@@ -9,6 +9,7 @@ import { SupportTicketService } from '../../core/services/support-ticket.service
 import { AuthService } from '../../core/services/auth.service';
 import { SupportTicket, TicketStatus, SupportCategory } from '../../core/models/api.models';
 import { RaiseTicketDialogComponent } from './raise-ticket-dialog/raise-ticket-dialog.component';
+import { ToastService } from '../../shared/components/toast/toast.service';
 
 type TabKey = 'MY_TICKETS' | 'ADMIN_QUEUE';
 
@@ -84,7 +85,8 @@ export class SupportTicketsComponent implements OnInit {
     public supportTicketService: SupportTicketService,
     public authService: AuthService,
     private dialog: MatDialog,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -144,6 +146,7 @@ export class SupportTicketsComponent implements OnInit {
       adminName
     ).subscribe(updated => {
       if (updated) {
+        this.toastService.success(`Ticket ${updated.ticketCode} status updated to ${updated.status.replace(/_/g, ' ')}.`);
         this.supportTicketService.refreshAll();
         const fresh = this.tickets().find(t => t.id === updated.id);
         this.selectedTicket.set(fresh || updated);
@@ -156,6 +159,7 @@ export class SupportTicketsComponent implements OnInit {
     if (!ticket || !this.commentInput.trim()) return;
 
     this.supportTicketService.addComment(ticket.id, this.commentInput.trim()).subscribe(() => {
+      this.toastService.success('Comment added to the ticket.');
       this.commentInput = '';
       this.supportTicketService.refreshAll();
       const fresh = this.tickets().find(t => t.id === ticket.id);
@@ -176,6 +180,7 @@ export class SupportTicketsComponent implements OnInit {
       adminName
     ).subscribe(updated => {
       if (updated) {
+        this.toastService.success(`Ticket ${updated.ticketCode} assigned to ${adminName}.`);
         this.supportTicketService.refreshAll();
         const fresh = this.tickets().find(t => t.id === updated.id);
         this.selectedTicket.set(fresh || updated);
@@ -190,6 +195,7 @@ export class SupportTicketsComponent implements OnInit {
       const file = input.files[0];
       this.supportTicketService.uploadAttachment(ticket.id, file).subscribe(updated => {
         if (updated) {
+          this.toastService.success('Attachment uploaded to the ticket.');
           this.supportTicketService.refreshAll();
           const fresh = this.tickets().find(t => t.id === updated.id);
           this.selectedTicket.set(fresh || updated);

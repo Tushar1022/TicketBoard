@@ -1,11 +1,13 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RiskService } from '../../core/services/risk.service';
 import { ProjectService } from '../../core/services/project.service';
-import { Issue, Project, Risk, RiskStatus } from '../../core/models/api.models';
+import { LookupDataService } from '../../core/services/lookup-data.service';
+import { Issue, LookupData, Project, Risk, RiskStatus } from '../../core/models/api.models';
+import { ToastService } from '../../shared/components/toast/toast.service';
 
 @Component({
   selector: 'app-risk-management',
@@ -21,11 +23,27 @@ export class RiskManagementComponent implements OnInit {
   public isLoading = signal<boolean>(true);
   public selectedProjectId = signal<number | null>(null);
 
+  public lookupMap = signal<Record<string, LookupData[]>>({});
+  public Number = Number;
+  public riskProbabilities = computed(() => this.lookupMap()['RISK_PROBABILITY'] || []);
+  public riskImpacts = computed(() => this.lookupMap()['RISK_IMPACT'] || []);
+  public riskStatuses = computed(() => this.lookupMap()['RISK_STATUS'] || []);
+
+  public probLabel(value: number): string {
+    const found = this.riskProbabilities().find((l) => Number(l.value) === Number(value));
+    return found ? found.label : `${value}`;
+  }
+
+  public impactLabel(value: number): string {
+    const found = this.riskImpacts().find((l) => Number(l.value) === Number(value));
+    return found ? found.label : `${value}`;
+  }
+
   // Create Risk Modal State
   public showCreateRiskModal = signal<boolean>(false);
   public newRisk = {
     riskCode: '',
-    projectId: 1,
+    projectId: null as number | null,
     description: '',
     probability: 3,
     impact: 4,
@@ -36,10 +54,24 @@ export class RiskManagementComponent implements OnInit {
 
   constructor(
     private riskService: RiskService,
-    private projectService: ProjectService
+    private projectService: ProjectService,
+    private lookupDataService: LookupDataService,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
+    this.lookupDataService.getAll().subscribe({
+      next: (res: any) => {
+        if (res.success && res.data) {
+          const map: Record<string, LookupData[]> = {};
+          for (const l of res.data) {
+            if (!map[l.category]) map[l.category] = [];
+            if (l.isActive !== false) map[l.category].push(l);
+          }
+          this.lookupMap.set(map);
+        }
+      }
+    });
     this.projectService.getAllProjects().subscribe({
       next: (res: any) => {
         if (res.success && res.data) {
@@ -96,10 +128,14 @@ export class RiskManagementComponent implements OnInit {
     this.riskService.createRisk(this.newRisk).subscribe({
       next: (res: any) => {
         if (res.success) {
+          this.toastService.success('Risk registered successfully on the matrix.');
           this.closeCreateRiskModal();
           this.loadRisksAndIssues();
+        } else {
+          this.toastService.error(res.message || 'Failed to create the risk.');
         }
-      }
+      },
+      error: () => this.toastService.error('Risk creation failed. Please try again.')
     });
   }
 }

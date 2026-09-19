@@ -83,7 +83,8 @@ export interface Client {
 export type ProjectPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type ProjectStatus = 'PROPOSED' | 'APPROVED' | 'IN_PROGRESS' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED' | 'CLOSED';
 export type ProjectHealth = 'GREEN' | 'AMBER' | 'RED';
-export type MilestoneStatus = 'PLANNED' | 'IN_PROGRESS' | 'ACHIEVED' | 'MISSED' | 'CANCELLED';
+export type MilestoneStatus = 'PLANNED' | 'IN_PROGRESS' | 'ACHIEVED' | 'DELAYED' | 'CANCELLED';
+export type MilestoneProgressSource = 'AUTO' | 'MANUAL';
 
 export interface ProjectMember {
   id: number;
@@ -99,19 +100,28 @@ export interface ProjectMember {
 
 export interface Milestone {
   id: number;
+  milestoneCode?: string;
   milestoneId?: string;
   projectId: number;
+  projectCode?: string;
+  projectName?: string;
   name: string;
   description?: string;
-  plannedDate: string;
-  actualDate?: string;
   startDate?: string;
-  dueDate?: string;
+  plannedDate: string;
+  targetDate?: string;
+  actualDate?: string;
+  priority?: string;
+  flag?: 'RELEASE_MILESTONE' | 'AFFECTED_MILESTONE' | string;
+  parentMilestoneId?: number;
+  parentName?: string;
+  releaseId?: number;
+  releaseVersion?: string;
   ownerId?: number;
   ownerName?: string;
   status: MilestoneStatus;
   completionPercentage: number;
-  flag?: 'Release Milestone' | 'Affected Milestone';
+  progressSource?: MilestoneProgressSource;
   linkedTaskCount?: number;
   linkedIssueCount?: number;
   linkedTaskIds?: string[];
@@ -419,7 +429,7 @@ export interface Release {
 
 export type RiskStatus = 'IDENTIFIED' | 'MITIGATED' | 'ACCEPTED' | 'CLOSED';
 export type IssueSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-export type IssueStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+export type IssueStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'REOPENED';
 
 export interface Risk {
   id: number;
@@ -445,6 +455,8 @@ export interface Issue {
   projectId: number;
   projectCode?: string;
   projectName?: string;
+  milestoneId?: number;
+  milestoneName?: string;
   productName?: string;
   issueType?: string;
   releaseName?: string;
@@ -462,19 +474,64 @@ export interface Issue {
   severity: IssueSeverity | string;
   status: IssueStatus | string;
   associatedTeam?: string;
+  priority?: string;
+  assigneeId?: number;
   assigneeName?: string;
   classification?: string;
+  category?: string;
+  environment?: string;
+  affectedModule?: string;
+  affectedVersion?: string;
+  expectedBehavior?: string;
+  actualBehavior?: string;
   reproducible?: string;
+  acceptanceCriteria?: string;
+  estimatedFixHours?: number;
+  percentage?: number;
   dueDate?: string;
+  resolvedAt?: string;
+  closedAt?: string;
   flag?: string;
   linkedTaskIds?: string[];
+  linkedIssueIds?: string[];
   reporterId?: number;
   reporterName?: string;
   ownerId?: number;
   ownerName?: string;
   resolution?: string;
+  commentCount?: number;
+  watcherCount?: number;
   tags?: string;
   createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface IssueComment {
+  id: number;
+  issueId: number;
+  authorId?: number;
+  authorName?: string;
+  content: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface IssueHistory {
+  id: number;
+  issueId: number;
+  actorId?: number;
+  actorName?: string;
+  actionType: string;
+  fieldName?: string;
+  oldValue?: string;
+  newValue?: string;
+  occurredAt: string;
+}
+
+export interface IssueWatcher {
+  userId: number;
+  userName: string;
+  addedAt?: string;
 }
 
 export interface EmployeeWorkload {

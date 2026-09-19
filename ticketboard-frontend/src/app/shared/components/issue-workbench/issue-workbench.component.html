@@ -1,0 +1,458 @@
+<!-- Status Summary Strip -->
+<div class="iss-summary">
+  <button class="sum-chip" [class.active]="issueFilterStatus() === 'ALL'" (click)="issueFilterStatus.set('ALL')">
+    <i class="sum-dot" style="background-color:#94a3b8"></i><span>All</span><b>{{ issues().length }}</b>
+  </button>
+  <button class="sum-chip" *ngFor="let s of issueStatuses()" [class.active]="issueFilterStatus() === s.value" (click)="issueFilterStatus.set(s.value)">
+    <i class="sum-dot" [style.background-color]="s.colorCode || '#94a3b8'"></i><span>{{ s.label }}</span><b>{{ statusCount(s.value) }}</b>
+  </button>
+</div>
+
+<div class="issues-workspace">
+  <!-- Left Master Rail -->
+  <aside class="issues-master-rail">
+    <div class="rail-header">
+      <div>
+        <h3>Issues &amp; Defects</h3>
+        <span class="sub-text">{{ taskCode ? 'Linked to ' + taskCode : filteredIssues().length + ' shown' }}</span>
+      </div>
+      <button class="btn btn-primary-accent" (click)="openCreateIssueModal()"><mat-icon class="xs">add</mat-icon> New Issue</button>
+    </div>
+    <div class="rail-search">
+      <mat-icon>search</mat-icon>
+      <input type="text" placeholder="Search code, title, reporter…" [ngModel]="issueSearch()" (ngModelChange)="issueSearch.set($event)" />
+    </div>
+    <div class="rail-filter-row">
+      <select class="form-control form-control-sm" [ngModel]="issueFilterStatus()" (ngModelChange)="issueFilterStatus.set($event)">
+        <option value="ALL">All Statuses</option>
+        <option *ngFor="let s of issueStatuses()" [value]="s.value">{{ s.label }}</option>
+      </select>
+      <select class="form-control form-control-sm" [ngModel]="issueFilterSeverity()" (ngModelChange)="issueFilterSeverity.set($event)">
+        <option value="ALL">All Severities</option>
+        <option *ngFor="let sev of issueSeverities()" [value]="sev.value">{{ sev.label }}</option>
+      </select>
+    </div>
+    <div class="issues-list">
+      <div class="issue-row-card" *ngFor="let iss of filteredIssues()" [class.selected]="selectedIssue()?.id === iss.id" (click)="selectIssue(iss)">
+        <span class="iss-rail-bar" [style.background-color]="lookupColor('ISSUE_STATUS', iss.status)"></span>
+        <div class="iss-row-main">
+          <span class="iss-avatar" [style.background-color]="avatarColor(iss.reporterName)">{{ initials(iss.reporterName) }}</span>
+          <div class="iss-row-txt">
+            <div class="iss-row-top">
+              <span class="iss-code font-bold">{{ iss.issueCode }}</span>
+              <span class="iss-sev" [style.background-color]="lookupColor('ISSUE_SEVERITY', iss.severity)">{{ lookupLabel('ISSUE_SEVERITY', iss.severity, iss.severity) }}</span>
+            </div>
+            <div class="iss-title">{{ iss.title || iss.description }}</div>
+            <div class="iss-meta">
+              <span class="prio-tag" *ngIf="iss.priority"><mat-icon class="xs">priority_high</mat-icon>{{ lookupLabel('PRIORITY', iss.priority) }}</span>
+              <span>{{ iss.reporterName || 'Unassigned' }}</span>
+              <span *ngIf="iss.milestoneName"><mat-icon class="xs">flag</mat-icon>{{ iss.milestoneName }}</span>
+              <span class="iss-counts"><mat-icon class="xs">chat_bubble</mat-icon>{{ iss.commentCount ?? 0 }}</span>
+              <span class="iss-counts"><mat-icon class="xs">notifications_active</mat-icon>{{ iss.watcherCount ?? 0 }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="empty-inline" *ngIf="loading()">Loading issues…</div>
+      <div class="empty-inline" *ngIf="!loading() && filteredIssues().length === 0 && issues().length > 0">
+        No issues match the current filters.
+      </div>
+      <div class="empty-inline" *ngIf="!loading() && issues().length === 0">
+        {{ taskCode ? 'No issues are linked to this work item yet.' : 'No issues recorded for this project yet.' }}
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Selected Issue Detail Pane -->
+  <main class="issue-detail-pane" *ngIf="selectedIssue() as iss">
+    <div class="idp-banner" [ngClass]="statusGradient(iss.status)">
+      <div class="banner-left">
+        <span class="banner-code">{{ iss.issueCode }}</span>
+        <h2>{{ iss.title || iss.description }}</h2>
+        <div class="banner-sub">
+          <span><mat-icon class="xs">account_circle</mat-icon>{{ iss.reporterName || 'Unassigned' }}</span>
+          <span *ngIf="iss.milestoneName"><mat-icon class="xs">flag</mat-icon>{{ iss.milestoneName }}</span>
+          <span><mat-icon class="xs">event</mat-icon>Created {{ formatChatTime(iss.createdAt) }}</span>
+        </div>
+      </div>
+      <div class="banner-right">
+        <span class="banner-status">{{ lookupLabel('ISSUE_STATUS', iss.status, iss.status) }}</span>
+        <div class="banner-actions">
+          <button class="banner-act" *ngFor="let ns of allowedStatusTransitions(iss.status)" (click)="updateIssueStatus(iss, ns)">
+            <mat-icon class="xs">{{ ns === 'CLOSED' ? 'check_circle' : (ns === 'REOPENED' ? 'reopen' : 'arrow_forward') }}</mat-icon>
+            {{ lookupLabel('ISSUE_STATUS', ns) }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="idp-people">
+      <div class="person">
+        <span class="avatar-mini" [style.background-color]="avatarColor(iss.reporterName)">{{ initials(iss.reporterName) }}</span>
+        <div><span>Reporter</span><b>{{ iss.reporterName || 'Unassigned' }}</b></div>
+      </div>
+      <div class="person">
+        <span class="avatar-mini" [style.background-color]="avatarColor(iss.assigneeName)">{{ initials(iss.assigneeName) }}</span>
+        <div><span>Assignee</span><b>{{ iss.assigneeName || 'Unassigned' }}</b></div>
+      </div>
+      <div class="person">
+        <span class="avatar-mini neutral"><mat-icon class="xs">event</mat-icon></span>
+        <div><span>Due Date</span><b class="font-mono">{{ iss.dueDate || '—' }}</b></div>
+      </div>
+      <div class="person grow">
+        <span class="avatar-mini neutral"><mat-icon class="xs">percent</mat-icon></span>
+        <div class="person-pct">
+          <span>Progress</span>
+          <div class="mc-prog-track"><div class="mc-prog-fill" [style.width.%]="iss.percentage || 0" [style.background-color]="lookupColor('ISSUE_STATUS', iss.status)"></div></div>
+        </div>
+      </div>
+      <button class="btn btn-sm watch-btn" [class.watching]="isWatchingIssue(authService.currentUser()?.id)" (click)="toggleWatcher()">
+        <mat-icon class="xs">{{ isWatchingIssue(authService.currentUser()?.id) ? 'notifications_active' : 'notifications_none' }}</mat-icon>
+        {{ isWatchingIssue(authService.currentUser()?.id) ? 'Watching' : 'Watch' }}
+        <span class="wcount">{{ issueWatchers().length }}</span>
+      </button>
+    </div>
+
+    <div class="idp-tabs">
+      <button class="idp-tab" [class.active]="issueDetailTab() === 'overview'" (click)="issueDetailTab.set('overview')"><mat-icon class="xs">info</mat-icon> Overview</button>
+      <button class="idp-tab" [class.active]="issueDetailTab() === 'comments'" (click)="issueDetailTab.set('comments')"><mat-icon class="xs">chat_bubble</mat-icon> Comments ({{ issueComments().length }})</button>
+      <button class="idp-tab" [class.active]="issueDetailTab() === 'history'" (click)="issueDetailTab.set('history')"><mat-icon class="xs">history</mat-icon> History</button>
+      <div class="idp-actions">
+        <button class="btn btn-sm btn-secondary" (click)="openUpdateIssueModal(iss)"><mat-icon class="xs">edit</mat-icon> Edit</button>
+        <button class="btn btn-sm btn-danger" (click)="deleteIssue(iss)"><mat-icon class="xs">delete_outline</mat-icon> Delete</button>
+      </div>
+    </div>
+
+    <div class="idp-body">
+      <div *ngIf="issueDetailLoading()" class="empty-inline">Loading…</div>
+
+      <!-- Overview -->
+      <div *ngIf="!issueDetailLoading() && issueDetailTab() === 'overview'" class="idp-overview">
+        <div class="ov-column">
+          <div class="ov-card">
+            <h4><mat-icon class="xs">description</mat-icon> Description</h4>
+            <p>{{ iss.description }}</p>
+            <div class="steps-box" *ngIf="iss.stepsToReproduce">
+              <strong>Steps to Reproduce</strong>
+              <pre>{{ iss.stepsToReproduce }}</pre>
+            </div>
+            <div class="ov-behavior" *ngIf="iss.expectedBehavior || iss.actualBehavior">
+              <div class="beh-row" *ngIf="iss.expectedBehavior"><span class="beh-lbl">Expected</span><span>{{ iss.expectedBehavior }}</span></div>
+              <div class="beh-row" *ngIf="iss.actualBehavior"><span class="beh-lbl">Actual</span><span>{{ iss.actualBehavior }}</span></div>
+            </div>
+            <blockquote class="acceptance" *ngIf="iss.acceptanceCriteria"><strong>Acceptance Criteria</strong>{{ iss.acceptanceCriteria }}</blockquote>
+          </div>
+        </div>
+        <div class="ov-column">
+          <div class="ov-card">
+            <h4><mat-icon class="xs">manage_search</mat-icon> Issue Information</h4>
+            <div class="ov-grid">
+              <div class="field-item"><span class="lbl">Severity</span><span class="val font-bold"><span class="severity-dot" [style.background-color]="lookupColor('ISSUE_SEVERITY', iss.severity)"></span> {{ lookupLabel('ISSUE_SEVERITY', iss.severity, iss.severity) }}</span></div>
+              <div class="field-item"><span class="lbl">Priority</span><span class="val">{{ lookupLabel('PRIORITY', iss.priority, '—') }}</span></div>
+              <div class="field-item"><span class="lbl">Classification</span><span class="val">{{ lookupLabel('ISSUE_CLASSIFICATION', iss.classification, '—') }}</span></div>
+              <div class="field-item"><span class="lbl">Category</span><span class="val">{{ iss.category || '—' }}</span></div>
+              <div class="field-item"><span class="lbl">Reproducible</span><span class="val">{{ iss.reproducible || '—' }}</span></div>
+              <div class="field-item"><span class="lbl">Associated Team</span><span class="val">{{ iss.associatedTeam || '—' }}</span></div>
+              <div class="field-item"><span class="lbl">Est. Fix Hours</span><span class="val font-mono">{{ iss.estimatedFixHours != null ? (iss.estimatedFixHours + 'h') : '—' }}</span></div>
+              <div class="field-item"><span class="lbl">CR Value</span><span class="val font-mono">{{ iss.crValue ? (iss.crValue | currency) : '—' }}</span></div>
+              <div class="field-item"><span class="lbl">CR Man-Days</span><span class="val font-mono">{{ iss.crManDays ?? '—' }}</span></div>
+              <div class="field-item"><span class="lbl">Resolution</span><span class="val">{{ iss.resolution || '—' }}</span></div>
+              <div class="field-item"><span class="lbl">Resolved At</span><span class="val font-mono">{{ iss.resolvedAt ? formatChatTime(iss.resolvedAt) : '—' }}</span></div>
+              <div class="field-item"><span class="lbl">Closed At</span><span class="val font-mono">{{ iss.closedAt ? formatChatTime(iss.closedAt) : '—' }}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comments -->
+      <div *ngIf="!issueDetailLoading() && issueDetailTab() === 'comments'" class="idp-thread">
+        <div class="issue-comment-item" *ngFor="let c of issueComments()">
+          <span class="iss-avatar" [style.background-color]="avatarColor(c.authorName)">{{ initials(c.authorName) }}</span>
+          <div class="issue-comment-body">
+            <div class="msg-meta">
+              <span class="msg-author">{{ c.authorName || 'Anonymous' }}</span>
+              <span class="msg-time">{{ formatChatTime(c.createdAt) }}</span>
+            </div>
+            <p>{{ c.content }}</p>
+          </div>
+        </div>
+        <div class="empty-inline" *ngIf="issueComments().length === 0">No comments yet — start the discussion below.</div>
+        <div class="issue-comment-composer">
+          <textarea rows="2" class="form-control" placeholder="Add a comment…" [ngModel]="newIssueComment()" (ngModelChange)="newIssueComment.set($event)"></textarea>
+          <button class="btn btn-sm btn-primary" [disabled]="!newIssueComment().trim()" (click)="addIssueComment()"><mat-icon class="xs">send</mat-icon> Comment</button>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div *ngIf="!issueDetailLoading() && issueDetailTab() === 'history'" class="issue-history-list">
+        <div class="issue-history-item" *ngFor="let h of issueHistory()">
+          <span class="feed-icon"><mat-icon>{{ historyActionIcon(h.actionType) }}</mat-icon></span>
+          <div class="feed-body">
+            <p class="feed-text">{{ historyActionLabel(h) }}</p>
+            <span class="feed-meta">{{ h.actorName || 'System' }} &bull; {{ formatChatTime(h.occurredAt) }}</span>
+          </div>
+        </div>
+        <div class="empty-inline" *ngIf="issueHistory().length === 0">No history recorded yet.</div>
+      </div>
+    </div>
+  </main>
+
+  <main class="issue-detail-pane idle" *ngIf="!selectedIssue()">
+    <div class="empty-inline"><div class="empty-icon gr-indigo"><mat-icon>bug_report</mat-icon></div>Select an issue from the list to view its details.</div>
+  </main>
+</div>
+
+<!-- Update Issue Modal -->
+<div class="modal-backdrop" *ngIf="showUpdateIssueModal()">
+  <div class="modal-card card-panel modal-lg">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <mat-icon class="text-indigo">edit</mat-icon>
+        <div>
+          <h3>Update Issue</h3>
+          <span class="sub-text">Edit severity, status, classification, and resolution</span>
+        </div>
+      </div>
+      <button class="icon-btn" (click)="closeUpdateIssueModal()"><mat-icon>close</mat-icon></button>
+    </div>
+    <div class="modal-body scrollable-y">
+      <div class="form-section-title">
+        <mat-icon class="xs">info</mat-icon> Core Details
+      </div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label class="field-label">Title</label>
+          <input type="text" class="form-control" [(ngModel)]="issueEditForm.title">
+        </div>
+        <div class="field">
+          <label class="field-label">Severity</label>
+          <select class="form-control" [(ngModel)]="issueEditForm.severity">
+            <option *ngFor="let s of issueSeverities()" [value]="s.value">{{ s.label }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Status</label>
+          <select class="form-control" [(ngModel)]="issueEditForm.status">
+            <option *ngFor="let s of issueStatuses()" [value]="s.value">{{ s.label }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Priority</label>
+          <select class="form-control" [(ngModel)]="issueEditForm.priority">
+            <option value="">None</option>
+            <option *ngFor="let p of priorities()" [value]="p.value">{{ p.label }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Classification</label>
+          <select class="form-control" [(ngModel)]="issueEditForm.classification">
+            <option value="">Select…</option>
+            <option *ngFor="let c of issueClassifications()" [value]="c.value">{{ c.label }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Category</label>
+          <input type="text" class="form-control" [(ngModel)]="issueEditForm.category" placeholder="e.g. Regression, Enhancement">
+        </div>
+        <div class="field">
+          <label class="field-label">Milestone</label>
+          <select class="form-control" [(ngModel)]="issueEditForm.milestoneId">
+            <option [ngValue]="null">None</option>
+            <option *ngFor="let m of milestones()" [ngValue]="m.id">{{ m.name }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Reporter</label>
+          <select class="form-control" [(ngModel)]="issueEditForm.reporterId">
+            <option [ngValue]="null">Unassigned</option>
+            <option *ngFor="let u of users()" [ngValue]="u.id">{{ u.fullName }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Assignee</label>
+          <select class="form-control" [(ngModel)]="issueEditForm.assigneeId">
+            <option [ngValue]="null">Unassigned</option>
+            <option *ngFor="let u of users()" [ngValue]="u.id">{{ u.fullName }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Due Date</label>
+          <input type="date" class="form-control" [(ngModel)]="issueEditForm.dueDate">
+        </div>
+      </div>
+
+      <div class="form-section-title">
+        <mat-icon class="xs">description</mat-icon> Reproduction &amp; Behavior
+      </div>
+      <div class="form-grid">
+        <div class="field field-full">
+          <label class="field-label">Description</label>
+          <textarea class="form-control" rows="2" [(ngModel)]="issueEditForm.description"></textarea>
+        </div>
+        <div class="field field-full">
+          <label class="field-label">Steps to Reproduce</label>
+          <textarea class="form-control" rows="2" [(ngModel)]="issueEditForm.stepsToReproduce"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label">Expected Behavior</label>
+          <input type="text" class="form-control" [(ngModel)]="issueEditForm.expectedBehavior">
+        </div>
+        <div class="field">
+          <label class="field-label">Actual Behavior</label>
+          <input type="text" class="form-control" [(ngModel)]="issueEditForm.actualBehavior">
+        </div>
+        <div class="field field-full">
+          <label class="field-label">Acceptance Criteria</label>
+          <textarea class="form-control" rows="2" [(ngModel)]="issueEditForm.acceptanceCriteria"></textarea>
+        </div>
+      </div>
+
+      <div class="form-section-title">
+        <mat-icon class="xs">assignment_turned_in</mat-icon> Resolution &amp; Effort
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label class="field-label">Resolution</label>
+          <input type="text" class="form-control" [(ngModel)]="issueEditForm.resolution" placeholder="e.g. Fixed in v2.1">
+        </div>
+        <div class="field">
+          <label class="field-label">% Complete</label>
+          <input type="number" class="form-control" min="0" max="100" [(ngModel)]="issueEditForm.percentage">
+        </div>
+        <div class="field">
+          <label class="field-label">CR Value</label>
+          <input type="number" class="form-control" [(ngModel)]="issueEditForm.crValue">
+        </div>
+        <div class="field">
+          <label class="field-label">CR Man-Days</label>
+          <input type="number" class="form-control" [(ngModel)]="issueEditForm.crManDays">
+        </div>
+        <div class="field">
+          <label class="field-label">Est. Fix Hours</label>
+          <input type="number" class="form-control" [(ngModel)]="issueEditForm.estimatedFixHours">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm btn-secondary" (click)="closeUpdateIssueModal()">Cancel</button>
+      <button class="btn btn-sm btn-primary" (click)="submitUpdateIssue()" [disabled]="submitting()">
+        <mat-icon class="xs">save</mat-icon> Save Changes
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Issue Modal -->
+<div class="modal-backdrop" *ngIf="showCreateIssueModal()">
+  <div class="modal-card card-panel modal-lg">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <mat-icon class="text-red">bug_report</mat-icon>
+        <div>
+          <h3>Submit Defect / Issue Ticket</h3>
+          <span class="sub-text">{{ taskCode ? 'Automatically linked to ' + taskCode : 'Record the defect, its classification, ownership, and reproduction steps' }}</span>
+        </div>
+      </div>
+      <button class="icon-btn" (click)="closeCreateIssueModal()"><mat-icon>close</mat-icon></button>
+    </div>
+
+    <div class="modal-body scrollable-y">
+      <div class="form-section-title">
+        <mat-icon class="xs">report</mat-icon> 1. Issue Specification &amp; Severity
+      </div>
+
+      <div class="form-grid">
+        <div class="field field-full">
+          <label class="field-label">Issue Headline / Summary <span class="required">*</span></label>
+          <input type="text" [(ngModel)]="newIssue.title" placeholder="e.g. Login fails after password reset on Chrome" class="form-control" />
+          <span class="field-hint">A short, searchable summary of the defect.</span>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Severity Level</label>
+          <select [(ngModel)]="newIssue.severity" class="form-control">
+            <option *ngFor="let s of issueSeverities()" [value]="s.value">{{ s.label }}</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Classification</label>
+          <select [(ngModel)]="newIssue.classification" class="form-control">
+            <option value="">Select classification…</option>
+            <option *ngFor="let c of issueClassifications()" [value]="c.value">{{ c.label }}</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Priority</label>
+          <select [(ngModel)]="newIssue.priority" class="form-control">
+            <option value="">None</option>
+            <option *ngFor="let p of priorities()" [value]="p.value">{{ p.label }}</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Reporter</label>
+          <select [(ngModel)]="newIssue.reporterId" class="form-control">
+            <option [ngValue]="null">Unassigned</option>
+            <option *ngFor="let u of users()" [ngValue]="u.id">{{ u.fullName }}</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Assignee</label>
+          <select [(ngModel)]="newIssue.assigneeId" class="form-control">
+            <option [ngValue]="null">Unassigned</option>
+            <option *ngFor="let u of users()" [ngValue]="u.id">{{ u.fullName }}</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Milestone</label>
+          <select [(ngModel)]="newIssue.milestoneId" class="form-control">
+            <option [ngValue]="null">None</option>
+            <option *ngFor="let m of milestones()" [ngValue]="m.id">{{ m.name }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-section-title">
+        <mat-icon class="xs">description</mat-icon> 2. Reproduction &amp; Behavior
+      </div>
+
+      <div class="form-grid">
+        <div class="field field-full">
+          <label class="field-label">Detailed Description</label>
+          <textarea [(ngModel)]="newIssue.description" rows="3" class="form-control" placeholder="Provide full context — module, screen, data used, error message…"></textarea>
+        </div>
+
+        <div class="field field-full">
+          <label class="field-label">Steps to Reproduce</label>
+          <textarea [(ngModel)]="newIssue.stepsToReproduce" rows="3" class="form-control" placeholder="1. Navigate to the module…&#10;2. Click on…&#10;3. Observe the failure…"></textarea>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Expected Behavior</label>
+          <input type="text" [(ngModel)]="newIssue.expectedBehavior" class="form-control" placeholder="What should happen?" />
+        </div>
+
+        <div class="field">
+          <label class="field-label">Actual Behavior</label>
+          <input type="text" [(ngModel)]="newIssue.actualBehavior" class="form-control" placeholder="What actually happens?" />
+        </div>
+
+        <div class="field field-full">
+          <label class="field-label">Acceptance Criteria</label>
+          <textarea [(ngModel)]="newIssue.acceptanceCriteria" rows="2" class="form-control" placeholder="Definition of done / validation checks for the fix…"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeCreateIssueModal()">Cancel</button>
+      <button class="btn btn-danger" (click)="submitCreateIssue()" [disabled]="!newIssue.title.trim() || submitting()">
+        <mat-icon class="xs">bug_report</mat-icon> Submit Issue
+      </button>
+    </div>
+  </div>
+</div>

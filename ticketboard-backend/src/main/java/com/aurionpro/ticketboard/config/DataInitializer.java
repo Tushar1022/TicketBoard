@@ -907,7 +907,7 @@ public class DataInitializer implements CommandLineRunner {
                 .description("Test MQ broker SSL certificate expired on SIT environment")
                 .severity(IssueSeverity.HIGH)
                 .status(IssueStatus.OPEN)
-                .owner(dev2)
+                .reporter(dev2)
                 .resolution("Security team renewing certificates today")
                 .build());
 

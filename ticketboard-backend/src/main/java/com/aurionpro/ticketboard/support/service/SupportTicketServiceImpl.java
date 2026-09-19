@@ -1,8 +1,10 @@
 package com.aurionpro.ticketboard.support.service;
 
 import com.aurionpro.ticketboard.common.exception.ResourceNotFoundException;
+import com.aurionpro.ticketboard.document.storage.DocumentStorageService;
 import com.aurionpro.ticketboard.support.dto.*;
 import com.aurionpro.ticketboard.support.entity.*;
+import com.aurionpro.ticketboard.support.repository.SupportTicketActivityLogRepository;
 import com.aurionpro.ticketboard.support.repository.SupportTicketRepository;
 import com.aurionpro.ticketboard.support.repository.TicketCommentRepository;
 import com.aurionpro.ticketboard.user.entity.User;
@@ -11,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
@@ -26,7 +27,8 @@ public class SupportTicketServiceImpl implements SupportTicketService {
     private final SupportTicketRepository ticketRepository;
     private final TicketCommentRepository commentRepository;
     private final UserRepository userRepository;
-    private final com.aurionpro.ticketboard.document.storage.DocumentStorageService documentStorageService;
+    private final DocumentStorageService documentStorageService;
+    private final SupportTicketActivityLogRepository activityLogRepository;
 
     @Override
     public SupportTicketDto createTicket(CreateSupportTicketRequest request, String currentUserEmail) {
@@ -252,11 +254,8 @@ public class SupportTicketServiceImpl implements SupportTicketService {
                 .createdAt(c.getCreatedAt())
                 .build();
     }
-}
 
     // ═══ Phase 3.1: ticket ACTIVITY — now real (write + read) ═══
-
-    private SupportTicketActivityLogRepository activityLogRepository;
 
     /**
      * Append an immutable activity-row reflecting the just-applied change.
@@ -268,11 +267,29 @@ public class SupportTicketServiceImpl implements SupportTicketService {
         activityLogRepository.save(log);
     }
 
-    public List<SupportTicketActivityLogDto> getActivityLogForTicket(Long ticketId) {
-        return activityLogRepository.findByTicketIdOrderByActivityTimeDesc(ticketId)
+    public List<SupportTicketActivityDto> getActivityLogForTicket(Long ticketId) {
+        return activityLogRepository.findByTicketIdOrderByOccurredAtDesc(ticketId)
                 .stream()
-                .map(SupportTicketActivityLogMapper.INSTANCE::toDto)
+                .map(this::mapToActivityDto)
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    private SupportTicketActivityDto mapToActivityDto(SupportTicketActivityLog a) {
+        return SupportTicketActivityDto.builder()
+                .id(a.getId())
+                .ticketIdMonad(a.getTicketId())
+                .actorName(a.getActorName())
+                .actorRole(a.getActorRole())
+                .statusBefore(a.getStatusBefore())
+                .statusAfter(a.getStatusAfter())
+                .priorityBefore(a.getPriorityBefore())
+                .priorityAfter(a.getPriorityAfter())
+                .assignmentBefore(a.getAssignedToBefore())
+                .assignmentAfter(a.getAssignedToAfter())
+                .actionType(a.getActionType())
+                .summary(a.getSummary())
+                .detail(a.getDetail())
+                .occurredAt(a.getOccurredAt())
+                .build();
+    }
 }

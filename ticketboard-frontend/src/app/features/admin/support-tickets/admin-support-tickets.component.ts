@@ -9,6 +9,7 @@ import { RaiseTicketDialogComponent } from '../../support/raise-ticket-dialog/ra
 import { SupportTicketService } from '../../../core/services/support-ticket.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { SupportTicket, TicketStatus, SupportCategory } from '../../../core/models/api.models';
+import { ToastService } from '../../../shared/components/toast/toast.service';
 
 @Component({
   selector: 'app-admin-support-tickets',
@@ -106,7 +107,8 @@ export class AdminSupportTicketsComponent implements OnInit {
   constructor(
     public supportTicketService: SupportTicketService,
     public authService: AuthService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -177,6 +179,7 @@ export class AdminSupportTicketsComponent implements OnInit {
     if (!ticket || !this.commentInput.trim()) return;
 
     this.supportTicketService.addComment(ticket.id, this.commentInput.trim()).subscribe(() => {
+      this.toastService.success('Comment added to the ticket.');
       this.commentInput = '';
       this.supportTicketService.refreshAll();
       const fresh = this.tickets().find(t => t.id === ticket.id);
@@ -225,6 +228,7 @@ export class AdminSupportTicketsComponent implements OnInit {
 
   public showToast(msg: string): void {
     this.toastMessage.set(msg);
+    this.toastService.success(msg);
     setTimeout(() => this.toastMessage.set(''), 2600);
   }
 

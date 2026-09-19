@@ -53,6 +53,7 @@ public class WorkItemCreateDto {
     private Integer completionPercentage;
     private String billingType;
     private String associatedTeam;
+    private String allocatedBa;
     private String jiraTaskId;
     private String jiraStatus;
     private String tags;

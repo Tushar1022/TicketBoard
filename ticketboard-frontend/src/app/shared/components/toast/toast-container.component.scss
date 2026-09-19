@@ -1,0 +1,110 @@
+.tb-toast-viewport {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 380px;
+  pointer-events: none;
+}
+
+.tb-toast {
+  position: relative;
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 12px 28px -8px rgba(15, 23, 42, 0.22), 0 4px 10px -4px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+  animation: tb-toast-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  &--success .tb-toast__icon { background: linear-gradient(135deg, #10b981, #059669); }
+  &--error .tb-toast__icon { background: linear-gradient(135deg, #f43f5e, #e11d48); }
+  &--warning .tb-toast__icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  &--info .tb-toast__icon { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
+
+  &:hover .tb-toast__progress { animation-play-state: paused; }
+}
+
+.tb-toast__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.tb-toast__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.tb-toast__title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.tb-toast__message {
+  font-size: 0.78rem;
+  color: #475569;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.tb-toast__close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 3px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  transition: color 0.15s ease, background 0.15s ease;
+
+  &:hover { color: #0f172a; background: #f1f5f9; }
+}
+
+.tb-toast__progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  transform-origin: left;
+  animation-name: tb-toast-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+.tb-toast--success .tb-toast__progress { background: #10b981; }
+.tb-toast--error .tb-toast__progress { background: #f43f5e; }
+.tb-toast--warning .tb-toast__progress { background: #f59e0b; }
+.tb-toast--info .tb-toast__progress { background: #0ea5e9; }
+
+@keyframes tb-toast-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes tb-toast-progress {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}

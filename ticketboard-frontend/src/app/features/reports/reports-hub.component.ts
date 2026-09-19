@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { ExportService } from '../../core/services/export.service';
@@ -33,7 +34,7 @@ interface ReportCategoryOption {
 @Component({
   selector: 'app-reports-hub',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule, MatDialogModule, MatMenuModule],
+  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule, MatDialogModule, MatMenuModule, MatDividerModule],
   templateUrl: './reports-hub.component.html',
   styleUrls: ['./reports-hub.component.scss']
 })
@@ -438,37 +439,12 @@ export class ReportsHubComponent implements OnInit {
   }
 
   public async exportCustomReport(format: ExportFormat, options?: ExportOptions): Promise<void> {
-    const selectedCols = this.selectedColumnsList();
-    if (selectedCols.length === 0) {
+    if (this.selectedColumnsList().length === 0) {
       this.toast.set('Please select at least one field column to export.');
       return;
     }
 
-    const exportCols: ExportColumn[] = selectedCols.map(c => ({
-      key: c.key,
-      label: c.label
-    }));
-
-    const rows = this.livePreviewRows();
-
-    const doc: ExportDocument = {
-      title: `${this.categories.find(c => c.id === this.selectedCategory())?.name || 'Custom'} Delivery Report`,
-      subtitle: `Real-time database generated report`,
-      meta: [
-        { label: 'Category', value: this.categories.find(c => c.id === this.selectedCategory())?.name || this.selectedCategory() },
-        { label: 'Status Filter', value: this.filterStatus() },
-        { label: 'Project', value: this.filterProject() },
-        { label: 'Record Count', value: String(this.totalRecordCount()) }
-      ],
-      summary: this.liveSummaryKpis(),
-      sections: [
-        {
-          title: 'Custom Filtered Data Records',
-          columns: exportCols,
-          rows: rows
-        }
-      ]
-    };
+    const doc = this.buildCustomReportDoc();
 
     const fileName = `TicketBoard_${this.selectedCategory()}_${new Date().toISOString().substring(0, 10)}`;
 
@@ -484,24 +460,20 @@ export class ReportsHubComponent implements OnInit {
     }
   }
 
-  public previewCustom(): void {
-    const selectedCols = this.selectedColumnsList();
-    if (selectedCols.length === 0) {
-      this.toast.set('Please select at least one field column to preview.');
-      return;
-    }
-
-    const exportCols: ExportColumn[] = selectedCols.map(c => ({
+  private buildCustomReportDoc(): ExportDocument {
+    const exportCols: ExportColumn[] = this.selectedColumnsList().map(c => ({
       key: c.key,
       label: c.label
     }));
 
-    const doc: ExportDocument = {
+    return {
       title: `${this.categories.find(c => c.id === this.selectedCategory())?.name || 'Custom'} Delivery Report`,
       subtitle: `Real-time database generated report`,
       meta: [
         { label: 'Category', value: this.categories.find(c => c.id === this.selectedCategory())?.name || this.selectedCategory() },
-        { label: 'Record Count', value: String(this.livePreviewRows().length) }
+        { label: 'Status Filter', value: this.filterStatus() },
+        { label: 'Project', value: this.filterProject() },
+        { label: 'Record Count', value: String(this.totalRecordCount()) }
       ],
       summary: this.liveSummaryKpis(),
       sections: [
@@ -512,25 +484,33 @@ export class ReportsHubComponent implements OnInit {
         }
       ]
     };
+  }
 
-    const html = this.exportService.renderHtmlPreview(doc, 'pdf', {
-      orientation: this.exportOrientation(),
-      layout: this.exportLayout()
-    });
+  public previewCustom(format: ExportFormat = 'pdf'): void {
+    if (this.selectedColumnsList().length === 0) {
+      this.toast.set('Please select at least one field column to preview.');
+      return;
+    }
 
+    const doc = this.buildCustomReportDoc();
     const opts = {
       orientation: this.exportOrientation(),
       layout: this.exportLayout()
     };
 
+    const html = this.exportService.renderHtmlPreview(doc, format, opts);
+
+    const formatLabel = format.toUpperCase();
+    const orient = (format === 'pdf' || format === 'excel') ? `${opts.orientation.toUpperCase()}  •  ` : '';
+
     this.dialog.open(DocumentPreviewDialogComponent, {
       data: {
         title: doc.title,
-        subtitle: `${opts.orientation.toUpperCase()}  •  ${opts.layout.toUpperCase()} layout  •  Live preview`,
+        subtitle: `${formatLabel}  •  ${orient}${opts.layout.toUpperCase()} layout  •  WYSIWYG preview`,
         html,
-        downloadLabel: 'Download PDF',
+        downloadLabel: `Download ${formatLabel}`,
         onDownload: () => {
-          this.exportCustomReport('pdf', opts).then(() => {});
+          this.exportCustomReport(format, opts).then(() => {});
         }
       },
       width: '1080px',

@@ -22,4 +22,6 @@ public interface SupportTicketService {
     long getOpenTicketsCount();
 
     SupportStatsDto getStats();
+
+    List<SupportTicketActivityDto> getActivityLogForTicket(Long ticketId);
 }

@@ -8,7 +8,7 @@ import { ActivityLog, ApiResponse, Comment } from '../models/api.models';
 })
 export class CommentService {
   private readonly commentUrl = 'http://localhost:8080/api/v1/comments';
-  private readonly auditUrl = 'http://localhost:8080/api/v1/audit-logs';
+  private readonly activityUrl = 'http://localhost:8080/api/v1/activity-logs';
 
   constructor(private http: HttpClient) {}
 
@@ -35,6 +35,6 @@ export class CommentService {
     let params = new HttpParams()
       .set('entityType', entityType)
       .set('entityId', entityId.toString());
-    return this.http.get<ApiResponse<ActivityLog[]>>(`${this.auditUrl}/timeline`, { params });
+    return this.http.get<ApiResponse<ActivityLog[]>>(`${this.activityUrl}/timeline`, { params });
   }
 }

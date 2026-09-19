@@ -6,13 +6,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDialogModule } from '@angular/material/dialog';
 import { AuthService } from '../../../core/services/auth.service';
 import { LookupDataService, CategoryInfo } from '../../../core/services/lookup-data.service';
 import { LookupData } from '../../../core/models/api.models';
+import { ToastService } from '../../../shared/components/toast/toast.service';
 
 @Component({
   selector: 'app-master-data',
@@ -25,7 +25,6 @@ import { LookupData } from '../../../core/models/api.models';
     MatInputModule,
     MatSelectModule,
     MatTooltipModule,
-    MatSnackBarModule,
     MatTableModule,
     MatSlideToggleModule,
     MatDialogModule
@@ -56,7 +55,7 @@ export class MasterDataComponent implements OnInit {
 
   constructor(
     public lookupDataService: LookupDataService,
-    private snackBar: MatSnackBar,
+    private toastService: ToastService,
     public authService: AuthService
   ) {}
 
@@ -95,7 +94,7 @@ export class MasterDataComponent implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.snackBar.open('Failed to load lookup items', 'Close', { duration: 3000 });
+        this.toastService.error('Failed to load lookup items');
       }
     });
   }
@@ -137,11 +136,11 @@ export class MasterDataComponent implements OnInit {
       isActive: item.isActive
     }).subscribe({
       next: () => {
-        this.snackBar.open('Lookup entry updated successfully', 'Close', { duration: 2500 });
+        this.toastService.success(`Lookup entry ${form.label} was updated.`);
         this.editingId.set(null);
         this.loadData(cat.code);
       },
-      error: (err) => this.snackBar.open(err.error?.message || 'Update failed', 'Close', { duration: 4000 })
+      error: (err) => this.toastService.error(err.error?.message || 'Update failed')
     });
   }
 
@@ -157,14 +156,17 @@ export class MasterDataComponent implements OnInit {
       displayOrder: item.displayOrder,
       isActive: !item.isActive
     }).subscribe({
-      next: () => this.loadData(cat.code),
-      error: (err) => this.snackBar.open(err.error?.message || 'Status toggle failed', 'Close', { duration: 4000 })
+      next: () => {
+        this.toastService.success(`Lookup entry ${item.label} ${item.isActive ? 'deactivated' : 'activated'}.`);
+        this.loadData(cat.code);
+      },
+      error: (err) => this.toastService.error(err.error?.message || 'Status toggle failed')
     });
   }
 
   deleteEntry(item: LookupData): void {
     if (item.isDefault) {
-      this.snackBar.open('System default items cannot be deleted', 'Close', { duration: 3000 });
+      this.toastService.warning('System default items cannot be deleted');
       return;
     }
 
@@ -173,10 +175,10 @@ export class MasterDataComponent implements OnInit {
 
     this.lookupDataService.delete(item.id).subscribe({
       next: () => {
-        this.snackBar.open('Lookup entry removed', 'Close', { duration: 2500 });
+        this.toastService.success(`Lookup entry ${item.label} was removed.`);
         this.loadData(cat.code);
       },
-      error: (err) => this.snackBar.open(err.error?.message || 'Delete failed', 'Close', { duration: 4000 })
+      error: (err) => this.toastService.error(err.error?.message || 'Delete failed')
     });
   }
 
@@ -200,7 +202,7 @@ export class MasterDataComponent implements OnInit {
 
     const entry = this.newEntry();
     if (!entry.value || !entry.label) {
-      this.snackBar.open('System Code Value and Display Label are required', 'Close', { duration: 3000 });
+      this.toastService.warning('System Code Value and Display Label are required');
       return;
     }
 
@@ -214,11 +216,11 @@ export class MasterDataComponent implements OnInit {
       displayOrder: entry.displayOrder
     }).subscribe({
       next: () => {
-        this.snackBar.open('New lookup entry added successfully', 'Close', { duration: 2500 });
+        this.toastService.success(`New lookup entry ${entry.label} was added.`);
         this.showAddForm.set(false);
         this.loadData(cat.code);
       },
-      error: (err) => this.snackBar.open(err.error?.message || 'Creation failed', 'Close', { duration: 4000 })
+      error: (err) => this.toastService.error(err.error?.message || 'Creation failed')
     });
   }
 

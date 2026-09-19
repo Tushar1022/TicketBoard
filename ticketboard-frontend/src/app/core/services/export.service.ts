@@ -589,6 +589,12 @@ export class ExportService {
   // ───────── CSV ─────────
 
   private async exportCsv(doc: ExportDocument, baseName: string): Promise<void> {
+    const lines = this.buildCsvLines(doc);
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    this.saveBlob(blob, `${baseName}.csv`);
+  }
+
+  private buildCsvLines(doc: ExportDocument): string[] {
     const lines: string[] = [];
     lines.push(`${BRAND.fullName}`);
     lines.push(doc.title);
@@ -623,14 +629,18 @@ export class ExportService {
       lines.push(`Notes: ${doc.notes}`);
     }
     lines.push(`${BRAND.fullName} | ${BRAND.version}`);
-
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    this.saveBlob(blob, `${baseName}.csv`);
+    return lines;
   }
 
   // ───────── TXT ─────────
 
   private async exportTxt(doc: ExportDocument, baseName: string): Promise<void> {
+    const lines = this.buildTxtLines(doc);
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8;' });
+    this.saveBlob(blob, `${baseName}.txt`);
+  }
+
+  private buildTxtLines(doc: ExportDocument): string[] {
     const lines: string[] = [];
     const sep = '═'.repeat(80);
     lines.push(sep);
@@ -674,15 +684,24 @@ export class ExportService {
     if (doc.notes) lines.push(`Notes: ${doc.notes}`);
     lines.push(sep);
     lines.push(`${BRAND.fullName} | ${BRAND.version} | ${BRAND.author}`);
-
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8;' });
-    this.saveBlob(blob, `${baseName}.txt`);
+    return lines;
   }
 
-  // ───────── HTML PREVIEW (mirrors the branded A4 sheet; portrait or landscape) ─────────
+  // ───────── HTML PREVIEW (mirrors the exact document generated per format) ─────────
 
-  renderHtmlPreview(doc: ExportDocument, format?: ExportFormat, options: ExportOptions = {}): string {
+  renderHtmlPreview(doc: ExportDocument, format: ExportFormat = 'pdf', options: ExportOptions = {}): string {
     const opts = { ...DEFAULT_OPTIONS, ...options };
+    switch (format) {
+      case 'excel': return this.buildExcelPreview(doc, format, opts);
+      case 'word':  return this.buildWordPreview(doc, format, opts);
+      case 'csv':   return this.buildTextPreview(doc, format, opts);
+      case 'txt':   return this.buildTextPreview(doc, format, opts);
+      case 'ppt':   return this.buildPptPreview(doc, format, opts);
+      default:      return this.buildPdfPreview(doc, format, opts);
+    }
+  }
+
+  private buildPdfPreview(doc: ExportDocument, format: ExportFormat, opts: Required<ExportOptions>): string {
     const portrait = opts.orientation === 'portrait';
     const sheetWidth = portrait ? 720 : 1000;
     const sheetMinHeight = portrait ? 1000 : 706;
@@ -799,6 +818,245 @@ export class ExportService {
 </body>
 </html>`;
     return html;
+  }
+
+  // ───────── HTML PREVIEW: EXCEL (mirrors the .xlsx workbook sheet) ─────────
+
+  private buildExcelPreview(doc: ExportDocument, format: ExportFormat, opts: Required<ExportOptions>): string {
+    const metaRows = (doc.meta || []).map((m) =>
+      `<tr><td class="xl-label">${this.esc(m.label)}</td><td colspan="5" class="xl-value">${this.esc(m.value)}</td></tr>`
+    ).join('');
+
+    const sumRows = (doc.summary || []).map((s) =>
+      `<tr><td class="xl-label">${this.esc(s.label)}</td><td colspan="5" class="xl-value">${this.esc(String(s.value))}</td></tr>`
+    ).join('');
+
+    const sections = doc.sections.map((section) => {
+      const head = section.columns.map((c) => `<th class="xl-align-${c.align || 'left'}">${this.esc(c.label)}</th>`).join('');
+      const body = section.rows.map((row) =>
+        `<tr>${section.columns.map((c) => `<td class="xl-align-${c.align || 'left'}">${this.esc(this.formatCellValue(row[c.key], c))}</td>`).join('')}</tr>`
+      ).join('');
+      return `
+      <tr><td colspan="6" class="xl-section">${this.esc(section.title)}</td></tr>
+      ${section.description ? `<tr><td colspan="6" class="xl-desc">${this.esc(section.description)}</td></tr>` : ''}
+      <tr>${head}</tr>
+      ${body || `<tr><td colspan="6" class="xl-empty">No data available</td></tr>`}`;
+    }).join('');
+
+    const body = `
+  <div class="xl-sheet">
+    <table>
+      <tbody>
+        <tr><td colspan="6" class="xl-ci">${this.esc(BRAND.fullName)}</td></tr>
+        <tr><td colspan="6" class="xl-title">${this.esc(doc.title)}</td></tr>
+        ${doc.subtitle ? `<tr><td colspan="6" class="xl-subtitle">${this.esc(doc.subtitle)}</td></tr>` : ''}
+        <tr><td colspan="6" class="xl-gen">Generated: ${this.esc(nowStamp())} by ${this.esc(this.currentUserName)}</td></tr>
+        <tr class="xl-spacer"><td colspan="6"></td></tr>
+        ${metaRows}
+        ${doc.meta && doc.meta.length ? '<tr class="xl-spacer"><td colspan="6"></td></tr>' : ''}
+        ${doc.summary && doc.summary.length ? `<tr><td colspan="6" class="xl-sumhead">Summary</td></tr>${sumRows}<tr class="xl-spacer"><td colspan="6"></td></tr>` : ''}
+        ${sections}
+        ${doc.notes ? `<tr><td colspan="6" class="xl-notes">${this.esc(doc.notes)}</td></tr>` : ''}
+      </tbody>
+    </table>
+    <div class="xl-foot">${this.esc(BRAND.fullName)} | ${this.esc(BRAND.version)}</div>
+  </div>`;
+
+    const css = `
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E2E8F0; color: #1E293B; font-family: 'Segoe UI', Arial, sans-serif; }
+  .xl-sheet { width: 760px; margin: 24px auto; padding: 22px; background: #fff; box-shadow: 0 10px 40px rgba(30,41,59,.18); }
+  .xl-sheet table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .xl-sheet td, .xl-sheet th { border: 1px solid #CBD5E1; padding: 5px 8px; font-size: 11px; vertical-align: top; overflow: hidden; font-family: Calibri, 'Segoe UI', Arial, sans-serif; }
+  .xl-sheet th { background: #4F46E5; color: #fff; font-weight: 700; text-align: left; }
+  .xl-ci { font-size: 16px; font-weight: 700; color: #4F46E5; }
+  .xl-title { font-size: 13px; font-weight: 700; }
+  .xl-subtitle { color: #475569; }
+  .xl-gen { font-size: 9px; color: #64748B; }
+  .xl-spacer td { border: 1px solid #CBD5E1; height: 12px; }
+  .xl-label { font-weight: 700; background: #F8FAFC; }
+  .xl-sumhead { font-weight: 700; font-size: 11px; color: #4F46E5; background: #EEF2FF; }
+  .xl-section { background: #EEF2FF; font-weight: 700; color: #3730A3; font-size: 11px; }
+  .xl-desc { font-size: 10px; color: #64748B; font-style: italic; }
+  .xl-empty { text-align: center; color: #94A3B8; font-style: italic; }
+  .xl-notes { font-style: italic; font-size: 9px; color: #64748B; }
+  .xl-foot { margin-top: 12px; font-size: 9px; color: #94A3B8; }
+  .xl-align-right { text-align: right; }
+  .xl-align-center { text-align: center; }
+  .xl-align-left { text-align: left; }
+  @media print { body { background: #fff; } .xl-sheet { margin: 0 auto; box-shadow: none; width: 100%; } }`;
+
+    return this.wrapPreviewHtml(`${doc.title} — Excel Preview`, css, body);
+  }
+
+  // ───────── HTML PREVIEW: WORD (mirrors the .docx document) ─────────
+
+  private buildWordPreview(doc: ExportDocument, format: ExportFormat, opts: Required<ExportOptions>): string {
+    const metaParas = (doc.meta || []).map((m) =>
+      `<p class="wd-para"><b>${this.esc(m.label)}:</b> ${this.esc(m.value)}</p>`
+    ).join('');
+
+    const sumParas = (doc.summary || []).map((s) =>
+      `<p class="wd-para"><b>${this.esc(s.label)}:</b> ${this.esc(String(s.value))}</p>`
+    ).join('');
+
+    const sections = doc.sections.map((section) => {
+      const head = section.columns.map((c) => `<th class="wd-align-${c.align || 'left'}">${this.esc(c.label)}</th>`).join('');
+      const body = section.rows.map((row) =>
+        `<tr>${section.columns.map((c) => `<td class="wd-align-${c.align || 'left'}">${this.esc(this.formatCellValue(row[c.key], c))}</td>`).join('')}</tr>`
+      ).join('');
+      return `
+      <h2 class="wd-h2">${this.esc(section.title)}</h2>
+      ${section.description ? `<p class="wd-desc">${this.esc(section.description)}</p>` : ''}
+      <table class="wd-table"><thead><tr>${head}</tr></thead><tbody>${body || '<tr><td class="wd-empty" colspan="99">No data available</td></tr>'}</tbody></table>`;
+    }).join('');
+
+    const body = `
+  <div class="wd-doc">
+    <p class="wd-brand">${this.esc(BRAND.fullName)} <span class="wd-doctitle">${this.esc(doc.title)}</span></p>
+    ${doc.subtitle ? `<p class="wd-subtitle">${this.esc(doc.subtitle)}</p>` : ''}
+    <p class="wd-gen"><i>Generated: ${this.esc(nowStamp())} by ${this.esc(this.currentUserName)}</i></p>
+    ${metaParas}
+    ${doc.summary && doc.summary.length ? `<h2 class="wd-h2">Summary</h2>${sumParas}` : ''}
+    ${sections}
+    ${doc.notes ? `<p class="wd-notes">${this.esc(doc.notes)}</p>` : ''}
+    <p class="wd-foot">${this.esc(BRAND.fullName)} | ${this.esc(BRAND.tagline)}<br />${this.esc(BRAND.author)} | ${this.esc(BRAND.version)}</p>
+  </div>`;
+
+    const css = `
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E2E8F0; color: #1E293B; }
+  .wd-doc { width: 720px; min-height: 1000px; margin: 24px auto; padding: 48px 56px; background: #fff; box-shadow: 0 10px 40px rgba(30,41,59,.18); font-family: Calibri, 'Segoe UI', Arial, sans-serif; }
+  .wd-brand { font-size: 20px; color: #4F46E5; font-weight: 700; margin: 0 0 2px; }
+  .wd-doctitle { color: #1E293B; }
+  .wd-subtitle { font-size: 15px; color: #64748B; margin: 4px 0 10px; }
+  .wd-gen { font-size: 11px; color: #94A3B8; margin: 0 0 18px; }
+  .wd-para { font-size: 13px; margin: 3px 0; color: #1E293B; }
+  .wd-h2 { font-size: 16px; font-weight: 700; color: #4F46E5; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px; margin: 22px 0 8px; }
+  .wd-desc { font-size: 12px; font-style: italic; color: #64748B; margin: 0 0 8px; }
+  .wd-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .wd-table th { background: #4F46E5; color: #fff; font-weight: 700; padding: 7px 8px; text-align: left; }
+  .wd-table td { padding: 6px 8px; border-bottom: 1px solid #E2E8F0; }
+  .wd-empty { text-align: center; color: #94A3B8; font-style: italic; padding: 14px; }
+  .wd-align-right { text-align: right; }
+  .wd-align-center { text-align: center; }
+  .wd-notes { font-style: italic; font-size: 12px; color: #64748B; margin-top: 20px; border-left: 3px solid #0D9488; padding-left: 10px; }
+  .wd-foot { font-size: 11px; color: #94A3B8; margin-top: 26px; }
+  @media print { body { background: #fff; } .wd-doc { margin: 0 auto; box-shadow: none; width: 100%; } }`;
+
+    return this.wrapPreviewHtml(`${doc.title} — Word Preview`, css, body);
+  }
+
+  // ───────── HTML PREVIEW: CSV / TXT (exact same lines as the downloaded file) ─────────
+
+  private buildTextPreview(doc: ExportDocument, format: ExportFormat, opts: Required<ExportOptions>): string {
+    const lines = format === 'txt' ? this.buildTxtLines(doc) : this.buildCsvLines(doc);
+    const escaped = lines.map((l) => this.esc(l));
+    const perPage = 46;
+    const pages: string[] = [];
+    for (let i = 0; i < escaped.length; i += perPage) {
+      pages.push(`<div class="tx-page"><pre>${escaped.slice(i, i + perPage).join('\n')}</pre></div>`);
+    }
+
+    const label = format === 'txt' ? 'Plain Text (.txt)' : 'CSV Data (.csv)';
+    const css = `
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E2E8F0; }
+  .tx-page { width: 720px; min-height: 940px; margin: 24px auto; padding: 42px 46px; background: #fff; box-shadow: 0 10px 40px rgba(30,41,59,.18); break-after: page; }
+  .tx-page pre { margin: 0; font-family: 'Courier New', Courier, monospace; font-size: 12px; line-height: 1.55; white-space: pre; color: #1E293B; }
+  @media print { body { background: #fff; } .tx-page { margin: 0 auto; box-shadow: none; width: 100%; padding: 0; } }`;
+
+    return this.wrapPreviewHtml(`${doc.title} — ${label} Preview`, css, pages.join('\n'));
+  }
+
+  // ───────── HTML PREVIEW: PPT (mirrors the slide deck) ─────────
+
+  private buildPptPreview(doc: ExportDocument, format: ExportFormat, opts: Required<ExportOptions>): string {
+    const metaSlide = doc.meta && doc.meta.length ? `
+  <div class="pt-slide">
+    <h2 class="pt-head">Project Details</h2>
+    ${(doc.meta || []).map((m) => `<div class="pt-row"><span class="pt-lbl">${this.esc(m.label)}:</span><span class="pt-val">${this.esc(m.value)}</span></div>`).join('')}
+  </div>` : '';
+
+    const sumSlide = doc.summary && doc.summary.length ? `
+  <div class="pt-slide">
+    <h2 class="pt-head">Summary</h2>
+    ${(doc.summary || []).map((s) => `<div class="pt-row"><span class="pt-lbl">${this.esc(s.label)}</span><span class="pt-val">${this.esc(String(s.value))}</span></div>`).join('')}
+  </div>` : '';
+
+    const sectionSlides = doc.sections.map((section) => {
+      const head = section.columns.map((c) => `<th>${this.esc(c.label)}</th>`).join('');
+      const rows = section.rows.slice(0, 30).map((row) =>
+        `<tr>${section.columns.map((c) => `<td>${this.esc(this.formatCellValue(row[c.key], c))}</td>`).join('')}</tr>`
+      ).join('');
+      const overflow = section.rows.length > 30
+        ? `<tr><td class="pt-more" colspan="${section.columns.length}">... ${section.rows.length - 30} more rows</td></tr>` : '';
+      return `
+  <div class="pt-slide">
+    <h2 class="pt-head">${this.esc(section.title)}</h2>
+    ${section.description ? `<p class="pt-desc">${this.esc(section.description)}</p>` : ''}
+    <table><thead><tr>${head}</tr></thead><tbody>${rows}${overflow}</tbody></table>
+  </div>`;
+    }).join('');
+
+    const body = `
+  <div class="pt-deck">
+    <div class="pt-slide pt-title">
+      <div class="pt-brand">${this.esc(BRAND.fullName)}</div>
+      <div class="pt-doctitle">${this.esc(doc.title)}</div>
+      ${doc.subtitle ? `<div class="pt-doctitle-sub">${this.esc(doc.subtitle)}</div>` : ''}
+      <div class="pt-gen">Generated: ${this.esc(nowStamp())} by ${this.esc(this.currentUserName)}</div>
+      <div class="pt-version">${this.esc(BRAND.version)} | ${this.esc(BRAND.tagline)}</div>
+    </div>
+    ${metaSlide}
+    ${sumSlide}
+    ${sectionSlides}
+    <div class="pt-slide pt-footer">
+      <div class="pt-brand">${this.esc(BRAND.fullName)}</div>
+      <div class="pt-tag">${this.esc(BRAND.tagline)}</div>
+      <div class="pt-version">${this.esc(BRAND.version)} | Generated ${this.esc(nowStamp())}</div>
+    </div>
+  </div>`;
+
+    const css = `
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E2E8F0; color: #1E293B; font-family: Calibri, 'Segoe UI', Arial, sans-serif; }
+  .pt-deck { padding: 12px 0; }
+  .pt-slide { width: 1000px; height: 562px; margin: 24px auto; padding: 40px 56px; overflow: hidden; box-shadow: 0 10px 40px rgba(30,41,59,.18); break-after: page; }
+  .pt-title { background: linear-gradient(100deg, #3730A3 0%, #4338CA 45%, #0284C7 100%); color: #fff; display: flex; flex-direction: column; justify-content: center; }
+  .pt-brand { font-size: 28px; font-weight: 700; }
+  .pt-doctitle { font-size: 22px; color: #C7D2FE; margin-top: 10px; }
+  .pt-doctitle-sub { font-size: 16px; color: #E0E7FF; margin-top: 6px; }
+  .pt-gen { font-size: 11px; color: #C7D2FE; margin-top: 16px; }
+  .pt-version { font-size: 10px; color: #A5B4FC; margin-top: 10px; }
+  .pt-head { font-size: 18px; font-weight: 700; color: #4F46E5; margin: 0 0 14px; }
+  .pt-desc { font-size: 11px; font-style: italic; color: #64748B; margin: 0 0 10px; }
+  .pt-row { display: flex; gap: 10px; margin: 4px 0; font-size: 13px; }
+  .pt-lbl { font-weight: 700; min-width: 180px; }
+  .pt-val { color: #334155; }
+  .pt-slide table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .pt-slide th { background: #1E1B4B; color: #fff; font-weight: 700; padding: 6px 8px; text-align: left; }
+  .pt-slide td { padding: 5px 8px; border-bottom: 1px solid #E2E8F0; }
+  .pt-more { text-align: center; font-style: italic; color: #64748B; }
+  .pt-footer { background: #F8FAFC; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .pt-footer .pt-brand { color: #4F46E5; }
+  .pt-tag { font-size: 14px; color: #64748B; margin-top: 6px; }
+  .pt-footer .pt-version { color: #94A3B8; margin-top: 12px; }
+  @media print { body { background: #fff; } .pt-slide { margin: 0 auto; box-shadow: none; } }`;
+
+    return this.wrapPreviewHtml(`${doc.title} — PowerPoint Preview`, css, body);
+  }
+
+  private wrapPreviewHtml(title: string, css: string, body: string): string {
+    return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>${this.esc(title)}</title>
+<style>${css}</style>
+</head>
+<body>${body}</body>
+</html>`;
   }
 
   private esc(v: any): string {

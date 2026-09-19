@@ -35,6 +35,10 @@ export class DocumentPreviewDialogComponent implements OnInit, OnDestroy {
     if (this.data.pdfBlob) {
       this.pdfObjectUrl = URL.createObjectURL(this.data.pdfBlob);
       this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfObjectUrl);
+    } else if (this.data.html) {
+      const blob = new Blob([this.data.html], { type: 'text/html;charset=utf-8' });
+      this.pdfObjectUrl = URL.createObjectURL(blob);
+      this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfObjectUrl);
     }
   }
 

@@ -49,8 +49,12 @@ export class ProjectService {
     return this.http.delete<ApiResponse<Project>>(`${this.baseUrl}/${projectId}/members/${userId}`);
   }
 
-  public getMilestones(projectId: number): Observable<ApiResponse<Milestone[]>> {
-    return this.http.get<ApiResponse<Milestone[]>>(`${this.milestoneUrl}/project/${projectId}`);
+  public getMilestones(projectId: number, filters?: { status?: string; flag?: string; overdue?: boolean }): Observable<ApiResponse<Milestone[]>> {
+    let httpParams = new HttpParams();
+    if (filters?.status) httpParams = httpParams.set('status', filters.status);
+    if (filters?.flag) httpParams = httpParams.set('flag', filters.flag);
+    if (filters?.overdue != null) httpParams = httpParams.set('overdue', String(filters.overdue));
+    return this.http.get<ApiResponse<Milestone[]>>(`${this.milestoneUrl}/project/${projectId}`, { params: httpParams });
   }
 
   public createMilestone(payload: any): Observable<ApiResponse<Milestone>> {

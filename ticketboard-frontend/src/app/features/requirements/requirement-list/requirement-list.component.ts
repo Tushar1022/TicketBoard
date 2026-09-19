@@ -7,6 +7,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RequirementService } from '../../../core/services/requirement.service';
 import { ProjectService } from '../../../core/services/project.service';
 import { Project, Requirement, RequirementHistory } from '../../../core/models/api.models';
+import { ToastService } from '../../../shared/components/toast/toast.service';
 
 @Component({
   selector: 'app-requirement-list',
@@ -42,7 +43,8 @@ export class RequirementListComponent implements OnInit {
 
   constructor(
     private requirementService: RequirementService,
-    private projectService: ProjectService
+    private projectService: ProjectService,
+    private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -107,10 +109,14 @@ export class RequirementListComponent implements OnInit {
     this.requirementService.createRequirement(this.newReq).subscribe({
       next: (res: any) => {
         if (res.success) {
+          this.toastService.success(`Requirement REQ-${res.data?.id || ''} was created successfully.`);
           this.closeCreateModal();
           this.loadRequirements();
+        } else {
+          this.toastService.error(res.message || 'Failed to create the requirement.');
         }
-      }
+      },
+      error: () => this.toastService.error('Requirement creation failed. Please try again.')
     });
   }
 }
