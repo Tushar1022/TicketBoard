@@ -1,70 +1,102 @@
 <div class="dashboard-page">
-  <!-- Page Header & Live Telemetry Ticker -->
-  <div class="page-header">
-    <div class="title-group">
-      <div class="badge badge-purple">
-        <mat-icon class="badge-icon">pulse</mat-icon>
-        <span>Real-Time System Telemetry &bull; Updated {{ lastUpdatedTime() }}</span>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       PROFESSIONAL PAGE HEADER + LIVE TELEMETRY STRIP
+       (thin cornered divider separates the header from the canvas)
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div class="dash-hero card-panel">
+    <div class="dash-hero-top">
+      <div class="title-group">
+        <div class="eyebrow-row">
+          <span class="live-chip"><span class="live-dot"></span><span>LIVE</span></span>
+          <span class="eyebrow-title">Global Executive Command Center</span>
+          <span class="eyebrow-edition">Enterprise Delivery Analytics</span>
+        </div>
+        <h1>Global Executive Delivery Command Center</h1>
+        <p class="subtitle">Real-time org-wide delivery telemetry &bull; Projects &middot; Capacity &middot; Teams &middot; Workloads &middot; Delivery Intelligence</p>
       </div>
-      <h1>Global Executive Delivery Command Center</h1>
 
-    </div>
-
-    <div class="header-actions">
-      <button class="btn btn-secondary btn-sm" (click)="loadAllData()">
-        <mat-icon class="sm-icon">sync</mat-icon>
-        <span>Refresh Telemetry</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Live Org Telemetry Ticker Bar -->
-  <div class="telemetry-ticker-bar card-panel" *ngIf="!isLoading()">
-    <div class="ticker-item">
-      <mat-icon class="t-icon text-indigo">groups</mat-icon>
-      <div class="t-data">
-        <span class="t-lbl">Active Teams</span>
-        <span class="t-val">{{ teams().length }} Teams</span>
-      </div>
-    </div>
-
-    <div class="ticker-divider"></div>
-
-    <div class="ticker-item">
-      <mat-icon class="t-icon text-blue">admin_panel_settings</mat-icon>
-      <div class="t-data">
-        <span class="t-lbl">Project Managers</span>
-        <span class="t-val">{{ projectManagers().length }} PMs</span>
+      <div class="header-actions">
+        <div class="auto-refresh-chip" matTooltip="Telemetry auto-refreshes every 60 seconds">
+          <mat-icon>autorenew</mat-icon>
+          <span>Auto-refresh in <strong>{{ nextRefreshIn() }}s</strong></span>
+        </div>
+        <button class="btn btn-secondary btn-sm" matTooltip="Pull the latest data from every telemetry source" (click)="loadAllData()">
+          <mat-icon class="sm-icon">sync</mat-icon>
+          <span>Refresh Telemetry</span>
+        </button>
       </div>
     </div>
 
-    <div class="ticker-divider"></div>
-
-    <div class="ticker-item">
-      <mat-icon class="t-icon text-green">folder_special</mat-icon>
-      <div class="t-data">
-        <span class="t-lbl">Total Projects</span>
-        <span class="t-val">{{ projects().length }} Projects</span>
-      </div>
+    <!-- Thin cornered separation border -->
+    <div class="dash-divider">
+      <span class="divider-corner corner-l"></span>
+      <span class="divider-line"></span>
+      <span class="divider-corner corner-r"></span>
     </div>
 
-    <div class="ticker-divider"></div>
-
-    <div class="ticker-item">
-      <mat-icon class="t-icon text-gold">schedule</mat-icon>
-      <div class="t-data">
-        <span class="t-lbl">Org Monthly Capacity</span>
-        <span class="t-val">{{ totalOrgCapacity() }} hrs</span>
+    <!-- Live Telemetry Strip -->
+    <div class="telemetry-strip" *ngIf="!isLoading()">
+      <div class="t-strip-item">
+        <mat-icon class="t-icon text-indigo">groups</mat-icon>
+        <div class="t-data">
+          <span class="t-lbl">Active Teams</span>
+          <span class="t-val">{{ teams().length }} <em>Teams</em></span>
+        </div>
       </div>
-    </div>
 
-    <div class="ticker-divider"></div>
+      <div class="t-split"></div>
 
-    <div class="ticker-item">
-      <mat-icon class="t-icon text-purple">pie_chart</mat-icon>
-      <div class="t-data">
-        <span class="t-lbl">Avg Utilization</span>
-        <span class="t-val text-green font-bold">{{ overallOrgUtilization() }}%</span>
+      <div class="t-strip-item">
+        <mat-icon class="t-icon text-blue">admin_panel_settings</mat-icon>
+        <div class="t-data">
+          <span class="t-lbl">Project Managers</span>
+          <span class="t-val">{{ projectManagers().length }} <em>PMs</em></span>
+        </div>
+      </div>
+
+      <div class="t-split"></div>
+
+      <div class="t-strip-item">
+        <mat-icon class="t-icon text-green">folder_special</mat-icon>
+        <div class="t-data">
+          <span class="t-lbl">Total Projects</span>
+          <span class="t-val">{{ projects().length }} <em>Projects</em></span>
+        </div>
+      </div>
+
+      <div class="t-split"></div>
+
+      <div class="t-strip-item">
+        <mat-icon class="t-icon text-gold">schedule</mat-icon>
+        <div class="t-data">
+          <span class="t-lbl">Monthly Capacity</span>
+          <span class="t-val">{{ totalOrgCapacity() }} <em>hrs</em></span>
+        </div>
+      </div>
+
+      <div class="t-split"></div>
+
+      <div class="t-strip-item meter-item">
+        <mat-icon class="t-icon text-indigo">pie_chart</mat-icon>
+        <div class="t-data">
+          <span class="t-lbl">Avg Utilization</span>
+          <span class="t-val">{{ overallOrgUtilization() }}<em>%</em></span>
+          <div class="telemetry-meter">
+            <div class="telemetry-meter-fill"
+                 [style.width.%]="overallOrgUtilization()"
+                 [style.background-color]="overallOrgUtilization() > 100 ? '#dc2626' : (overallOrgUtilization() > 80 ? '#f59e0b' : '#22c55e')"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="t-split"></div>
+
+      <div class="t-strip-item upd-item">
+        <div class="t-upd-stack">
+          <span class="upd-clock">{{ liveClock() }}</span>
+          <span class="upd-tag">Synced {{ lastUpdatedTime() }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -139,7 +171,7 @@
       <!-- Org Snapshot Stat Tiles -->
       <div class="snapshot-tiles-col">
         <div class="snapshot-tile">
-          <div class="tile-icon-wrap" style="background-color: #eff6ff; color: #2563eb;">
+          <div class="tile-icon-wrap tile-employees">
             <mat-icon>group</mat-icon>
           </div>
           <div class="tile-data">
@@ -149,7 +181,7 @@
         </div>
 
         <div class="snapshot-tile">
-          <div class="tile-icon-wrap" style="background-color: #f0fdf4; color: #16a34a;">
+          <div class="tile-icon-wrap tile-teams">
             <mat-icon>engineering</mat-icon>
           </div>
           <div class="tile-data">
@@ -159,7 +191,7 @@
         </div>
 
         <div class="snapshot-tile">
-          <div class="tile-icon-wrap" style="background-color: #fefce8; color: #ca8a04;">
+          <div class="tile-icon-wrap tile-pms">
             <mat-icon>admin_panel_settings</mat-icon>
           </div>
           <div class="tile-data">
@@ -169,7 +201,7 @@
         </div>
 
         <div class="snapshot-tile">
-          <div class="tile-icon-wrap" style="background-color: #faf5ff; color: #7c3aed;">
+          <div class="tile-icon-wrap tile-projects">
             <mat-icon>folder_special</mat-icon>
           </div>
           <div class="tile-data">
@@ -179,7 +211,7 @@
         </div>
 
         <div class="snapshot-tile">
-          <div class="tile-icon-wrap" style="background-color: #ecfdf5; color: #059669;">
+          <div class="tile-icon-wrap tile-active">
             <mat-icon>check_circle</mat-icon>
           </div>
           <div class="tile-data">
@@ -189,7 +221,7 @@
         </div>
 
         <div class="snapshot-tile" *ngIf="overloadedResourcesCount() > 0">
-          <div class="tile-icon-wrap" style="background-color: #fef2f2; color: #dc2626;">
+          <div class="tile-icon-wrap tile-overloaded">
             <mat-icon>person_alert</mat-icon>
           </div>
           <div class="tile-data">

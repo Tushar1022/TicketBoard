@@ -7,6 +7,7 @@ import com.aurionpro.ticketboard.project.entity.Milestone;
 import com.aurionpro.ticketboard.project.entity.Project;
 import com.aurionpro.ticketboard.project.enums.MilestoneProgressSource;
 import com.aurionpro.ticketboard.project.enums.MilestoneStatus;
+import com.aurionpro.ticketboard.project.repository.MilestoneNoteRepository;
 import com.aurionpro.ticketboard.project.repository.MilestoneRepository;
 import com.aurionpro.ticketboard.project.repository.ProjectRepository;
 import com.aurionpro.ticketboard.release.entity.Release;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 public class MilestoneService {
 
     private final MilestoneRepository milestoneRepository;
+    private final MilestoneNoteRepository milestoneNoteRepository;
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ReleaseRepository releaseRepository;
@@ -130,6 +132,7 @@ public class MilestoneService {
         }
         milestoneRepository.detachWorkItems(id);
         milestoneRepository.detachIssues(id);
+        milestoneNoteRepository.deleteByMilestoneId(id);
         milestoneRepository.deleteById(id);
     }
 

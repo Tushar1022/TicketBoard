@@ -3,6 +3,7 @@ package com.aurionpro.ticketboard.risk.repository;
 import com.aurionpro.ticketboard.risk.entity.Risk;
 import com.aurionpro.ticketboard.risk.enums.RiskStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -29,4 +30,8 @@ public interface RiskRepository extends JpaRepository<Risk, Long> {
 
     @Query("SELECT r.status, COUNT(r) FROM Risk r WHERE r.project.id = :projectId GROUP BY r.status")
     List<Object[]> countByStatusGroupedForProject(@Param("projectId") Long projectId);
+
+    @Modifying
+    @Query("UPDATE Risk r SET r.owner = null WHERE r.owner.id = :userId")
+    void detachOwner(@Param("userId") Long userId);
 }

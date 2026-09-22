@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ApiResponse, Milestone, Project, ProjectStats } from '../models/api.models';
+import { ApiResponse, Milestone, MilestoneNote, MilestoneNoteCreatePayload, Project, ProjectStats } from '../models/api.models';
 
 @Injectable({
   providedIn: 'root'
@@ -67,5 +67,21 @@ export class ProjectService {
 
   public deleteMilestone(id: number): Observable<ApiResponse<void>> {
     return this.http.delete<ApiResponse<void>>(`${this.milestoneUrl}/${id}`);
+  }
+
+  public getMilestoneNotes(milestoneId: number): Observable<ApiResponse<MilestoneNote[]>> {
+    return this.http.get<ApiResponse<MilestoneNote[]>>(`${this.milestoneUrl}/${milestoneId}/notes`);
+  }
+
+  public addMilestoneNote(milestoneId: number, payload: MilestoneNoteCreatePayload): Observable<ApiResponse<MilestoneNote>> {
+    return this.http.post<ApiResponse<MilestoneNote>>(`${this.milestoneUrl}/${milestoneId}/notes`, payload);
+  }
+
+  public updateMilestoneNote(milestoneId: number, noteId: number, payload: MilestoneNoteCreatePayload): Observable<ApiResponse<MilestoneNote>> {
+    return this.http.put<ApiResponse<MilestoneNote>>(`${this.milestoneUrl}/${milestoneId}/notes/${noteId}`, payload);
+  }
+
+  public deleteMilestoneNote(milestoneId: number, noteId: number): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.milestoneUrl}/${milestoneId}/notes/${noteId}`);
   }
 }

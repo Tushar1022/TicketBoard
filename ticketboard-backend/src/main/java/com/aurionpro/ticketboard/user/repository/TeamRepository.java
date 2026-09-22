@@ -2,6 +2,9 @@ package com.aurionpro.ticketboard.user.repository;
 
 import com.aurionpro.ticketboard.user.entity.Team;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -12,4 +15,8 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
     Optional<Team> findByCode(String code);
     List<Team> findByDepartmentId(Long departmentId);
     boolean existsByCode(String code);
+
+    @Modifying
+    @Query("UPDATE Team t SET t.teamLead = null WHERE t.teamLead.id = :userId")
+    void detachTeamLead(@Param("userId") Long userId);
 }

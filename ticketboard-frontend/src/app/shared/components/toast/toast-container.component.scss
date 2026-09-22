@@ -17,18 +17,18 @@
   align-items: flex-start;
   gap: 10px;
   padding: 12px 14px 14px;
-  background: #ffffff;
+  background: var(--surface-card);
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 12px 28px -8px rgba(15, 23, 42, 0.22), 0 4px 10px -4px rgba(15, 23, 42, 0.12);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
   animation: tb-toast-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
-  &--success .tb-toast__icon { background: linear-gradient(135deg, #10b981, #059669); }
+  &--success .tb-toast__icon { background: linear-gradient(135deg, var(--health-green-dot), var(--health-green-text)); }
   &--error .tb-toast__icon { background: linear-gradient(135deg, #f43f5e, #e11d48); }
-  &--warning .tb-toast__icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
-  &--info .tb-toast__icon { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
+  &--warning .tb-toast__icon { background: linear-gradient(135deg, var(--health-amber-dot), var(--health-amber-dot)); }
+  &--info .tb-toast__icon { background: linear-gradient(135deg, var(--accent-500), var(--accent-600)); }
 
   &:hover .tb-toast__progress { animation-play-state: paused; }
 }
@@ -58,12 +58,12 @@
 .tb-toast__title {
   font-size: 0.82rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .tb-toast__message {
   font-size: 0.78rem;
-  color: #475569;
+  color: var(--text-muted);
   line-height: 1.45;
   word-break: break-word;
 }
@@ -71,7 +71,7 @@
 .tb-toast__close {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--text-subtle);
   cursor: pointer;
   font-size: 0.72rem;
   padding: 3px;
@@ -79,7 +79,7 @@
   border-radius: 6px;
   transition: color 0.15s ease, background 0.15s ease;
 
-  &:hover { color: #0f172a; background: #f1f5f9; }
+  &:hover { color: var(--text-main); background: var(--surface-subtle); }
 }
 
 .tb-toast__progress {
@@ -94,10 +94,10 @@
   animation-fill-mode: forwards;
 }
 
-.tb-toast--success .tb-toast__progress { background: #10b981; }
-.tb-toast--error .tb-toast__progress { background: #f43f5e; }
-.tb-toast--warning .tb-toast__progress { background: #f59e0b; }
-.tb-toast--info .tb-toast__progress { background: #0ea5e9; }
+.tb-toast--success .tb-toast__progress { background: var(--health-green-dot); }
+.tb-toast--error .tb-toast__progress { background: var(--danger); }
+.tb-toast--warning .tb-toast__progress { background: var(--health-amber-dot); }
+.tb-toast--info .tb-toast__progress { background: var(--accent-500); }
 
 @keyframes tb-toast-in {
   from { opacity: 0; transform: translateY(-8px) scale(0.97); }

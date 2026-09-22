@@ -35,6 +35,8 @@ import {
   IssueWatcher,
   LookupData,
   Milestone,
+  MilestoneNote,
+  MilestoneNoteCreatePayload,
   Project,
   ProjectStats,
   ProjectDocument,
@@ -1400,4 +1402,227 @@ export class ProjectDetailComponent implements OnInit {
       }
     });
   }
+
+  // ── Milestone Notes Drawer Engine ──────────────────────────
+  public selectedMilestoneForNotes = signal<Milestone | null>(null);
+  public milestoneNotes = signal<MilestoneNote[]>([]);
+  public milestoneNotesLoading = signal<boolean>(false);
+  public newMilestoneNoteContent = signal<string>('');
+  public newMilestoneNotePinned = signal<boolean>(false);
+
+  public openMilestoneNotes(m: Milestone, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.selectedMilestoneForNotes.set(m);
+    this.loadMilestoneNotes(m.id);
+  }
+
+  public closeMilestoneNotes(): void {
+    this.selectedMilestoneForNotes.set(null);
+    this.milestoneNotes.set([]);
+  }
+
+  public loadMilestoneNotes(milestoneId: number): void {
+    this.milestoneNotesLoading.set(true);
+    this.projectService.getMilestoneNotes(milestoneId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        if (res && res.data) {
+          this.milestoneNotes.set(res.data);
+        }
+        this.milestoneNotesLoading.set(false);
+      },
+      error: () => this.milestoneNotesLoading.set(false)
+    });
+  }
+
+  public addMilestoneNote(): void {
+    const m = this.selectedMilestoneForNotes();
+    const content = this.newMilestoneNoteContent().trim();
+    if (!m || !content) return;
+    const payload: MilestoneNoteCreatePayload = {
+      content,
+      pinned: this.newMilestoneNotePinned()
+    };
+    this.projectService.addMilestoneNote(m.id, payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        if (res && res.success) {
+          this.toastService.success('Note added to milestone.');
+          this.newMilestoneNoteContent.set('');
+          this.newMilestoneNotePinned.set(false);
+          this.loadMilestoneNotes(m.id);
+        }
+      }
+    });
+  }
+
+  public togglePinMilestoneNote(note: MilestoneNote): void {
+    const m = this.selectedMilestoneForNotes();
+    if (!m) return;
+    this.projectService.updateMilestoneNote(m.id, note.id, { content: note.content, pinned: !note.pinned }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => this.loadMilestoneNotes(m.id)
+    });
+  }
+
+  public deleteMilestoneNote(noteId: number): void {
+    const m = this.selectedMilestoneForNotes();
+    if (!m) return;
+    this.projectService.deleteMilestoneNote(m.id, noteId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.toastService.info('Note removed.');
+        this.loadMilestoneNotes(m.id);
+      }
+    });
+  }
+
+  // ── Milestone Interactive Calendar Engine ────────────────────
+  public calendarCurrentDate = signal<Date>(new Date());
+  public calendarViewMode = signal<'month' | 'cards'>('cards');
+
+  public prevCalendarMonth(): void {
+    const d = new Date(this.calendarCurrentDate());
+    d.setMonth(d.getMonth() - 1);
+    this.calendarCurrentDate.set(d);
+  }
+
+  public nextCalendarMonth(): void {
+    const d = new Date(this.calendarCurrentDate());
+    d.setMonth(d.getMonth() + 1);
+    this.calendarCurrentDate.set(d);
+  }
+
+  public todayCalendar(): void {
+    this.calendarCurrentDate.set(new Date());
+  }
+
+  public calendarMonthLabel = computed(() => {
+    return this.calendarCurrentDate().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  });
+
+  public calendarGrid = computed(() => {
+    const curr = this.calendarCurrentDate();
+    const year = curr.getFullYear();
+    const month = curr.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDayOfWeek = firstDay.getDay();
+    const daysInMonth = lastDay.getDate();
+
+    const milestones = this.filteredMilestones();
+    const todayStr = new Date().toISOString().substring(0, 10);
+
+    const days: Array<{
+      dateStr: string;
+      dayNum: number;
+      isCurrentMonth: boolean;
+      isToday: boolean;
+      milestones: Milestone[];
+    }> = [];
+
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+      const dayNum = prevMonthLastDay - i;
+      const prevM = month === 0 ? 11 : month - 1;
+      const prevY = month === 0 ? year - 1 : year;
+      const mm = String(prevM + 1).padStart(2, '0');
+      const dd = String(dayNum).padStart(2, '0');
+      const dateStr = `${prevY}-${mm}-${dd}`;
+      days.push({
+        dateStr,
+        dayNum,
+        isCurrentMonth: false,
+        isToday: dateStr === todayStr,
+        milestones: milestones.filter(m => m.plannedDate === dateStr || m.targetDate === dateStr)
+      });
+    }
+
+    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+      const mm = String(month + 1).padStart(2, '0');
+      const dd = String(dayNum).padStart(2, '0');
+      const dateStr = `${year}-${mm}-${dd}`;
+      days.push({
+        dateStr,
+        dayNum,
+        isCurrentMonth: true,
+        isToday: dateStr === todayStr,
+        milestones: milestones.filter(m => m.plannedDate === dateStr || m.targetDate === dateStr)
+      });
+    }
+
+    const remaining = (7 - (days.length % 7)) % 7;
+    for (let dayNum = 1; dayNum <= remaining; dayNum++) {
+      const nextM = month === 11 ? 0 : month + 1;
+      const nextY = month === 11 ? year + 1 : year;
+      const mm = String(nextM + 1).padStart(2, '0');
+      const dd = String(dayNum).padStart(2, '0');
+      const dateStr = `${nextY}-${mm}-${dd}`;
+      days.push({
+        dateStr,
+        dayNum,
+        isCurrentMonth: false,
+        isToday: dateStr === todayStr,
+        milestones: milestones.filter(m => m.plannedDate === dateStr || m.targetDate === dateStr)
+      });
+    }
+
+    return days;
+  });
+
+  // ── Time Logs Advanced Filter & Grouping Engine ──────────────
+  public timeLogFilterUser = signal<string>('ALL');
+  public timeLogFilterDateFrom = signal<string>('');
+  public timeLogFilterDateTo = signal<string>('');
+  public timeLogGroupBy = signal<'user' | 'date' | 'task'>('user');
+
+  public filteredTimeEntries = computed(() => {
+    let list = this.timeEntries();
+    const user = this.timeLogFilterUser();
+    const from = this.timeLogFilterDateFrom();
+    const to = this.timeLogFilterDateTo();
+
+    if (user !== 'ALL') {
+      list = list.filter(e => String(e.userId) === String(user) || e.userName === user);
+    }
+    if (from) {
+      list = list.filter(e => (e.workDate || '') >= from);
+    }
+    if (to) {
+      list = list.filter(e => (e.workDate || '') <= to);
+    }
+    return list;
+  });
+
+  public timeLogBarChartData = computed(() => {
+    const entries = this.filteredTimeEntries();
+    const map = new Map<string, number>();
+    entries.forEach(e => {
+      const key = e.userName || 'Unassigned';
+      map.set(key, (map.get(key) || 0) + (e.totalHours || 0));
+    });
+    const maxHours = Math.max(...Array.from(map.values()), 1);
+    return Array.from(map.entries()).map(([label, hours]) => ({
+      label,
+      hours: Math.round(hours * 10) / 10,
+      pct: Math.min(100, Math.round((hours / maxHours) * 100))
+    }));
+  });
+
+  public groupedTimeLogs = computed(() => {
+    const entries = this.filteredTimeEntries();
+    const groupMode = this.timeLogGroupBy();
+    const map = new Map<string, TimeEntry[]>();
+
+    entries.forEach(e => {
+      let key = 'Default';
+      if (groupMode === 'user') key = e.userName || 'Unassigned User';
+      else if (groupMode === 'date') key = e.workDate || 'No Date';
+      else if (groupMode === 'task') key = e.workItemTitle || 'General Project Task';
+
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(e);
+    });
+
+    return Array.from(map.entries()).map(([groupName, items]) => {
+      const totalHours = items.reduce((acc, cur) => acc + (cur.totalHours || 0), 0);
+      return { groupName, items, totalHours: Math.round(totalHours * 10) / 10 };
+    });
+  });
 }

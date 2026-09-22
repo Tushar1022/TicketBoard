@@ -3,6 +3,7 @@ package com.aurionpro.ticketboard.requirement.repository;
 import com.aurionpro.ticketboard.requirement.entity.Requirement;
 import com.aurionpro.ticketboard.requirement.enums.RequirementStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -50,4 +51,8 @@ public interface RequirementRepository extends JpaRepository<Requirement, Long> 
 
     @Query("SELECT r.priority, COUNT(r) FROM Requirement r WHERE r.project.id = :projectId GROUP BY r.priority")
     List<Object[]> countByPriorityGroupedForProject(@Param("projectId") Long projectId);
+
+    @Modifying
+    @Query("UPDATE Requirement r SET r.owner = null WHERE r.owner.id = :userId")
+    void detachOwner(@Param("userId") Long userId);
 }

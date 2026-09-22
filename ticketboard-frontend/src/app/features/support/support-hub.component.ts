@@ -6,8 +6,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RaiseTicketDialogComponent } from './raise-ticket-dialog/raise-ticket-dialog.component';
+import { AnnouncementDialogComponent } from './announcement-dialog/announcement-dialog.component';
 import { SupportTicketService } from '../../core/services/support-ticket.service';
 import { AuthService } from '../../core/services/auth.service';
+import { SupportAnnouncement } from '../../core/models/api.models';
 
 interface FAQItem {
   id: number;
@@ -38,6 +40,8 @@ export class SupportHubComponent implements OnInit {
 
   public openTicketsCount = computed(() => this.supportTicketService.openTicketsCount());
   public isAdminUser = computed(() => this.authService.isAdmin());
+  public isSuperAdmin = computed(() => this.supportTicketService.isSuperAdmin());
+  public activeAnnouncement = computed(() => this.supportTicketService.activeAnnouncement());
 
   public kbCategories: KbCategory[] = [
     {
@@ -164,6 +168,19 @@ export class SupportHubComponent implements OnInit {
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         this.router.navigate(['/support/tickets']);
+      }
+    });
+  }
+
+  public openAnnouncementDialog(existing?: SupportAnnouncement | null): void {
+    const dialogRef = this.dialog.open(AnnouncementDialogComponent, {
+      width: '640px',
+      data: { announcement: existing || undefined }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.supportTicketService.fetchActiveAnnouncement().subscribe();
       }
     });
   }

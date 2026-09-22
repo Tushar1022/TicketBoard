@@ -75,4 +75,11 @@ public class UserController {
         UserDto updated = userService.updateUserRoles(id, roles);
         return ResponseEntity.ok(ApiResponse.ok("User roles updated successfully", updated));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('user:delete')")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResponseEntity.ok(ApiResponse.ok("User deleted successfully", null));
+    }
 }

@@ -4,6 +4,7 @@ import com.aurionpro.ticketboard.workitem.entity.WorkItem;
 import com.aurionpro.ticketboard.workitem.enums.WorkItemStatus;
 import com.aurionpro.ticketboard.workitem.enums.WorkItemType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -98,4 +99,12 @@ public interface WorkItemRepository extends JpaRepository<WorkItem, Long> {
 
     @Query("SELECT w.assignee.id, COUNT(w) FROM WorkItem w WHERE w.project.id = :projectId AND w.assignee IS NOT NULL GROUP BY w.assignee.id")
     List<Object[]> countByAssigneeGroupedForProject(@Param("projectId") Long projectId);
+
+    @Modifying
+    @Query("UPDATE WorkItem w SET w.assignee = null WHERE w.assignee.id = :userId")
+    void detachAssignee(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("UPDATE WorkItem w SET w.reporter = null WHERE w.reporter.id = :userId")
+    void detachReporter(@Param("userId") Long userId);
 }

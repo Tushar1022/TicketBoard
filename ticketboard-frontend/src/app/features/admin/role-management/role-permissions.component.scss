@@ -114,7 +114,7 @@
   padding: 14px 18px;
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #f8fafc, #eef2ff);
+  background: linear-gradient(135deg, var(--surface-subtle), var(--primary-50));
 
   .summary-left {
     display: flex;
@@ -146,9 +146,9 @@
       letter-spacing: 0.05em;
 
       &.super {
-        background: #fef3c7;
-        color: #92400e;
-        border-color: #fde68a;
+        background: var(--health-amber-border);
+        color: var(--health-amber-text);
+        border-color: var(--health-amber-border);
       }
     }
   }
@@ -186,7 +186,7 @@
       transition: width 0.3s ease;
 
       &.full {
-        background: linear-gradient(90deg, #22c55e, #10b981);
+        background: linear-gradient(90deg, var(--health-green-dot), var(--health-green-dot));
       }
     }
   }
@@ -254,10 +254,10 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: #fef9c3;
-  color: #713f12;
+  background: var(--health-amber-bg);
+  color: var(--health-amber-text);
   font-size: 0.75rem;
-  border-top: 1px solid #fde68a;
+  border-top: 1px solid var(--health-amber-border);
 
   mat-icon { font-size: 17px; width: 17px; height: 17px; }
 }

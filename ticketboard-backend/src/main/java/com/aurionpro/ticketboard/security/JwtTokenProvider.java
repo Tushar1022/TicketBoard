@@ -78,6 +78,17 @@ public class JwtTokenProvider {
         return claims.getSubject();
     }
 
+    public Long getUserIdFromJWT(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        Object userId = claims.get("userId");
+        if (userId == null) return null;
+        return Long.valueOf(userId.toString());
+    }
+
     public String getRolesFromJWT(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(getSigningKey())

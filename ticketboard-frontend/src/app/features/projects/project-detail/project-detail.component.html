@@ -719,10 +719,20 @@
           <div class="ms-heading-icon gr-indigo"><mat-icon>flag</mat-icon></div>
           <div>
             <h2>Milestones &amp; Delivery Release Gates</h2>
-            <span class="sub-text">Track phase gates, planned target dates, and completion status</span>
+            <span class="sub-text">Track phase gates, planned target dates, notes, and completion status</span>
           </div>
         </div>
-        <button class="btn btn-accent-primary" (click)="openCreateMilestoneModal()"><mat-icon class="xs">add</mat-icon> Add Milestone</button>
+        <div class="ms-header-actions">
+          <div class="seg-view-toggle">
+            <button class="seg-btn" [class.active]="calendarViewMode() === 'cards'" (click)="calendarViewMode.set('cards')">
+              <mat-icon class="xs">grid_view</mat-icon> Cards View
+            </button>
+            <button class="seg-btn" [class.active]="calendarViewMode() === 'month'" (click)="calendarViewMode.set('month')">
+              <mat-icon class="xs">calendar_month</mat-icon> Calendar View
+            </button>
+          </div>
+          <button class="btn btn-accent-primary" (click)="openCreateMilestoneModal()"><mat-icon class="xs">add</mat-icon> Add Milestone</button>
+        </div>
       </div>
 
       <!-- KPI Rail -->
@@ -768,22 +778,6 @@
         </div>
       </div>
 
-      <!-- Delivery Timeline Strip -->
-      <div class="ms-timeline card-panel" *ngIf="milestoneTimeline().length">
-        <div class="tls-top">
-          <h4><mat-icon class="xs">timeline</mat-icon> Delivery Timeline</h4>
-          <span class="sub-text">Milestones ordered by planned date</span>
-        </div>
-        <div class="tls-track">
-          <div class="tls-tick" *ngFor="let m of milestoneTimeline()" matTooltip="{{ m.name }} — {{ m.plannedDate }}">
-            <span class="tls-node" [style.background-color]="lookupColor('MILESTONE_STATUS', m.status)" [class.done]="m.status === 'ACHIEVED'"><mat-icon *ngIf="m.status === 'ACHIEVED'">check</mat-icon></span>
-            <span class="tls-code">{{ m.milestoneCode || ('MS-' + m.id) }}</span>
-            <span class="tls-title">{{ m.name }}</span>
-            <span class="tls-date">{{ m.plannedDate }}</span>
-          </div>
-        </div>
-      </div>
-
       <!-- Filter Toolbar -->
       <div class="ms-filterbar">
         <div class="seg-filter">
@@ -808,14 +802,52 @@
         <p>Click "Add Milestone" above to plan your first project phase gate.</p>
       </div>
 
+      <!-- MONTH CALENDAR VIEW -->
+      <div class="ms-calendar-card card-panel" *ngIf="calendarViewMode() === 'month' && project()?.milestones?.length">
+        <div class="cal-nav-bar">
+          <div class="cal-title-group">
+            <mat-icon class="text-indigo">event</mat-icon>
+            <h3>{{ calendarMonthLabel() }}</h3>
+          </div>
+          <div class="cal-actions">
+            <button class="btn btn-sm btn-secondary" (click)="prevCalendarMonth()"><mat-icon>chevron_left</mat-icon></button>
+            <button class="btn btn-sm btn-secondary" (click)="todayCalendar()">Today</button>
+            <button class="btn btn-sm btn-secondary" (click)="nextCalendarMonth()"><mat-icon>chevron_right</mat-icon></button>
+          </div>
+        </div>
+
+        <div class="cal-grid-header">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+
+        <div class="cal-grid-body">
+          <div *ngFor="let day of calendarGrid()" class="cal-day-cell" [class.other-month]="!day.isCurrentMonth" [class.today]="day.isToday">
+            <div class="cal-day-num">{{ day.dayNum }}</div>
+            <div class="cal-day-events">
+              <div *ngFor="let m of day.milestones" class="cal-event-pill" [style.border-left-color]="lookupColor('MILESTONE_STATUS', m.status)" (click)="openMilestoneNotes(m, $event)">
+                <span class="ev-title">{{ m.name }}</span>
+                <span class="ev-status" [style.color]="lookupColor('MILESTONE_STATUS', m.status)">{{ m.completionPercentage || 0 }}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Milestone Cards Grid -->
-      <div class="mc-grid" *ngIf="filteredMilestones().length">
+      <div class="mc-grid" *ngIf="calendarViewMode() === 'cards' && filteredMilestones().length">
         <div class="mc-card" *ngFor="let m of filteredMilestones()">
           <div class="mc-accent" [ngClass]="statusGradient(m.status)"></div>
           <div class="mc-head">
             <span class="mc-code" [style.background-color]="lookupColor('MILESTONE_STATUS', m.status)">{{ m.milestoneCode || m.milestoneId || ('MS-' + m.id) }}</span>
             <span class="mc-status">{{ lookupLabel('MILESTONE_STATUS', m.status, m.status) }}</span>
-            <button class="btn-icon-sm btn-danger-ghost" matTooltip="Delete milestone" (click)="deleteMilestone(m)"><mat-icon class="xs">delete_outline</mat-icon></button>
+            <div class="mc-head-actions">
+              <button class="btn-icon-sm btn-primary-ghost" matTooltip="Milestone notes & discussion" (click)="openMilestoneNotes(m, $event)">
+                <mat-icon class="xs">sticky_note_2</mat-icon>
+              </button>
+              <button class="btn-icon-sm btn-danger-ghost" matTooltip="Delete milestone" (click)="deleteMilestone(m)">
+                <mat-icon class="xs">delete_outline</mat-icon>
+              </button>
+            </div>
           </div>
 
           <h3 class="mc-title editable-cell" (click)="startCellEdit('milestone', m.id, 'name', $event)">
@@ -858,8 +890,71 @@
 
           <div class="mc-foot">
             <span class="mc-count"><mat-icon class="xs">task_alt</mat-icon> {{ m.linkedTaskCount ?? 0 }} tasks</span>
-            <span class="mc-count"><mat-icon class="xs">bug_report</mat-icon> {{ m.linkedIssueCount ?? 0 }} issues</span>
+            <button type="button" class="mc-notes-btn" (click)="openMilestoneNotes(m, $event)">
+              <mat-icon class="xs">sticky_note_2</mat-icon> Notes
+            </button>
             <span class="mc-state" *ngIf="m.status === 'DELAYED'"><mat-icon class="xs">warning</mat-icon> Delayed</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Milestone Notes Drawer / Modal -->
+      <div class="modal-backdrop" *ngIf="selectedMilestoneForNotes()">
+        <div class="modal-card card-panel notes-drawer-card">
+          <div class="modal-header">
+            <div class="modal-title-wrap">
+              <mat-icon class="text-indigo">sticky_note_2</mat-icon>
+              <div>
+                <h3>Notes &amp; Discussion — {{ selectedMilestoneForNotes()?.name }}</h3>
+                <span class="sub-text">Record architectural notes, release instructions, and team updates</span>
+              </div>
+            </div>
+            <button class="icon-btn" (click)="closeMilestoneNotes()"><mat-icon>close</mat-icon></button>
+          </div>
+
+          <div class="modal-body scrollable-y notes-body">
+
+            <!-- Add Note Form -->
+            <div class="add-note-box card-panel">
+              <textarea class="form-control" rows="3" [ngModel]="newMilestoneNoteContent()" (ngModelChange)="newMilestoneNoteContent.set($event)" placeholder="Write a new milestone note or release instruction..."></textarea>
+              <div class="note-actions-row">
+                <label class="check-lbl">
+                  <input type="checkbox" [ngModel]="newMilestoneNotePinned()" (ngModelChange)="newMilestoneNotePinned.set($event)" />
+                  <span>Pin to top</span>
+                </label>
+                <button class="btn btn-sm btn-primary" [disabled]="!newMilestoneNoteContent().trim()" (click)="addMilestoneNote()">
+                  <mat-icon class="xs">send</mat-icon> Post Note
+                </button>
+              </div>
+            </div>
+
+            <!-- Notes List -->
+            <div class="notes-list" *ngIf="milestoneNotes().length > 0">
+              <div *ngFor="let n of milestoneNotes()" class="note-item-card" [class.pinned]="n.pinned">
+                <div class="note-head">
+                  <div class="note-author">
+                    <span class="avatar-mini" [style.background-color]="avatarColor(n.authorName)">{{ initials(n.authorName) }}</span>
+                    <div>
+                      <span class="author-name">{{ n.authorName || 'Anonymous' }}</span>
+                      <span class="note-time">{{ n.createdAt | date:'medium' }}</span>
+                    </div>
+                  </div>
+                  <div class="note-tools">
+                    <button class="btn-icon-sm" [class.active-pin]="n.pinned" (click)="togglePinMilestoneNote(n)" matTooltip="Toggle pin">
+                      <mat-icon class="xs">push_pin</mat-icon>
+                    </button>
+                    <button class="btn-icon-sm btn-danger-ghost" (click)="deleteMilestoneNote(n.id)" matTooltip="Delete note">
+                      <mat-icon class="xs">delete_outline</mat-icon>
+                    </button>
+                  </div>
+                </div>
+                <div class="note-content">{{ n.content }}</div>
+              </div>
+            </div>
+
+            <div class="empty-inline" *ngIf="milestoneNotes().length === 0 && !milestoneNotesLoading()">
+              No notes added for this milestone yet. Use the box above to add the first note.
+            </div>
           </div>
         </div>
       </div>
@@ -950,7 +1045,7 @@
       <div class="timelogs-toolbar">
         <div>
           <h2>Time Logs &amp; Utilization Variance Report</h2>
-          <span class="sub-text">Log work hours, track actual effort and billing</span>
+          <span class="sub-text">Log work hours, track actual effort, and view resource utilization</span>
         </div>
         <button class="btn btn-accent-primary" (click)="openLogTime()"><mat-icon class="xs">timer</mat-icon> Log Time</button>
       </div>
@@ -975,48 +1070,103 @@
         </div>
       </div>
 
-      <div class="empty-state" *ngIf="timeEntries().length === 0">
-        <mat-icon>access_time</mat-icon>
-        <h3>No time entries logged</h3>
-        <p>Use the "Log Time" button above to record work hours for this project.</p>
+      <!-- Advanced Filters & Grouping Bar -->
+      <div class="timelog-filter-bar card-panel">
+        <div class="filter-field">
+          <label>Resource User</label>
+          <select class="form-control sm" [ngModel]="timeLogFilterUser()" (ngModelChange)="timeLogFilterUser.set($event)">
+            <option value="ALL">All Team Members</option>
+            <option *ngFor="let u of users()" [value]="u.id">{{ u.fullName }}</option>
+          </select>
+        </div>
+
+        <div class="filter-field">
+          <label>Date From</label>
+          <input type="date" class="form-control sm" [ngModel]="timeLogFilterDateFrom()" (ngModelChange)="timeLogFilterDateFrom.set($event)" />
+        </div>
+
+        <div class="filter-field">
+          <label>Date To</label>
+          <input type="date" class="form-control sm" [ngModel]="timeLogFilterDateTo()" (ngModelChange)="timeLogFilterDateTo.set($event)" />
+        </div>
+
+        <div class="filter-field group-by">
+          <label>Group Logs By</label>
+          <div class="seg-group-toggle">
+            <button class="seg-btn" [class.active]="timeLogGroupBy() === 'user'" (click)="timeLogGroupBy.set('user')">User</button>
+            <button class="seg-btn" [class.active]="timeLogGroupBy() === 'date'" (click)="timeLogGroupBy.set('date')">Date</button>
+            <button class="seg-btn" [class.active]="timeLogGroupBy() === 'task'" (click)="timeLogGroupBy.set('task')">Task</button>
+          </div>
+        </div>
       </div>
 
-      <div class="timelogs-table-wrapper" *ngIf="timeEntries().length > 0">
-        <table class="zoho-timelogs-table">
-          <thead>
-            <tr>
-              <th>Work Date</th>
-              <th>Resource / User</th>
-              <th>Task</th>
-              <th>Description</th>
-              <th>Hours</th>
-              <th>Status</th>
-              <th>Billing Type</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let entry of timeEntries()">
-              <td class="font-mono">{{ entry.workDate }}</td>
-              <td class="font-bold">{{ entry.userName || 'Unknown' }}</td>
-              <td class="text-subtle">{{ entry.workItemTitle || '—' }}</td>
-              <td class="text-subtle">{{ entry.description || '—' }}</td>
-              <td class="font-mono font-bold">{{ entry.totalHours }}h</td>
-              <td>
-                <span class="status-pill" [ngClass]="{
-                  'green-pill': entry.status === 'APPROVED',
-                  'blue-pill': entry.status === 'SUBMITTED',
-                  'red-pill': entry.status === 'REJECTED',
-                  'slate-pill': entry.status === 'LOGGED'
-                }">{{ entry.status }}</span>
-              </td>
-              <td><span class="status-pill" [ngClass]="{ 'green-pill': entry.billingType === 'Billable', 'blue-pill': entry.billingType === 'Non-Billable' }">{{ entry.billingType || 'Billable' }}</span></td>
-              <td>
-                <button class="btn-icon-sm btn-danger-ghost" matTooltip="Delete entry" (click)="deleteTimeEntry(entry)"><mat-icon class="xs">delete_outline</mat-icon></button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Resource Hours Visual Bar Chart -->
+      <div class="timelog-chart-card card-panel" *ngIf="timeLogBarChartData().length > 0">
+        <h4><mat-icon class="xs">bar_chart</mat-icon> Logged Hours Distribution</h4>
+        <div class="hbar-grid">
+          <div *ngFor="let item of timeLogBarChartData()" class="hbar-item">
+            <span class="hbar-label">{{ item.label }}</span>
+            <div class="hbar-track">
+              <div class="hbar-fill gr-indigo" [style.width.%]="item.pct"></div>
+            </div>
+            <span class="hbar-val font-mono">{{ item.hours }}h</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="filteredTimeEntries().length === 0">
+        <mat-icon>access_time</mat-icon>
+        <h3>No time entries match your filters</h3>
+        <p>Use the "Log Time" button above to record work hours or clear filters.</p>
+      </div>
+
+      <!-- Grouped Time Logs Table -->
+      <div class="timelogs-grouped-container" *ngIf="filteredTimeEntries().length > 0">
+        <div *ngFor="let g of groupedTimeLogs()" class="timelog-group-card card-panel">
+          <div class="group-head">
+            <div class="head-left">
+              <mat-icon class="text-indigo">folder_shared</mat-icon>
+              <h3>{{ g.groupName }}</h3>
+            </div>
+            <span class="group-total-badge">{{ g.totalHours }} Total Logged Hours</span>
+          </div>
+
+          <table class="zoho-timelogs-table">
+            <thead>
+              <tr>
+                <th>Work Date</th>
+                <th>Resource / User</th>
+                <th>Task Title</th>
+                <th>Description</th>
+                <th>Hours</th>
+                <th>Status</th>
+                <th>Billing</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let entry of g.items">
+                <td class="font-mono">{{ entry.workDate }}</td>
+                <td class="font-bold">{{ entry.userName || 'Unknown' }}</td>
+                <td class="text-subtle">{{ entry.workItemTitle || '—' }}</td>
+                <td class="text-subtle">{{ entry.description || '—' }}</td>
+                <td class="font-mono font-bold">{{ entry.totalHours }}h</td>
+                <td>
+                  <span class="status-pill" [ngClass]="{
+                    'green-pill': entry.status === 'APPROVED',
+                    'blue-pill': entry.status === 'SUBMITTED',
+                    'red-pill': entry.status === 'REJECTED',
+                    'slate-pill': entry.status === 'LOGGED'
+                  }">{{ entry.status }}</span>
+                </td>
+                <td><span class="status-pill" [ngClass]="{ 'green-pill': entry.billingType === 'Billable', 'blue-pill': entry.billingType === 'Non-Billable' }">{{ entry.billingType || 'Billable' }}</span></td>
+                <td>
+                  <button class="btn-icon-sm btn-danger-ghost" matTooltip="Delete entry" (click)="deleteTimeEntry(entry)"><mat-icon class="xs">delete_outline</mat-icon></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -1132,6 +1282,7 @@
     [projects]="project() ? [project()!] : []"
     (close)="closeTaskDetail()"
     (saved)="onTaskModalSaved()"
+    (openSubtask)="openTaskDetail($event)"
   ></app-task-detail-dialog>
 
   <!-- CREATE TASK MODAL (STRUCTURED MULTI-COLUMN FORM) -->

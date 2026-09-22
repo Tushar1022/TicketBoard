@@ -1,7 +1,29 @@
 package com.aurionpro.ticketboard.user.service;
 
+import com.aurionpro.ticketboard.audit.repository.ActivityLogRepository;
+import com.aurionpro.ticketboard.billing.repository.InvoiceRepository;
+import com.aurionpro.ticketboard.client.repository.ClientRepository;
+import com.aurionpro.ticketboard.comment.repository.CommentRepository;
 import com.aurionpro.ticketboard.common.exception.BadRequestException;
 import com.aurionpro.ticketboard.common.exception.ResourceNotFoundException;
+import com.aurionpro.ticketboard.erp.repository.ERPAssetRepository;
+import com.aurionpro.ticketboard.erp.repository.ExpenseClaimRepository;
+import com.aurionpro.ticketboard.erp.repository.LeaveRequestRepository;
+import com.aurionpro.ticketboard.erp.repository.OKRGoalRepository;
+import com.aurionpro.ticketboard.project.repository.MilestoneRepository;
+import com.aurionpro.ticketboard.project.repository.ProjectDocumentRepository;
+import com.aurionpro.ticketboard.project.repository.ProjectMemberRepository;
+import com.aurionpro.ticketboard.project.repository.ProjectRepository;
+import com.aurionpro.ticketboard.release.repository.ReleaseRepository;
+import com.aurionpro.ticketboard.requirement.repository.RequirementHistoryRepository;
+import com.aurionpro.ticketboard.requirement.repository.RequirementRepository;
+import com.aurionpro.ticketboard.risk.repository.IssueCommentRepository;
+import com.aurionpro.ticketboard.risk.repository.IssueHistoryRepository;
+import com.aurionpro.ticketboard.risk.repository.IssueRepository;
+import com.aurionpro.ticketboard.risk.repository.IssueWatcherRepository;
+import com.aurionpro.ticketboard.risk.repository.RiskRepository;
+import com.aurionpro.ticketboard.timetracking.repository.TimeEntryRepository;
+import com.aurionpro.ticketboard.timetracking.repository.TimesheetRepository;
 import com.aurionpro.ticketboard.user.dto.UserCreateDto;
 import com.aurionpro.ticketboard.user.dto.UserDto;
 import com.aurionpro.ticketboard.user.entity.Department;
@@ -13,7 +35,13 @@ import com.aurionpro.ticketboard.user.enums.UserStatus;
 import com.aurionpro.ticketboard.user.repository.DepartmentRepository;
 import com.aurionpro.ticketboard.user.repository.RoleRepository;
 import com.aurionpro.ticketboard.user.repository.TeamRepository;
+import com.aurionpro.ticketboard.user.repository.UserCredentialRepository;
 import com.aurionpro.ticketboard.user.repository.UserRepository;
+import com.aurionpro.ticketboard.user.repository.UserSessionRepository;
+import com.aurionpro.ticketboard.workitem.repository.WorkItemBlockerRepository;
+import com.aurionpro.ticketboard.workitem.repository.WorkItemRepository;
+import com.aurionpro.ticketboard.workitem.repository.TaskDocumentRepository;
+import com.aurionpro.ticketboard.devtools.repository.DeveloperSnippetRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,6 +60,34 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final DepartmentRepository departmentRepository;
     private final TeamRepository teamRepository;
+    private final UserSessionRepository userSessionRepository;
+    private final UserCredentialRepository userCredentialRepository;
+    private final DeveloperSnippetRepository developerSnippetRepository;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final IssueWatcherRepository issueWatcherRepository;
+    private final TimeEntryRepository timeEntryRepository;
+    private final TimesheetRepository timesheetRepository;
+    private final CommentRepository commentRepository;
+    private final LeaveRequestRepository leaveRequestRepository;
+    private final ERPAssetRepository erpAssetRepository;
+    private final ExpenseClaimRepository expenseClaimRepository;
+    private final OKRGoalRepository okrGoalRepository;
+    private final WorkItemRepository workItemRepository;
+    private final WorkItemBlockerRepository workItemBlockerRepository;
+    private final TaskDocumentRepository taskDocumentRepository;
+    private final IssueRepository issueRepository;
+    private final ProjectRepository projectRepository;
+    private final ClientRepository clientRepository;
+    private final MilestoneRepository milestoneRepository;
+    private final ReleaseRepository releaseRepository;
+    private final RiskRepository riskRepository;
+    private final RequirementRepository requirementRepository;
+    private final ActivityLogRepository activityLogRepository;
+    private final ProjectDocumentRepository projectDocumentRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final RequirementHistoryRepository requirementHistoryRepository;
+    private final IssueHistoryRepository issueHistoryRepository;
+    private final IssueCommentRepository issueCommentRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
@@ -199,6 +255,56 @@ public class UserService {
         }
         user.setStatus(status);
         userRepository.save(user);
+    }
+
+    @Transactional
+    public void deleteUser(Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new ResourceNotFoundException("User", "id", id);
+        }
+        if (id.equals(currentUserId())) {
+            throw new BadRequestException("You cannot delete your own account");
+        }
+
+        // detach nullable references so business data is preserved
+        workItemRepository.detachAssignee(id);
+        workItemRepository.detachReporter(id);
+        workItemBlockerRepository.detachResolvedBy(id);
+        taskDocumentRepository.detachUploadedBy(id);
+        issueRepository.detachReporter(id);
+        issueRepository.detachAssignee(id);
+        projectRepository.detachProjectManager(id);
+        teamRepository.detachTeamLead(id);
+        milestoneRepository.detachOwner(id);
+        releaseRepository.detachOwner(id);
+        riskRepository.detachOwner(id);
+        requirementRepository.detachOwner(id);
+        clientRepository.detachAccountManager(id);
+        timesheetRepository.detachReviewer(id);
+        activityLogRepository.detachUser(id);
+        projectDocumentRepository.detachUploadedBy(id);
+        invoiceRepository.detachCreatedBy(id);
+        requirementHistoryRepository.detachChangedBy(id);
+        issueHistoryRepository.detachActor(id);
+        issueCommentRepository.detachAuthor(id);
+        userRepository.detachReportingManager(id);
+
+        // remove records owned by the user
+        timeEntryRepository.deleteByUserId(id);
+        timesheetRepository.deleteByUserId(id);
+        commentRepository.deleteByAuthorId(id);
+        projectMemberRepository.deleteByUserId(id);
+        issueWatcherRepository.deleteByUserId(id);
+        developerSnippetRepository.deleteByUserId(id);
+        leaveRequestRepository.deleteByUserId(id);
+        erpAssetRepository.deleteByUserId(id);
+        expenseClaimRepository.deleteByUserId(id);
+        okrGoalRepository.deleteByUserId(id);
+        userSessionRepository.deleteByUserId(id);
+        userCredentialRepository.deleteByUserId(id);
+
+        // user_roles join rows are removed with the entity
+        userRepository.deleteById(id);
     }
 
     @Transactional

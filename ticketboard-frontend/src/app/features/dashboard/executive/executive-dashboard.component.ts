@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, signal, DestroyRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, signal, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -19,7 +19,7 @@ import { EmployeeWorkload, ExecutiveDashboard, Project, Team, User, WorkItem } f
   templateUrl: './executive-dashboard.component.html',
   styleUrls: ['./executive-dashboard.component.scss']
 })
-export class ExecutiveDashboardComponent implements OnInit {
+export class ExecutiveDashboardComponent implements OnInit, OnDestroy {
   private destroyRef = inject(DestroyRef);
   public data = signal<ExecutiveDashboard | null>(null);
   public teams = signal<Team[]>([]);
@@ -31,7 +31,12 @@ export class ExecutiveDashboardComponent implements OnInit {
 
   public isLoading = signal<boolean>(true);
   public errorMessage = signal<string>('');
+  public lastUpdatedTime = signal<string>(new Date().toLocaleTimeString());
+  public liveClock = signal<string>(new Date().toLocaleTimeString());
+  public nextRefreshIn = signal<number>(60);
   private pendingRequests = 0;
+  private refreshTimer: any = null;
+  private static readonly REFRESH_INTERVAL_SEC = 60;
 
   constructor(
     private dashboardService: DashboardService,
@@ -43,11 +48,28 @@ export class ExecutiveDashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadAllData();
+    this.startAutoRefresh();
+  }
+
+  ngOnDestroy(): void {
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
+  }
+
+  private startAutoRefresh(): void {
+    this.nextRefreshIn.set(ExecutiveDashboardComponent.REFRESH_INTERVAL_SEC);
+    this.refreshTimer = setInterval(() => {
+      this.liveClock.set(new Date().toLocaleTimeString());
+      this.nextRefreshIn.update((s) => s - 1);
+      if (this.nextRefreshIn() <= 0) {
+        this.loadAllData();
+      }
+    }, 1000);
   }
 
   public loadAllData(): void {
     this.isLoading.set(true);
     this.errorMessage.set('');
+    this.nextRefreshIn.set(ExecutiveDashboardComponent.REFRESH_INTERVAL_SEC);
     this.pendingRequests = 0;
 
     this.beginLoad();
@@ -126,7 +148,10 @@ export class ExecutiveDashboardComponent implements OnInit {
 
   private endLoad(): void {
     this.pendingRequests--;
-    if (this.pendingRequests <= 0) this.isLoading.set(false);
+    if (this.pendingRequests <= 0) {
+      this.isLoading.set(false);
+      this.lastUpdatedTime.set(new Date().toLocaleTimeString());
+    }
   }
 
   // ─── Task Status Donut (org-wide work item distribution) ─────────────
@@ -167,8 +192,6 @@ export class ExecutiveDashboardComponent implements OnInit {
   public overloadedResourcesCount = computed(() =>
     this.resources().filter((r) => r.isOverloaded || r.utilizationPercentage > 100).length
   );
-
-  public lastUpdatedTime = signal<string>(new Date().toLocaleTimeString());
 
   public totalOrgCapacity = computed(() => {
     return this.resources().reduce((acc, r) => acc + (r.monthlyCapacityHours || 160), 0);

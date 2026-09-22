@@ -28,12 +28,66 @@
       </button>
     </div>
 
-    <!-- CENTER — Real-Time Search & Telemetry -->
+    <!-- CENTER — Global Search Command Bar -->
     <div class="topbar-center">
-      <div class="search-box">
+      <div class="search-box" [class.search-active]="searchOpen()">
         <mat-icon class="search-icon">search</mat-icon>
-        <input type="text" placeholder="Search tasks, SBI requirements, team members, support tickets..." />
+        <input
+          type="text"
+          placeholder="Search projects, tasks, teams, people..."
+          [ngModel]="searchQuery()"
+          (ngModelChange)="onSearchInput($event)"
+          (keydown)="onSearchKeydown($event)"
+          (focus)="searchOpen.set(true)"
+          (blur)="onSearchBlur()"
+        />
+        <button class="search-clear-btn" *ngIf="searchQuery()" (mousedown)="clearSearch($event)" matTooltip="Clear search">
+          <mat-icon>close</mat-icon>
+        </button>
         <kbd class="shortcut-kbd">⌘K</kbd>
+
+        <!-- Global Search Results Dropdown -->
+        <div class="global-search-panel" *ngIf="searchOpen()">
+          <div class="gsp-head">
+            <span *ngIf="searchLoading()">Searching across projects, tasks, teams &amp; people&hellip;</span>
+            <span *ngIf="!searchLoading() && searchResults().length > 0">
+              {{ searchResults().length }} result{{ searchResults().length === 1 ? '' : 's' }} for &ldquo;{{ searchQuery() }}&rdquo;
+            </span>
+            <span *ngIf="!searchLoading() && searchResults().length === 0">
+              No matches for &ldquo;{{ searchQuery() }}&rdquo;
+            </span>
+          </div>
+
+          <ng-container *ngIf="searchResults().length > 0">
+            <div class="gsp-group" *ngFor="let g of groupedSearchResults()">
+              <div class="gsp-group-title">
+                <mat-icon>{{ g.items[0].icon }}</mat-icon>
+                <span>{{ g.group }}</span>
+              </div>
+              <button
+                class="gsp-item"
+                *ngFor="let r of g.items"
+                [class.highlighted]="searchActiveIndex() === r.searchIndex"
+                (mouseenter)="searchActiveIndex.set(r.searchIndex)"
+                (mousedown)="$event.preventDefault()"
+                (click)="selectSearchResult(r)"
+                matTooltip="Open"
+              >
+                <mat-icon class="gsp-item-icon">{{ r.icon }}</mat-icon>
+                <div class="gsp-item-body">
+                  <span class="gsp-title">{{ r.title }}</span>
+                  <span class="gsp-sub">{{ r.subtitle }}</span>
+                </div>
+                <mat-icon class="gsp-arrow">east</mat-icon>
+              </button>
+            </div>
+            <div class="gsp-footer">
+              <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+              <span><kbd>↵</kbd> open</span>
+              <span><kbd>esc</kbd> close</span>
+            </div>
+          </ng-container>
+        </div>
       </div>
     </div>
 
@@ -52,8 +106,18 @@
         <span class="action-lbl">Raise Ticket</span>
       </button>
 
+      <!-- Quick Dark / Light Switch Toggle (Zoho style) -->
+      <button class="action-btn theme-toggle-btn" (click)="themeService.toggleDarkLight()" [matTooltip]="themeService.isDark() ? 'Switch to Light Mode' : 'Switch to Zoho Dark Mode'">
+        <mat-icon>{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      </button>
+
+      <!-- Theme / Appearance Quick Button -->
+      <button class="action-btn theme-trigger" (click)="openThemePicker()" matTooltip="Appearance & 5 Curated Themes">
+        <mat-icon>palette</mat-icon>
+      </button>
+
       <!-- Notifications Bell -->
-      <button class="action-btn notif-trigger" [matMenuTriggerFor]="notifMenu" matTooltip="Live Notifications">
+      <button class="action-btn notif-trigger" [matMenuTriggerFor]="notifMenu" #notifTrigger="matMenuTrigger" matTooltip="Live Notifications">
         <mat-icon>notifications</mat-icon>
         <span class="notif-badge" *ngIf="unreadCount() > 0">{{ unreadCount() }}</span>
       </button>
@@ -92,24 +156,55 @@
 
   <mat-menu #notifMenu="matMenu" xPosition="before" class="dropdown-panel notif-panel">
     <div class="notif-header">
-      <strong>Live Telemetry Notifications</strong>
-      <button mat-button class="link-btn" (click)="markAllRead()">Mark all read</button>
+      <div class="notif-header-title">
+        <strong>Realtime Notifications</strong>
+        <span class="notif-count" *ngIf="unreadCount() > 0">{{ unreadCount() }} Unread</span>
+      </div>
+      <div class="notif-header-actions">
+        <button mat-button class="link-btn" (click)="markAllRead()">Mark all read</button>
+        <button mat-icon-button class="notif-close-btn" (click)="notifTrigger.closeMenu()" matTooltip="Close menu">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
     </div>
+
+    <!-- Filter Bar (All / Unread) -->
+    <div class="notif-tabs">
+      <button class="tab-btn" [class.active]="notifFilter() === 'ALL'" (click)="notifFilter.set('ALL'); $event.stopPropagation()">
+        All ({{ notifications().length }})
+      </button>
+      <button class="tab-btn" [class.active]="notifFilter() === 'UNREAD'" (click)="notifFilter.set('UNREAD'); $event.stopPropagation()">
+        Unread ({{ unreadCount() }})
+      </button>
+    </div>
+
     <mat-divider></mat-divider>
+
     <div class="notif-scroll">
-      <div
+      <button
         class="notif-item"
-        *ngFor="let n of notifications()"
+        *ngFor="let n of filteredNotifications()"
         [class.unread]="!n.read"
+        (click)="openNotificationDetail(n); notifTrigger.closeMenu()"
       >
         <div class="notif-dot" *ngIf="!n.read"></div>
-        <div class="notif-icon-wrap" [ngClass]="n.color">
-          <mat-icon>{{ n.icon }}</mat-icon>
+        <div class="notif-icon-wrap" [ngClass]="getNotifColor(n.type)">
+          <mat-icon>{{ getNotifIcon(n.type) }}</mat-icon>
         </div>
         <div class="notif-body">
-          <p>{{ n.text }}</p>
-          <span class="notif-time">{{ n.time }}</span>
+          <div class="notif-title-row">
+            <span class="notif-item-title">{{ n.title }}</span>
+            <span class="notif-badge-pill" [ngClass]="'type-' + n.type.toLowerCase()">{{ n.type }}</span>
+          </div>
+          <p class="notif-snippet">{{ n.message }}</p>
+          <span class="notif-time">{{ n.createdAt | date:'shortTime' }}</span>
         </div>
+        <mat-icon class="notif-dismiss" (click)="dismissNotification(n, $event)" matTooltip="Delete">close</mat-icon>
+      </button>
+
+      <div class="notif-empty" *ngIf="filteredNotifications().length === 0">
+        <mat-icon>notifications_off</mat-icon>
+        <span>No notifications found in this view.</span>
       </div>
     </div>
   </mat-menu>
@@ -133,6 +228,10 @@
     <button mat-menu-item routerLink="/my-workspace">
       <mat-icon>dashboard</mat-icon>
       <span>My Workspace</span>
+    </button>
+    <button mat-menu-item (click)="openThemePicker()">
+      <mat-icon>palette</mat-icon>
+      <span>Appearance &amp; Themes</span>
     </button>
     <button mat-menu-item routerLink="/support">
       <mat-icon>support_agent</mat-icon>
@@ -182,6 +281,11 @@
           <a routerLink="/my-workspace" routerLinkActive="active" class="nav-item">
             <mat-icon>space_dashboard</mat-icon>
             <span class="nav-label">My Workspace</span>
+          </a>
+          <a routerLink="/mail" routerLinkActive="active" class="nav-item">
+            <mat-icon class="text-indigo">mail</mat-icon>
+            <span class="nav-label">Mail Service</span>
+            <span class="nav-pill-badge purple" *ngIf="mailUnreadCount() > 0 && !sidebarCollapsed()">+{{ mailUnreadCount() > 99 ? '99' : mailUnreadCount() }}</span>
           </a>
         </nav>
 

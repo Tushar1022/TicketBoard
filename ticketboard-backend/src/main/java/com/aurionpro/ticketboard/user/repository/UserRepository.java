@@ -4,6 +4,7 @@ import com.aurionpro.ticketboard.user.entity.Role;
 import com.aurionpro.ticketboard.user.entity.User;
 import com.aurionpro.ticketboard.user.enums.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -37,4 +38,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByRoleName(@Param("roleName") com.aurionpro.ticketboard.user.enums.RoleType roleName);
 
     List<User> findByRolesNameAndStatus(com.aurionpro.ticketboard.user.enums.RoleType roleName, UserStatus status);
+
+    @Modifying
+    @Query("UPDATE User u SET u.reportingManager = null WHERE u.reportingManager.id = :userId")
+    void detachReportingManager(@Param("userId") Long userId);
 }

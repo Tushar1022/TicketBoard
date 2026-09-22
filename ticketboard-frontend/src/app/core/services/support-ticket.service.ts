@@ -1,9 +1,11 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, forkJoin, of } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, tap } from 'rxjs/operators';
 import {
   ApiResponse,
+  CreateSupportAnnouncementRequest,
+  SupportAnnouncement,
   SupportCategory,
   SupportStats,
   SupportTicket,
@@ -17,9 +19,11 @@ import { AuthService } from './auth.service';
 })
 export class SupportTicketService {
   private readonly baseUrl = 'http://localhost:8080/api/v1/support/tickets';
+  private readonly announcementUrl = 'http://localhost:8080/api/v1/support/announcements';
 
   public myTickets = signal<SupportTicket[]>([]);
   public adminTickets = signal<SupportTicket[]>([]);
+  public activeAnnouncement = signal<SupportAnnouncement | null>(null);
   public stats = signal<SupportStats | null>(null);
   public isLoading = signal<boolean>(false);
   public loadError = signal<string>('');
@@ -52,9 +56,16 @@ export class SupportTicketService {
     return roles.includes('ROLE_SUPER_ADMIN') || roles.includes('ROLE_ADMIN') || roles.includes('ROLE_PROJECT_MANAGER') || roles.includes('ROLE_TEAM_LEAD');
   }
 
+  public isSuperAdmin(): boolean {
+    const roles = this.authService.currentUser()?.roles || [];
+    return roles.includes('ROLE_SUPER_ADMIN');
+  }
+
   public refreshAll(): void {
     this.isLoading.set(true);
     this.loadError.set('');
+
+    this.fetchActiveAnnouncement().subscribe();
 
     const admin$ = this.isAdminUser()
       ? this.http.get<ApiResponse<SupportTicket[]>>(`${this.baseUrl}/admin`)
@@ -165,5 +176,54 @@ export class SupportTicketService {
 
   public getOpenCount(): Observable<number> {
     return this.http.get<ApiResponse<number>>(`${this.baseUrl}/open-count`).pipe(map(res => res.data ?? 0));
+  }
+
+  // ─── Support Announcement Methods ──────────────────────────────────────
+  public fetchActiveAnnouncement(): Observable<SupportAnnouncement | null> {
+    return this.http.get<ApiResponse<SupportAnnouncement>>(`${this.announcementUrl}/active`).pipe(
+      map(res => res.data ?? null),
+      tap(announcement => this.activeAnnouncement.set(announcement))
+    );
+  }
+
+  public getAllAnnouncements(): Observable<SupportAnnouncement[]> {
+    return this.http.get<ApiResponse<SupportAnnouncement[]>>(this.announcementUrl).pipe(
+      map(res => res.data ?? [])
+    );
+  }
+
+  public createAnnouncement(payload: CreateSupportAnnouncementRequest): Observable<SupportAnnouncement> {
+    return this.http.post<ApiResponse<SupportAnnouncement>>(this.announcementUrl, payload).pipe(
+      map(res => {
+        this.fetchActiveAnnouncement().subscribe();
+        return res.data;
+      })
+    );
+  }
+
+  public updateAnnouncement(id: number, payload: CreateSupportAnnouncementRequest): Observable<SupportAnnouncement> {
+    return this.http.put<ApiResponse<SupportAnnouncement>>(`${this.announcementUrl}/${id}`, payload).pipe(
+      map(res => {
+        this.fetchActiveAnnouncement().subscribe();
+        return res.data;
+      })
+    );
+  }
+
+  public toggleAnnouncementStatus(id: number): Observable<SupportAnnouncement> {
+    return this.http.patch<ApiResponse<SupportAnnouncement>>(`${this.announcementUrl}/${id}/toggle`, {}).pipe(
+      map(res => {
+        this.fetchActiveAnnouncement().subscribe();
+        return res.data;
+      })
+    );
+  }
+
+  public deleteAnnouncement(id: number): Observable<void> {
+    return this.http.delete<ApiResponse<void>>(`${this.announcementUrl}/${id}`).pipe(
+      map(() => {
+        this.fetchActiveAnnouncement().subscribe();
+      })
+    );
   }
 }

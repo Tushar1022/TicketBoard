@@ -59,4 +59,6 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, Long> {
 
     @Query("SELECT t.user.id, SUM(t.totalHours) FROM TimeEntry t WHERE t.project.id = :projectId AND t.user IS NOT NULL GROUP BY t.user.id")
     List<Object[]> hoursGroupedByUserForProject(@Param("projectId") Long projectId);
+
+    void deleteByUserId(Long userId);
 }

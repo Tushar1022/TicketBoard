@@ -76,6 +76,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Object>> handleBadRequest(HttpMessageNotReadableException ex) {
+        log.warn("Invalid request body: {}", ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage());
         return new ResponseEntity<>(ApiResponse.error("Invalid request body"), HttpStatus.BAD_REQUEST);
     }
 

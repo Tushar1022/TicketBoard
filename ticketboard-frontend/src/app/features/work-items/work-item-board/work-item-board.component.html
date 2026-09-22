@@ -383,6 +383,7 @@
     [projects]="projects()"
     (close)="closeTaskDrawer()"
     (saved)="onTaskModalSaved()"
+    (openSubtask)="openTaskDrawer($event)"
   ></app-task-detail-dialog>
 
   <!-- Create Task Modal Dialog -->

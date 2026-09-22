@@ -1,0 +1,59 @@
+<div class="notification-modal-container">
+  <!-- Dialog Header -->
+  <div class="modal-header">
+    <div class="header-left">
+      <div class="type-icon-box" [ngClass]="getBadgeClass(notification().type)">
+        <mat-icon>{{ getIcon(notification().type) }}</mat-icon>
+      </div>
+      <div class="header-meta">
+        <div class="badge-group">
+          <span class="type-badge" [ngClass]="getBadgeClass(notification().type)">
+            {{ notification().type }}
+          </span>
+          <span *ngIf="notification().priority" class="priority-badge" [ngClass]="getPriorityClass(notification().priority)">
+            {{ notification().priority }}
+          </span>
+          <span class="status-indicator" [class.read]="notification().read">
+            {{ notification().read ? 'Read' : 'Unread' }}
+          </span>
+        </div>
+        <span class="time-label">{{ notification().createdAt | date:'medium' }}</span>
+      </div>
+    </div>
+    <button class="close-icon-btn" (click)="close()" title="Cancel and Close">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Dialog Content Body -->
+  <div class="modal-body">
+    <h2 class="notification-title">{{ notification().title }}</h2>
+
+    <div class="message-card">
+      <p class="message-text">{{ notification().message }}</p>
+    </div>
+
+    <!-- Action Link Button if available -->
+    <div *ngIf="notification().actionUrl" class="action-box">
+      <button class="btn-action-link" (click)="navigateAction()">
+        <mat-icon>launch</mat-icon>
+        <span>Open Related Workspace ({{ notification().actionUrl }})</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Dialog Footer Action Bar -->
+  <div class="modal-footer">
+    <div class="footer-left">
+      <button class="btn-secondary-action" (click)="deleteNotification()" [disabled]="isUpdating()">
+        <mat-icon>delete_outline</mat-icon>
+        <span>Delete</span>
+      </button>
+    </div>
+    <div class="footer-right">
+      <button class="btn-cancel" (click)="close()">
+        <span>Cancel</span>
+      </button>
+    </div>
+  </div>
+</div>

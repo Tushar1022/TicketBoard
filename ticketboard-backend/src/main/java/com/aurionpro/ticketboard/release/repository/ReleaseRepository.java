@@ -3,6 +3,7 @@ package com.aurionpro.ticketboard.release.repository;
 import com.aurionpro.ticketboard.release.entity.Release;
 import com.aurionpro.ticketboard.release.enums.ReleaseStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -30,4 +31,8 @@ public interface ReleaseRepository extends JpaRepository<Release, Long> {
 
     @Query("SELECT COUNT(r) FROM Release r WHERE r.status IN (com.aurionpro.ticketboard.release.enums.ReleaseStatus.DEPLOYED, com.aurionpro.ticketboard.release.enums.ReleaseStatus.CLOSED)")
     long countTotalCompletedReleases();
+
+    @Modifying
+    @Query("UPDATE Release r SET r.owner = null WHERE r.owner.id = :userId")
+    void detachOwner(@Param("userId") Long userId);
 }

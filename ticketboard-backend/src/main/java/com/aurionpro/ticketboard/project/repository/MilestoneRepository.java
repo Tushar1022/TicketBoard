@@ -48,4 +48,8 @@ public interface MilestoneRepository extends JpaRepository<Milestone, Long> {
     @Modifying
     @Query("UPDATE Issue i SET i.milestone = null WHERE i.milestone.id = :milestoneId")
     void detachIssues(@Param("milestoneId") Long milestoneId);
+
+    @Modifying
+    @Query("UPDATE Milestone m SET m.owner = null WHERE m.owner.id = :userId")
+    void detachOwner(@Param("userId") Long userId);
 }

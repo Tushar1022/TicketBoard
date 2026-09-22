@@ -18,4 +18,6 @@ public interface IssueWatcherRepository extends JpaRepository<IssueWatcher, Long
     long countByIssueId(Long issueId);
 
     void deleteByIssueId(Long issueId);
+
+    void deleteByUserId(Long userId);
 }

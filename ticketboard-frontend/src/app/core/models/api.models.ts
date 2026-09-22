@@ -640,6 +640,75 @@ export interface QaDashboard {
   criticalDefects: WorkItem[];
 }
 
+export interface DeveloperTelemetry {
+  dbProduct: string;
+  dbVersion: string;
+  latencyMs: number;
+  serverTime: string;
+  wsEndpointAvailable: boolean;
+}
+
+export type FocusSessionStatus = 'RUNNING' | 'PAUSED' | 'LOGGED';
+
+export interface FocusSession {
+  id: number;
+  userId: number;
+  workItemId?: number;
+  workItemTicketNumber?: string;
+  workItemTitle?: string;
+  projectId?: number;
+  status: FocusSessionStatus;
+  elapsedSeconds: number;
+  accumulatedSeconds: number;
+  startedAt: string;
+  description?: string;
+}
+
+export interface ERPAsset {
+  id: number;
+  assetCode?: string;
+  name: string;
+  category: string;
+  serialNumber?: string;
+  assignedDate?: string;
+  status: string;
+  userId?: number;
+}
+
+export interface ExpenseClaim {
+  id: number;
+  claimCode?: string;
+  category: string;
+  amount: number;
+  currency?: string;
+  claimDate?: string;
+  description?: string;
+  status: string;
+  userId?: number;
+}
+
+export interface LeaveRequestApi {
+  id: number;
+  requestCode?: string;
+  leaveType: string;
+  startDate?: string;
+  endDate?: string;
+  totalDays?: number;
+  reason?: string;
+  status: string;
+  userId?: number;
+}
+
+export interface OKRGoalApi {
+  id: number;
+  title: string;
+  category?: string;
+  target?: string;
+  progressPercentage?: number;
+  dueDate?: string;
+  userId?: number;
+}
+
 export interface Comment {
   id: number;
   entityType: string;
@@ -665,8 +734,11 @@ export interface ActivityLog {
   newValue?: string;
   performedById?: number;
   performedByName?: string;
+  userId?: number;
+  userFullName?: string;
+  timestamp?: string;
+  createdAt?: string;
   ipAddress?: string;
-  createdAt: string;
 }
 
 export type InvoiceStatus = 'DRAFT' | 'SENT' | 'VIEWED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
@@ -882,5 +954,135 @@ export interface ProjectStats {
   tasksByPriority: Record<string, number>;
   issuesBySeverity: Record<string, number>;
 }
+
+export type AnnouncementType = 'LONG_TERM_SUPPORT' | 'MAINTENANCE' | 'INFO' | 'ADVISORY';
+
+export interface SupportAnnouncement {
+  id: number;
+  title: string;
+  message: string;
+  type: AnnouncementType;
+  active: boolean;
+  postedByName?: string;
+  postedByEmail?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateSupportAnnouncementRequest {
+  title: string;
+  message: string;
+  type: AnnouncementType;
+  active?: boolean;
+}
+
+export type NotificationType = 'TASK' | 'MENTION' | 'ALERT' | 'SYSTEM' | 'SECURITY' | 'ERP';
+export type NotificationPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
+export interface AppNotification {
+  id: number;
+  recipientEmail: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  priority?: NotificationPriority;
+  read: boolean;
+  actionUrl?: string;
+  createdAt: string;
+}
+
+export type MailFolder = 'INBOX' | 'SENT' | 'DRAFTS' | 'SPAM' | 'TRASH' | 'ARCHIVE';
+
+export interface EmailMessage {
+  id: number;
+  userEmail: string;
+  senderEmail: string;
+  senderName?: string;
+  recipientTo: string;
+  recipientCc?: string;
+  recipientBcc?: string;
+  subject: string;
+  body: string;
+  folder: MailFolder;
+  read: boolean;
+  starred: boolean;
+  hasAttachments: boolean;
+  attachmentsJson?: string;
+  priority?: string;
+  deliveryStatus?: string;
+  createdAt: string;
+  sentAt?: string;
+}
+
+export interface FolderCounts {
+  inboxUnread: number;
+  inboxTotal: number;
+  sentTotal: number;
+  draftsTotal: number;
+  starredTotal: number;
+  archiveTotal: number;
+  spamTotal: number;
+  trashTotal: number;
+}
+
+export interface SmtpConfig {
+  id?: number;
+  userEmail?: string;
+  smtpHost: string;
+  smtpPort: number;
+  username: string;
+  password?: string;
+  fromEmail: string;
+  fromName?: string;
+  encryptionType?: 'TLS' | 'SSL' | 'NONE';
+  active?: boolean;
+  updatedAt?: string;
+}
+
+export interface MailAttachmentRef {
+  id: number;
+  fileName: string;
+  sizeBytes: number;
+  isDrive: boolean;
+  driveUrl?: string;
+}
+
+export interface DirectoryContact {
+  id?: number;
+  fullName?: string;
+  email: string;
+  designation?: string;
+}
+
+export interface SendEmailRequestPayload {
+  recipientTo: string;
+  recipientCc?: string;
+  recipientBcc?: string;
+  subject: string;
+  body: string;
+  priority?: string;
+  isDraft?: boolean;
+  attachments?: MailAttachmentRef[];
+}
+
+export interface MilestoneNote {
+  id: number;
+  milestoneId: number;
+  authorId?: number;
+  authorName?: string;
+  authorEmail?: string;
+  content: string;
+  pinned: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface MilestoneNoteCreatePayload {
+  content: string;
+  pinned?: boolean;
+}
+
+
+
 
 

@@ -17,6 +17,7 @@ import com.aurionpro.ticketboard.timetracking.enums.TimeEntryStatus;
 import com.aurionpro.ticketboard.timetracking.repository.TimeEntryRepository;
 import com.aurionpro.ticketboard.user.entity.User;
 import com.aurionpro.ticketboard.user.repository.UserRepository;
+import com.aurionpro.ticketboard.websocket.WorkspaceRealtimeService;
 import com.aurionpro.ticketboard.workitem.entity.WorkItem;
 import com.aurionpro.ticketboard.workitem.repository.WorkItemRepository;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class TimeTrackingService {
     private final UserRepository userRepository;
     private final ProjectService projectService;
     private final ActivityLogService activityLogService;
+    private final WorkspaceRealtimeService realtimeService;
 
     @Transactional(readOnly = true)
     public List<TimeEntryDto> getTimeEntriesByUser(Long userId) {
@@ -138,6 +140,8 @@ public class TimeTrackingService {
                 null,
                 String.valueOf(saved.getTotalHours())
         );
+
+        realtimeService.notifyDashboardSync(user.getId());
 
         return mapToDto(saved);
     }

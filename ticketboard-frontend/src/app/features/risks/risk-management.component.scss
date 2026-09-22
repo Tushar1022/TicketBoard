@@ -172,21 +172,21 @@
     }
 
     &.cell-green {
-      background-color: #d1fae5;
-      border-color: #a7f3d0;
-      color: #065f46;
+      background-color: var(--health-green-bg);
+      border-color: var(--health-green-border);
+      color: var(--health-green-text);
     }
 
     &.cell-amber {
-      background-color: #fef3c7;
-      border-color: #fde68a;
-      color: #92400e;
+      background-color: var(--health-amber-border);
+      border-color: var(--health-amber-border);
+      color: var(--health-amber-text);
     }
 
     &.cell-red {
-      background-color: #fee2e2;
-      border-color: #fecaca;
-      color: #991b1b;
+      background-color: var(--health-red-bg);
+      border-color: var(--health-red-border);
+      color: var(--health-red-text);
     }
   }
 
@@ -248,7 +248,7 @@
     }
 
     .r-plan-box {
-      background-color: #ffffff;
+      background-color: var(--surface-card);
       border: 1px solid var(--surface-border);
       border-radius: 4px;
       padding: 6px 10px;
@@ -296,7 +296,7 @@
     .crit-tag {
       font-size: 0.65rem;
       font-weight: 800;
-      background-color: #dc2626;
+      background-color: var(--danger);
       color: #ffffff;
       padding: 2px 6px;
       border-radius: 3px;
@@ -342,7 +342,7 @@
     align-items: center;
     padding: 20px 24px;
     border-bottom: 1px solid var(--surface-border);
-    background: linear-gradient(to right, #f8fafc, #ffffff);
+    background: linear-gradient(to right, var(--surface-subtle), var(--surface-card));
 
     .modal-title-wrap {
       display: flex;
@@ -350,8 +350,8 @@
       gap: 12px;
 
       .text-amber {
-        color: #d97706;
-        background: #fef3c7;
+        color: var(--health-amber-dot);
+        background: var(--health-amber-border);
         padding: 8px;
         border-radius: 8px;
       }
@@ -360,7 +360,7 @@
         font-size: 1.25rem;
         font-weight: 700;
         margin: 0;
-        color: #1e293b;
+        color: var(--text-main);
       }
     }
   }
@@ -381,22 +381,22 @@
       label {
         font-size: 0.85rem;
         font-weight: 600;
-        color: #475569;
+        color: var(--text-muted);
       }
 
       .form-control {
         padding: 10px 14px;
-        border: 1px solid #cbd5e1;
+        border: 1px solid var(--surface-border-hover);
         border-radius: 6px;
         font-size: 0.9rem;
         transition: all 0.2s ease;
-        background-color: #f8fafc;
+        background-color: var(--surface-subtle);
 
         &:focus {
           outline: none;
-          border-color: #6366f1;
+          border-color: var(--primary-500);
           box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-          background-color: #ffffff;
+          background-color: var(--surface-card);
         }
       }
     }
@@ -412,7 +412,7 @@
     justify-content: flex-end;
     gap: 12px;
     padding: 16px 24px;
-    background-color: #f8fafc;
-    border-top: 1px solid #e2e8f0;
+    background-color: var(--surface-subtle);
+    border-top: 1px solid var(--surface-border);
   }
 }

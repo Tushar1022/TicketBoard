@@ -111,6 +111,9 @@
             <button mat-icon-button [matTooltip]="user.status === 'ACTIVE' ? 'Deactivate' : 'Activate'" (click)="toggleStatus(user)" *ngIf="authService.hasPermission('user:manage-status')">
               <mat-icon>{{ user.status === 'ACTIVE' ? 'block' : 'check_circle' }}</mat-icon>
             </button>
+            <button mat-icon-button matTooltip="Delete" class="delete-btn" (click)="deleteUser(user)" *ngIf="authService.hasPermission('user:delete')">
+              <mat-icon>delete</mat-icon>
+            </button>
           </div>
         </td>
       </ng-container>

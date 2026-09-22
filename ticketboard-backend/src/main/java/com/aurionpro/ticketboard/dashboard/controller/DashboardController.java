@@ -2,6 +2,7 @@ package com.aurionpro.ticketboard.dashboard.controller;
 
 import com.aurionpro.ticketboard.common.response.ApiResponse;
 import com.aurionpro.ticketboard.dashboard.dto.DeveloperDashboardDto;
+import com.aurionpro.ticketboard.dashboard.dto.DeveloperTelemetryDto;
 import com.aurionpro.ticketboard.dashboard.dto.ExecutiveDashboardDto;
 import com.aurionpro.ticketboard.dashboard.dto.QaDashboardDto;
 import com.aurionpro.ticketboard.dashboard.service.DashboardService;
@@ -25,6 +26,13 @@ public class DashboardController {
     public ResponseEntity<ApiResponse<ExecutiveDashboardDto>> getExecutiveDashboard() {
         ExecutiveDashboardDto dashboard = dashboardService.getExecutiveDashboard();
         return ResponseEntity.ok(ApiResponse.ok("Executive dashboard metrics", dashboard));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/developer/telemetry")
+    public ResponseEntity<ApiResponse<DeveloperTelemetryDto>> getDeveloperTelemetry() {
+        DeveloperTelemetryDto telemetry = dashboardService.getDeveloperTelemetry();
+        return ResponseEntity.ok(ApiResponse.ok("Developer workspace telemetry", telemetry));
     }
 
     @PreAuthorize("isAuthenticated()")

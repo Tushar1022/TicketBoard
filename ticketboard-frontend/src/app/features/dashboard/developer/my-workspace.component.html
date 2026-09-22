@@ -1,203 +1,752 @@
 <div class="workspace-page">
-  <!-- Header -->
-  <div class="page-header">
-    <div class="title-group">
-      <div class="badge badge-blue">
-        <mat-icon class="badge-icon">person_pin</mat-icon>
-        <span>Developer Cockpit</span>
-      </div>
-      <h1>My Assigned Work &amp; Sprint Queue</h1>
-      <p class="subtitle">Personalized queue for tasks, defects, blockers, and weekly 40-hour timesheet tracking</p>
-    </div>
 
-    <div class="header-actions">
-      <button class="btn btn-primary btn-sm" (click)="openLogTimeModal()">
-        <mat-icon class="sm-icon">timer</mat-icon>
-        <span>Log Time Today</span>
-      </button>
-      <button class="btn btn-secondary btn-sm" (click)="loadWorkspaceData()">
-        <mat-icon class="sm-icon">refresh</mat-icon>
-        <span>Refresh</span>
-      </button>
-    </div>
+  <!-- ═══ 3. Workspace Command Sub-Tabs Navigation ═══ -->
+  <div class="workspace-subtabs-nav">
+    <button
+      type="button"
+      class="nav-tab-item"
+      [class.active]="activeTab() === 'cockpit'"
+      (click)="activeTab.set('cockpit')"
+    >
+      <mat-icon>checklist</mat-icon>
+      <span>Sprint Queue &amp; Cockpit</span>
+    </button>
+
+    <button
+      type="button"
+      class="nav-tab-item"
+      [class.active]="activeTab() === 'erp'"
+      (click)="activeTab.set('erp')"
+    >
+      <mat-icon>business</mat-icon>
+      <span>ERP HR, Assets &amp; Claims</span>
+    </button>
+
+    <button
+      type="button"
+      class="nav-tab-item"
+      [class.active]="activeTab() === 'tools'"
+      (click)="activeTab.set('tools')"
+    >
+      <mat-icon>construction</mat-icon>
+      <span>Developer Utilities Vault</span>
+    </button>
+
+    <button
+      type="button"
+      class="nav-tab-item"
+      [class.active]="activeTab() === 'profile'"
+      (click)="activeTab.set('profile')"
+    >
+      <mat-icon>account_box</mat-icon>
+      <span>Developer Profile Hub</span>
+    </button>
+
+    <button
+      type="button"
+      class="nav-tab-item"
+      [class.active]="activeTab() === 'themes'"
+      (click)="activeTab.set('themes')"
+    >
+      <mat-icon>palette</mat-icon>
+      <span>50 Fonts &amp; Themes Studio</span>
+    </button>
   </div>
 
   <!-- Loading State -->
   <div class="loading-state" *ngIf="isLoading()">
     <div class="spinner"></div>
-    <span>Loading your work items and capacity...</span>
+    <span>Loading workspace data &amp; telemetry...</span>
   </div>
 
-  <div class="workspace-content" *ngIf="!isLoading() && data()">
-    
-    <!-- Top KPI Cards -->
-    <div class="kpi-banner-grid">
-      <!-- Hours Logged Card -->
-      <div class="kpi-box card-panel">
-        <div class="kpi-icon-wrap bg-indigo">
-          <mat-icon>schedule</mat-icon>
+  <div class="tab-body-container" *ngIf="!isLoading()">
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         TAB 1: SPRINT QUEUE & AGILE COCKPIT
+         ═══════════════════════════════════════════════════════════════════ -->
+    <div *ngIf="activeTab() === 'cockpit'" class="tab-content-panel">
+
+      <!-- Top KPI Cards -->
+      <div class="kpi-banner-grid">
+        <div class="kpi-box card-panel">
+          <div class="kpi-icon-wrap bg-indigo">
+            <mat-icon>schedule</mat-icon>
+          </div>
+          <div class="kpi-detail">
+            <span class="kpi-num">{{ (data()?.hoursLoggedThisWeek ?? 0).toFixed(1) }}h / {{ (data()?.weeklyCapacityHours ?? 0).toFixed(1) }}h</span>
+            <span class="kpi-lbl">Hours Logged This Week</span>
+            <div class="capacity-progress">
+              <div
+                class="capacity-fill"
+                [style.width.%]="weeklyLoggedPercent()"
+              ></div>
+            </div>
+          </div>
         </div>
-        <div class="kpi-detail">
-          <span class="kpi-num">{{ data()?.hoursLoggedThisWeek }}h / {{ data()?.weeklyCapacityHours }}h</span>
-          <span class="kpi-lbl">Hours Logged This Week</span>
-          <div class="capacity-progress">
-            <div
-              class="capacity-fill"
-              [style.width.%]="((data()?.hoursLoggedThisWeek || 0) / (data()?.weeklyCapacityHours || 40)) * 100"
-            ></div>
+
+        <div class="kpi-box card-panel">
+          <div class="kpi-icon-wrap bg-blue">
+            <mat-icon>task_alt</mat-icon>
+          </div>
+          <div class="kpi-detail">
+            <span class="kpi-num">{{ data()?.assignedTasksCount ?? 0 }}</span>
+            <span class="kpi-lbl">Active Tasks Assigned</span>
+          </div>
+        </div>
+
+        <div class="kpi-box card-panel">
+          <div class="kpi-icon-wrap bg-red">
+            <mat-icon>bug_report</mat-icon>
+          </div>
+          <div class="kpi-detail">
+            <span class="kpi-num text-red">{{ data()?.openBugsCount ?? 0 }}</span>
+            <span class="kpi-lbl">Open Defects Assigned</span>
+          </div>
+        </div>
+
+        <div class="kpi-box card-panel">
+          <div class="kpi-icon-wrap bg-amber">
+            <mat-icon>block</mat-icon>
+          </div>
+          <div class="kpi-detail">
+            <span class="kpi-num text-amber">{{ data()?.blockedTasksCount ?? 0 }}</span>
+            <span class="kpi-lbl">Blocked Tasks</span>
+          </div>
+        </div>
+
+        <div class="kpi-box card-panel">
+          <div class="kpi-icon-wrap bg-purple">
+            <mat-icon>event</mat-icon>
+          </div>
+          <div class="kpi-detail">
+            <span class="kpi-num">{{ data()?.upcomingDeadlines?.length ?? 0 }}</span>
+            <span class="kpi-lbl">Upcoming Deadlines</span>
           </div>
         </div>
       </div>
 
-      <!-- Active Tasks -->
-      <div class="kpi-box card-panel">
-        <div class="kpi-icon-wrap bg-blue">
-          <mat-icon>task_alt</mat-icon>
-        </div>
-        <div class="kpi-detail">
-          <span class="kpi-num">{{ data()?.assignedTasksCount }}</span>
-          <span class="kpi-lbl">Active Tasks Assigned</span>
-        </div>
-      </div>
+      <!-- Main Workspace Grid -->
+      <div class="workspace-grid">
+        <!-- Left: Active Task Queue & Bugs -->
+        <div class="grid-col left-col">
+          <!-- Active Tasks Section -->
+          <div class="card-panel section-card">
+            <div class="section-card-header">
+              <div class="header-left-title">
+                <mat-icon class="section-icon text-indigo">checklist</mat-icon>
+                <h3>My Active Tasks &amp; Stories</h3>
+              </div>
+              <a routerLink="/work-items" class="view-all-link">Kanban Board &rarr;</a>
+            </div>
 
-      <!-- Bugs -->
-      <div class="kpi-box card-panel">
-        <div class="kpi-icon-wrap bg-red">
-          <mat-icon>bug_report</mat-icon>
-        </div>
-        <div class="kpi-detail">
-          <span class="kpi-num text-red">{{ data()?.openBugsCount }}</span>
-          <span class="kpi-lbl">Open Defects Assigned</span>
-        </div>
-      </div>
+            <div class="item-list">
+              <div class="work-card" *ngFor="let item of data()?.myActiveTasks" [routerLink]="['/work-items']">
+                <div class="card-header-line">
+                  <span class="ticket-tag">{{ item.ticketNumber }}</span>
+                  <span class="badge" [ngClass]="{
+                    'badge-blue': item.status === 'IN_PROGRESS',
+                    'badge-purple': item.status === 'IN_REVIEW',
+                    'badge-slate': item.status === 'TODO'
+                  }">{{ item.status }}</span>
+                </div>
+                <div class="item-title">{{ item.title }}</div>
+                <div class="item-meta">
+                  <span>Project: {{ item.projectName || '—' }}</span>
+                  <span>Due: {{ item.dueDate || '—' }}</span>
+                  <span>Est: {{ item.estimatedHours }}h</span>
+                </div>
+              </div>
 
-      <!-- Blockers -->
-      <div class="kpi-box card-panel">
-        <div class="kpi-icon-wrap bg-amber">
-          <mat-icon>block</mat-icon>
+              <div class="empty-hint" *ngIf="!data()?.myActiveTasks?.length">
+                No active tasks assigned to you right now.
+              </div>
+            </div>
+          </div>
+
+          <!-- Open Defects Assigned to Me -->
+          <div class="card-panel section-card" style="margin-top: 20px;">
+            <div class="section-card-header">
+              <div class="header-left-title">
+                <mat-icon class="section-icon text-red">bug_report</mat-icon>
+                <h3>Defects Assigned to Me</h3>
+              </div>
+            </div>
+
+            <div class="item-list">
+              <div class="work-card bug-card" *ngFor="let bug of data()?.myBugs">
+                <div class="card-header-line">
+                  <span class="ticket-tag text-red">{{ bug.ticketNumber }}</span>
+                  <span class="badge badge-red">{{ bug.severity }}</span>
+                </div>
+                <div class="item-title">{{ bug.title }}</div>
+                <div class="item-meta">
+                  <span>Project: {{ bug.projectName || '—' }}</span>
+                  <span>Status: {{ bug.status }}</span>
+                </div>
+              </div>
+              <div class="empty-hint" *ngIf="!data()?.myBugs?.length">
+                No active bugs assigned.
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="kpi-detail">
-          <span class="kpi-num text-amber">{{ data()?.blockedTasksCount }}</span>
-          <span class="kpi-lbl">Blocked Tasks</span>
+
+        <!-- Right: Blocked Tasks & Recent Time Entries -->
+        <div class="grid-col right-col">
+          <!-- Blocked Tasks Alert Card -->
+          <div class="card-panel section-card">
+            <div class="section-card-header">
+              <div class="header-left-title">
+                <mat-icon class="section-icon text-amber">warning</mat-icon>
+                <h3>My Blocked Tasks</h3>
+              </div>
+            </div>
+
+            <div class="item-list">
+              <div class="work-card blocker-card" *ngFor="let b of data()?.myBlockedTasks">
+                <div class="card-header-line">
+                  <span class="ticket-tag">{{ b.ticketNumber }}</span>
+                  <span class="badge badge-amber">BLOCKED</span>
+                </div>
+                <div class="item-title">{{ b.title }}</div>
+                <div class="blocker-reason-box" *ngIf="b.blockedReason">
+                  <mat-icon class="reason-icon">lock</mat-icon>
+                  <span><strong>Blocker Reason:</strong> {{ b.blockedReason }}</span>
+                </div>
+              </div>
+              <div class="empty-hint" *ngIf="!data()?.myBlockedTasks?.length">
+                No blocked tasks.
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Time Logged -->
+          <div class="card-panel section-card" style="margin-top: 20px;">
+            <div class="section-card-header">
+              <div class="header-left-title">
+                <mat-icon class="section-icon">history</mat-icon>
+                <h3>Recent Time Entries</h3>
+              </div>
+              <a routerLink="/timetracking" class="view-all-link">Full Timesheet &rarr;</a>
+            </div>
+
+            <div class="time-entry-list">
+              <div class="time-row" *ngFor="let t of data()?.recentTimeEntries">
+                <div class="time-date">
+                  <span class="date-val">{{ t.workDate }}</span>
+                  <span class="time-hrs">{{ t.totalHours }}h</span>
+                </div>
+                <div class="time-desc">
+                  <span class="entry-proj">[{{ t.projectCode }}] {{ t.workItemTicketNumber ? '(' + t.workItemTicketNumber + ')' : '' }}</span>
+                  <span class="entry-text">{{ t.description }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+
       </div>
     </div>
 
-    <!-- Main Workspace Grid -->
-    <div class="workspace-grid">
-      <!-- Left: Active Task Queue & Bugs -->
-      <div class="grid-col left-col">
-        <!-- Active Tasks Section -->
+    <!-- ═══════════════════════════════════════════════════════════════════
+         TAB 2: ERP HR, ASSETS, CLAIMS & LEAVE MANAGEMENT
+         ═══════════════════════════════════════════════════════════════════ -->
+    <div *ngIf="activeTab() === 'erp'" class="tab-content-panel">
+
+      <!-- ERP Action Toolbar -->
+      <div class="erp-action-bar">
+        <button type="button" class="btn btn-primary btn-sm" (click)="showExpenseModal.set(true)">
+          <mat-icon>receipt_long</mat-icon>
+          <span>File Expense Claim</span>
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="showLeaveModal.set(true)">
+          <mat-icon>event_available</mat-icon>
+          <span>Request Leave</span>
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="showAssetModal.set(true)">
+          <mat-icon>devices</mat-icon>
+          <span>Request IT Asset</span>
+        </button>
+      </div>
+
+      <div class="erp-grid">
+
         <div class="card-panel section-card">
           <div class="section-card-header">
             <div class="header-left-title">
-              <mat-icon class="section-icon text-indigo">checklist</mat-icon>
-              <h3>My Active Tasks &amp; Stories</h3>
+              <mat-icon class="section-icon text-indigo">devices</mat-icon>
+              <h3>Assigned Hardware &amp; Licenses</h3>
             </div>
-            <a routerLink="/work-items" class="view-all-link">Kanban Board &rarr;</a>
+            <span class="sub-count">{{ assets().length }} Items</span>
           </div>
 
-          <div class="item-list">
-            <div class="work-card" *ngFor="let item of data()?.myActiveTasks" [routerLink]="['/work-items']">
-              <div class="card-header-line">
-                <span class="ticket-tag">{{ item.ticketNumber }}</span>
-                <span class="badge" [ngClass]="{
-                  'badge-blue': item.status === 'IN_PROGRESS',
-                  'badge-purple': item.status === 'IN_REVIEW',
-                  'badge-slate': item.status === 'TODO'
-                }">{{ item.status }}</span>
+          <div class="assets-list" *ngIf="assets().length">
+            <div class="asset-card" *ngFor="let a of assets()">
+              <div class="asset-head">
+                <span class="asset-name">{{ a.name }}</span>
+                <span class="status-pill" [class.active]="a.status === 'ACTIVE'">{{ a.status }}</span>
               </div>
-              <div class="item-title">{{ item.title }}</div>
-              <div class="item-meta">
-                <span>Project: {{ item.projectName }}</span>
-                <span>Due: {{ item.dueDate || 'N/A' }}</span>
-                <span>Est: {{ item.estimatedHours }}h</span>
+              <div class="asset-meta">
+                <span>Category: <strong>{{ a.category }}</strong></span>
+                <span>Serial/Lic: <code>{{ a.serialNumber || '—' }}</code></span>
+                <span>Assigned: {{ a.assignedDate || '—' }}</span>
               </div>
             </div>
-
-            <div class="empty-hint" *ngIf="!data()?.myActiveTasks?.length">
-              No active tasks assigned to you right now.
-            </div>
+          </div>
+          <div class="empty-hint" *ngIf="!assets().length">
+            No IT assets assigned yet. Use "Request IT Asset" to submit a request.
           </div>
         </div>
 
-        <!-- Open Defects Assigned to Me -->
-        <div class="card-panel section-card" style="margin-top: 20px;" *ngIf="(data()?.openBugsCount || 0) > 0">
+        <div class="card-panel section-card">
           <div class="section-card-header">
             <div class="header-left-title">
-              <mat-icon class="section-icon text-red">bug_report</mat-icon>
-              <h3>Defects Assigned to Me</h3>
+              <mat-icon class="section-icon text-green">attach_money</mat-icon>
+              <h3>Expense Reimbursements</h3>
+            </div>
+            <span class="sub-count">{{ expenseClaims().length }} Claims</span>
+          </div>
+
+          <div class="claims-list" *ngIf="expenseClaims().length">
+            <div class="claim-card" *ngFor="let c of expenseClaims()">
+              <div class="claim-head">
+                <span class="claim-id">{{ c.claimCode || 'EXP-' + c.id }} - {{ c.category }}</span>
+                <span class="claim-amount">${{ c.amount.toFixed(2) }} {{ c.currency }}</span>
+              </div>
+              <p class="claim-desc">{{ c.description }}</p>
+              <div class="claim-foot">
+                <span>Date: {{ c.claimDate }}</span>
+                <span class="badge" [ngClass]="{
+                  'badge-green': c.status === 'APPROVED',
+                  'badge-amber': c.status === 'PENDING',
+                  'badge-red': c.status === 'REJECTED'
+                }">{{ c.status }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="empty-hint" *ngIf="!expenseClaims().length">
+            No expense claims yet. Use "File Expense Claim" to submit one.
+          </div>
+        </div>
+
+        <div class="card-panel section-card">
+          <div class="section-card-header">
+            <div class="header-left-title">
+              <mat-icon class="section-icon text-amber">beach_access</mat-icon>
+              <h3>Leave Requests &amp; History</h3>
             </div>
           </div>
 
-          <div class="item-list">
-            <div class="work-card bug-card" *ngFor="let bug of data()?.myBugs">
-              <div class="card-header-line">
-                <span class="ticket-tag text-red">{{ bug.ticketNumber }}</span>
-                <span class="badge badge-red">{{ bug.severity }}</span>
-              </div>
-              <div class="item-title">{{ bug.title }}</div>
-              <div class="item-meta">
-                <span>Project: {{ bug.projectName }}</span>
-                <span>Status: {{ bug.status }}</span>
-              </div>
+          <div class="leave-summary-boxes">
+            <div class="leave-box">
+              <span class="num">{{ leaveTotals().approved }}</span>
+              <span class="lbl">Approved Leave Days</span>
+            </div>
+            <div class="leave-box">
+              <span class="num">{{ leaveTotals().pending }}</span>
+              <span class="lbl">Pending Days</span>
             </div>
           </div>
+
+          <div class="leave-list" *ngIf="leaveRequests().length">
+            <div class="leave-card" *ngFor="let l of leaveRequests()">
+              <div class="leave-head">
+                <span class="leave-type">{{ l.leaveType }} ({{ l.totalDays }} {{ l.totalDays === 1 ? 'day' : 'days' }})</span>
+                <span class="badge" [ngClass]="{
+                  'badge-green': l.status === 'APPROVED',
+                  'badge-amber': l.status === 'PENDING'
+                }">{{ l.status }}</span>
+              </div>
+              <div class="leave-dates">{{ l.startDate }} &rarr; {{ l.endDate }}</div>
+              <p class="leave-reason">{{ l.reason }}</p>
+            </div>
+          </div>
+          <div class="empty-hint" *ngIf="!leaveRequests().length">
+            No leave requests yet. Use "Request Leave" to submit one.
+          </div>
         </div>
+
       </div>
 
-      <!-- Right: Blocked Tasks & Recent Time Entries -->
-      <div class="grid-col right-col">
-        <!-- Blocked Tasks Alert Card -->
-        <div class="card-panel section-card" *ngIf="(data()?.blockedTasksCount || 0) > 0">
-          <div class="section-card-header">
-            <div class="header-left-title">
-              <mat-icon class="section-icon text-amber">warning</mat-icon>
-              <h3>My Blocked Tasks</h3>
-            </div>
-          </div>
-
-          <div class="item-list">
-            <div class="work-card blocker-card" *ngFor="let b of data()?.myBlockedTasks">
-              <div class="card-header-line">
-                <span class="ticket-tag">{{ b.ticketNumber }}</span>
-                <span class="badge badge-amber">BLOCKED</span>
-              </div>
-              <div class="item-title">{{ b.title }}</div>
-              <div class="blocker-reason-box" *ngIf="b.blockedReason">
-                <mat-icon class="reason-icon">lock</mat-icon>
-                <span><strong>Blocker Reason:</strong> {{ b.blockedReason }}</span>
-              </div>
-            </div>
+      <!-- OKR Goals & Performance Matrix -->
+      <div class="card-panel section-card" style="margin-top: 18px;">
+        <div class="section-card-header">
+          <div class="header-left-title">
+            <mat-icon class="section-icon text-indigo">track_changes</mat-icon>
+            <h3>Annual Performance OKRs &amp; Key Results</h3>
           </div>
         </div>
 
-        <!-- Recent Time Logged -->
-        <div class="card-panel section-card" [style.margin-top]="(data()?.blockedTasksCount || 0) > 0 ? '20px' : '0'">
-          <div class="section-card-header">
-            <div class="header-left-title">
-              <mat-icon class="section-icon">history</mat-icon>
-              <h3>Recent Time Entries</h3>
+        <div class="okr-grid" *ngIf="okrGoals().length">
+          <div class="okr-card" *ngFor="let o of okrGoals()">
+            <div class="okr-head">
+              <span class="okr-title">{{ o.title }}</span>
+              <span class="okr-cat">{{ o.category }}</span>
             </div>
-            <a routerLink="/timetracking" class="view-all-link">Full Timesheet &rarr;</a>
-          </div>
-
-          <div class="time-entry-list">
-            <div class="time-row" *ngFor="let t of data()?.recentTimeEntries">
-              <div class="time-date">
-                <span class="date-val">{{ t.workDate }}</span>
-                <span class="time-hrs">{{ t.totalHours }}h</span>
-              </div>
-              <div class="time-desc">
-                <span class="entry-proj">[{{ t.projectCode }}] {{ t.workItemTicketNumber ? '(' + t.workItemTicketNumber + ')' : '' }}</span>
-                <span class="entry-text">{{ t.description }}</span>
-              </div>
+            <div class="okr-target">Target: <strong>{{ o.target }}</strong> | Due: {{ o.dueDate }}</div>
+            <div class="okr-progress-bar">
+              <div class="okr-fill" [style.width.%]="o.progressPercentage"></div>
             </div>
+            <span class="okr-pct">{{ o.progressPercentage }}% Achieved</span>
           </div>
+        </div>
+        <div class="empty-hint" *ngIf="!okrGoals().length">
+          No OKR goals assigned yet.
         </div>
       </div>
 
     </div>
 
+    <!-- ═══════════════════════════════════════════════════════════════════
+         TAB 3: DEVELOPER UTILITIES VAULT
+         ═══════════════════════════════════════════════════════════════════ -->
+    <div *ngIf="activeTab() === 'tools'" class="tab-content-panel">
+
+      <div class="tools-layout-grid">
+
+        <div class="card-panel section-card">
+          <div class="section-card-header">
+            <div class="header-left-title">
+              <mat-icon class="section-icon text-indigo">notes</mat-icon>
+              <h3>Developer Quick Scratchpad</h3>
+            </div>
+            <button type="button" class="btn-sm-text" (click)="copyToClipboard(scratchpadText(), 'Scratchpad Notes')">
+              <mat-icon>content_copy</mat-icon> Copy
+            </button>
+          </div>
+          <textarea
+            class="scratchpad-textarea"
+            [ngModel]="scratchpadText()"
+            (ngModelChange)="updateScratchpad($event)"
+            placeholder="Type temporary notes, payloads, code snippets... (auto-saved locally)"
+          ></textarea>
+        </div>
+
+        <div class="card-panel section-card">
+          <div class="section-card-header">
+            <div class="header-left-title">
+              <mat-icon class="section-icon text-green">api</mat-icon>
+              <h3>REST API Tester</h3>
+            </div>
+            <span class="latency-badge" *ngIf="apiLatency() !== null">{{ apiLatency() }}ms</span>
+          </div>
+
+          <div class="api-tester-inputs">
+            <select class="method-select" [ngModel]="apiMethod()" (ngModelChange)="apiMethod.set($event)">
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="DELETE">DELETE</option>
+            </select>
+            <input type="text" class="url-input" [ngModel]="apiUrl()" (ngModelChange)="apiUrl.set($event)" placeholder="/api/v1/..." />
+            <button type="button" class="btn btn-primary btn-sm" (click)="executeApiTest()">Execute</button>
+          </div>
+
+          <textarea class="code-editor-box" *ngIf="apiMethod() !== 'GET' && apiMethod() !== 'DELETE'" [ngModel]="apiPayload()" (ngModelChange)="apiPayload.set($event)" placeholder="Request Payload (JSON)"></textarea>
+          <pre class="code-response-viewer"><code>{{ apiResponse() }}</code></pre>
+        </div>
+
+        <div class="card-panel section-card">
+          <div class="section-card-header">
+            <div class="header-left-title">
+              <mat-icon class="section-icon text-amber">key</mat-icon>
+              <h3>JWT Decoder &amp; Base64/Epoch Tool</h3>
+            </div>
+          </div>
+
+          <div class="tool-sub-box">
+            <label class="tool-label">Paste JWT Token (defaults to your active session):</label>
+            <input type="text" class="input-text" [ngModel]="jwtInput()" (ngModelChange)="jwtInput.set($event); decodeJwtToken()" placeholder="eyJhbGciOi..." />
+            <pre class="jwt-output"><code>{{ jwtDecoded() }}</code></pre>
+          </div>
+
+          <div class="converter-row">
+            <div class="conv-col">
+              <label class="tool-label">Base64 Encoder:</label>
+              <input type="text" class="input-text" [ngModel]="base64Input()" (ngModelChange)="base64Input.set($event); encodeBase64()" />
+              <input type="text" class="input-text readonly" [value]="base64Output()" readonly />
+            </div>
+            <div class="conv-col">
+              <label class="tool-label">Epoch Milliseconds:</label>
+              <input type="number" class="input-text" [ngModel]="epochInput()" (ngModelChange)="epochInput.set($event); convertEpoch()" />
+              <input type="text" class="input-text readonly" [value]="epochFormatted()" readonly />
+            </div>
+          </div>
+        </div>
+
+        <div class="card-panel section-card">
+          <div class="section-card-header">
+            <div class="header-left-title">
+              <mat-icon class="section-icon text-indigo">auto_awesome</mat-icon>
+              <h3>AI Standup Notes Generator</h3>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" (click)="generateStandupNotes()">Generate</button>
+          </div>
+
+          <div class="standup-form">
+            <div class="form-group">
+              <label>Yesterday Completed:</label>
+              <input type="text" class="input-text" [ngModel]="standupYesterday()" (ngModelChange)="standupYesterday.set($event)" />
+            </div>
+            <div class="form-group">
+              <label>Today Focus:</label>
+              <input type="text" class="input-text" [ngModel]="standupToday()" (ngModelChange)="standupToday.set($event)" />
+            </div>
+            <div class="form-group">
+              <label>Blockers / Risks:</label>
+              <input type="text" class="input-text" [ngModel]="standupBlockers()" (ngModelChange)="standupBlockers.set($event)" />
+            </div>
+          </div>
+
+          <pre class="standup-preview" *ngIf="generatedStandup()"><code>{{ generatedStandup() }}</code></pre>
+          <button type="button" class="btn btn-secondary btn-sm" *ngIf="generatedStandup()" (click)="copyToClipboard(generatedStandup(), 'Standup Notes')">
+            <mat-icon>content_copy</mat-icon> Copy Standup Markdown
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         TAB 4: DEVELOPER & EXECUTIVE PROFILE HUB
+         ═══════════════════════════════════════════════════════════════════ -->
+    <div *ngIf="activeTab() === 'profile'" class="tab-content-panel">
+
+      <div class="profile-layout-grid">
+
+        <div class="card-panel section-card profile-main-card">
+          <div class="profile-hero">
+            <div class="avatar-box">
+              <span>{{ profileInitials() }}</span>
+            </div>
+            <div class="user-meta">
+              <h2>{{ authService.currentUser()?.fullName || '—' }}</h2>
+              <span class="role-badge">{{ authService.currentUser()?.designation || 'Developer' }}</span>
+              <span class="dept-text">{{ authService.currentUser()?.departmentName || '' }}</span>
+            </div>
+          </div>
+
+          <div class="profile-info-grid">
+            <div class="info-row">
+              <span class="lbl">Employee ID:</span>
+              <span class="val"><code>{{ authService.currentUser()?.employeeId || '—' }}</code></span>
+            </div>
+            <div class="info-row">
+              <span class="lbl">Email Address:</span>
+              <span class="val">{{ authService.currentUser()?.email || '—' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="lbl">Reporting Manager:</span>
+              <span class="val">{{ authService.currentUser()?.reportingManagerName || '—' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="lbl">Daily Capacity:</span>
+              <span class="val">{{ authService.currentUser()?.dailyCapacityHours || 0 }} Hours / Day</span>
+            </div>
+            <div class="info-row">
+              <span class="lbl">Team:</span>
+              <span class="val">{{ authService.currentUser()?.teamName || '—' }}</span>
+            </div>
+            <div class="info-row">
+              <span class="lbl">Roles:</span>
+              <span class="val">{{ (authService.currentUser()?.roles || []).join(', ') || '—' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-panel section-card">
+          <div class="section-card-header">
+            <div class="header-left-title">
+              <mat-icon class="section-icon text-indigo">security</mat-icon>
+              <h3>Security &amp; Permissions</h3>
+            </div>
+          </div>
+
+          <div class="sec-list">
+            <div class="sec-row">
+              <div class="sec-left">
+                <mat-icon>admin_panel_settings</mat-icon>
+                <div>
+                  <span class="sec-title">Granted Permissions</span>
+                  <span class="sec-sub">{{ (authService.currentUser()?.permissions || []).length }} permission codes assigned</span>
+                </div>
+              </div>
+              <span class="badge badge-green">ACTIVE</span>
+            </div>
+
+            <div class="sec-row">
+              <div class="sec-left">
+                <mat-icon>account_circle</mat-icon>
+                <div>
+                  <span class="sec-title">Account Status</span>
+                  <span class="sec-sub">{{ authService.currentUser()?.status || '—' }}</span>
+                </div>
+              </div>
+              <span class="badge badge-green">ENABLED</span>
+            </div>
+
+            <div class="sec-row">
+              <div class="sec-left">
+                <mat-icon>badge</mat-icon>
+                <div>
+                  <span class="sec-title">Joining Date</span>
+                  <span class="sec-sub">{{ authService.currentUser()?.joiningDate || '—' }}</span>
+                </div>
+              </div>
+              <span class="badge badge-blue">ONBOARD</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-panel section-card" style="grid-column: span 2;">
+          <div class="section-card-header">
+            <div class="header-left-title">
+              <mat-icon class="section-icon text-amber">history</mat-icon>
+              <h3>Recent Activity &amp; Audit Trail</h3>
+            </div>
+          </div>
+
+          <div class="sessions-table">
+            <div class="activity-row" *ngFor="let a of recentActivities()">
+              <div class="sess-device">
+                <mat-icon>{{ activityIcon(a.entityType) }}</mat-icon>
+                <div>
+                  <span class="d-name">{{ a.summary }}</span>
+                  <span class="d-ip">{{ a.entityType }} &bull; {{ a.entityCode || ('#' + a.entityId) }}</span>
+                </div>
+              </div>
+              <span class="sess-time">{{ formatActivityTime(a.timestamp || a.createdAt) }}</span>
+            </div>
+            <div class="empty-hint" *ngIf="!recentActivities().length">
+              No recent activity recorded for your account.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         TAB 5: APPEARANCE & 50 GOOGLE FONTS STUDIO
+         ═══════════════════════════════════════════════════════════════════ -->
+    <div *ngIf="activeTab() === 'themes'" class="tab-content-panel">
+      <div class="card-panel section-card theme-section-card">
+        <div class="section-card-header">
+          <div class="header-left-title">
+            <mat-icon class="section-icon text-indigo">palette</mat-icon>
+            <h3>Appearance, 5-Theme Palettes &amp; 50 Google Fonts Studio</h3>
+          </div>
+        </div>
+        <tb-theme-picker></tb-theme-picker>
+      </div>
+    </div>
+
   </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       INTERACTIVE MODALS FOR EXPENSES, LEAVES & IT ASSETS
+       ═══════════════════════════════════════════════════════════════════ -->
+
+  <div class="custom-modal-backdrop" *ngIf="showExpenseModal()">
+    <div class="custom-modal-card">
+      <div class="modal-head">
+        <h3>File New Expense Claim</h3>
+        <button type="button" class="close-btn" (click)="showExpenseModal.set(false)">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Expense Category:</label>
+          <select class="input-text" [(ngModel)]="newExpense.category">
+            <option value="Software & Tools">Software &amp; Tools</option>
+            <option value="AWS Certification">AWS Certification</option>
+            <option value="Client Travel">Client Travel</option>
+            <option value="Hardware Accessory">Hardware Accessory</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Amount ($):</label>
+            <input type="number" class="input-text" [(ngModel)]="newExpense.amount" />
+          </div>
+          <div class="form-group">
+            <label>Currency:</label>
+            <input type="text" class="input-text" [(ngModel)]="newExpense.currency" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description &amp; Justification:</label>
+          <textarea class="input-text" [(ngModel)]="newExpense.description" placeholder="Specify invoice details..."></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="showExpenseModal.set(false)">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" (click)="submitExpense()">Submit Claim</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="custom-modal-backdrop" *ngIf="showLeaveModal()">
+    <div class="custom-modal-card">
+      <div class="modal-head">
+        <h3>Submit Leave Request</h3>
+        <button type="button" class="close-btn" (click)="showLeaveModal.set(false)">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Leave Type:</label>
+          <select class="input-text" [(ngModel)]="newLeave.type">
+            <option value="Annual Paid">Annual Paid Leave</option>
+            <option value="Sick Leave">Sick Leave</option>
+            <option value="Casual Leave">Casual Leave</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Start Date:</label>
+            <input type="date" class="input-text" [(ngModel)]="newLeave.startDate" />
+          </div>
+          <div class="form-group">
+            <label>End Date:</label>
+            <input type="date" class="input-text" [(ngModel)]="newLeave.endDate" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Reason:</label>
+          <textarea class="input-text" [(ngModel)]="newLeave.reason" placeholder="State reason for absence..."></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="showLeaveModal.set(false)">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" (click)="submitLeave()">Submit Request</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="custom-modal-backdrop" *ngIf="showAssetModal()">
+    <div class="custom-modal-card">
+      <div class="modal-head">
+        <h3>Request IT Hardware or Software</h3>
+        <button type="button" class="close-btn" (click)="showAssetModal.set(false)">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Asset Category:</label>
+          <select class="input-text" [(ngModel)]="newAsset.category">
+            <option value="Hardware">Hardware (Laptop/Monitor)</option>
+            <option value="Software License">Software License (IDE/Tools)</option>
+            <option value="Access Token">Access Token / IAM Policy</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Asset Name / Specification:</label>
+          <input type="text" class="input-text" [(ngModel)]="newAsset.name" placeholder="e.g. JetBrains Ultimate or 4K Monitor" />
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="showAssetModal.set(false)">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" (click)="submitAssetRequest()">Request Asset</button>
+      </div>
+    </div>
+  </div>
+
 </div>

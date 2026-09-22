@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ApiResponse, DeveloperDashboard, ExecutiveDashboard, QaDashboard } from '../models/api.models';
+import { ApiResponse, DeveloperDashboard, DeveloperTelemetry, ExecutiveDashboard, QaDashboard } from '../models/api.models';
 
 @Injectable({
   providedIn: 'root'
@@ -9,7 +9,7 @@ import { ApiResponse, DeveloperDashboard, ExecutiveDashboard, QaDashboard } from
 export class DashboardService {
   private readonly baseUrl = 'http://localhost:8080/api/v1/dashboards';
 
-  constructor(private http: HttpClient) {}
+  constructor(private readonly http: HttpClient) {}
 
   public getExecutiveDashboard(): Observable<ApiResponse<ExecutiveDashboard>> {
     return this.http.get<ApiResponse<ExecutiveDashboard>>(`${this.baseUrl}/executive`);
@@ -19,6 +19,10 @@ export class DashboardService {
     let params = new HttpParams();
     if (userId) params = params.set('userId', userId.toString());
     return this.http.get<ApiResponse<DeveloperDashboard>>(`${this.baseUrl}/developer`, { params });
+  }
+
+  public getDeveloperTelemetry(): Observable<ApiResponse<DeveloperTelemetry>> {
+    return this.http.get<ApiResponse<DeveloperTelemetry>>(`${this.baseUrl}/developer/telemetry`);
   }
 
   public getQaDashboard(): Observable<ApiResponse<QaDashboard>> {

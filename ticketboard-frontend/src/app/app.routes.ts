@@ -93,6 +93,10 @@ export const routes: Routes = [
         path: 'support/tickets',
         loadComponent: () => import('./features/support/support-tickets.component').then(m => m.SupportTicketsComponent)
       },
+      {
+        path: 'mail',
+        loadComponent: () => import('./features/mail/mail.component').then(m => m.MailComponent)
+      },
       // ─── Admin Panel ──────────────────────────────────────────────────
       {
         path: 'admin',

@@ -323,7 +323,33 @@
       <!-- TAB 2: SUBTASKS -->
       <div class="tab-pane" *ngIf="drawerTab() === 'SUBTASKS'">
         <div class="subtasks-container">
-          <div class="section-box subtask-form">
+          
+          <div class="subtask-list-view" *ngIf="!showSubtaskForm()">
+            <div class="st-list-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <h4 class="box-title" style="margin: 0;">Subtasks</h4>
+              <button class="btn btn-primary" (click)="showSubtaskForm.set(true)" style="padding: 6px 12px; font-size: 0.8rem;">
+                <mat-icon class="sm-icon" style="font-size: 16px; width: 16px; height: 16px; margin-right: 4px;">add</mat-icon> Add Subtask
+              </button>
+            </div>
+            
+            <div class="subtask-list">
+              <div class="subtask-item card-panel" *ngFor="let st of currentTask().subtasks || []" (click)="viewSubtask(st)" style="cursor: pointer;">
+                <label class="subtask-check-label" (click)="$event.stopPropagation()">
+                  <input type="checkbox" [checked]="st.status === 'COMPLETED' || st.status === 'CLOSED'" disabled />
+                  <span class="subtask-title-text">{{ st.ticketNumber }} — {{ st.title }}</span>
+                </label>
+                <span class="badge" [ngClass]="st.status === 'COMPLETED' || st.status === 'CLOSED' ? 'badge-green' : 'badge-blue'">
+                  {{ st.actualHours || st.estimatedHours || 0 }}h &middot; {{ st.status }}
+                </span>
+              </div>
+
+              <div class="empty-inline" *ngIf="!currentTask().subtasks || currentTask().subtasks!.length === 0">
+                <mat-icon>account_tree</mat-icon> No subtasks yet. Click "Add Subtask" to create one.
+              </div>
+            </div>
+          </div>
+
+          <div class="section-box subtask-form" *ngIf="showSubtaskForm()">
             <div class="box-head">
               <h4 class="box-title">Create Subtask</h4>
               <span class="autosave-hint">Parent: {{ currentTask().ticketNumber }}</span>
@@ -368,27 +394,14 @@
                 <input class="meta-control form-control" type="date" [ngModel]="newSubtaskDueDate()" (ngModelChange)="newSubtaskDueDate.set($event)" />
               </div>
 
-              <div class="meta-field form-span-2">
-                <button class="btn btn-primary" (click)="addSubtask()" [disabled]="!newSubtaskTitle().trim()">
+              <div class="meta-field form-span-2" style="display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end;">
+                <button class="btn" style="background: transparent; color: var(--text-muted); border: 1px solid var(--surface-border); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;" (click)="showSubtaskForm.set(false)">
+                  Cancel
+                </button>
+                <button class="btn btn-primary" (click)="addSubtask()" [disabled]="!newSubtaskTitle().trim()" style="padding: 8px 16px; border-radius: 6px;">
                   <mat-icon class="sm-icon">add_task</mat-icon> Create Subtask
                 </button>
               </div>
-            </div>
-          </div>
-
-          <div class="subtask-list">
-            <div class="subtask-item card-panel" *ngFor="let st of currentTask().subtasks || []">
-              <label class="subtask-check-label">
-                <input type="checkbox" [checked]="st.status === 'COMPLETED' || st.status === 'CLOSED'" />
-                <span class="subtask-title-text">{{ st.ticketNumber }} — {{ st.title }}</span>
-              </label>
-              <span class="badge" [ngClass]="st.status === 'COMPLETED' || st.status === 'CLOSED' ? 'badge-green' : 'badge-blue'">
-                {{ st.actualHours || st.estimatedHours || 0 }}h &middot; {{ st.status }}
-              </span>
-            </div>
-
-            <div class="empty-inline" *ngIf="!currentTask().subtasks || currentTask().subtasks!.length === 0">
-              <mat-icon>account_tree</mat-icon> No subtasks yet — add one above using this task as parent.
             </div>
           </div>
         </div>

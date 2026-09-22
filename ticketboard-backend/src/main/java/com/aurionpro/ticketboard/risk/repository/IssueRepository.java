@@ -4,6 +4,7 @@ import com.aurionpro.ticketboard.risk.entity.Issue;
 import com.aurionpro.ticketboard.risk.enums.IssueSeverity;
 import com.aurionpro.ticketboard.risk.enums.IssueStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -32,4 +33,12 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
     @Query("SELECT i.status, COUNT(i) FROM Issue i WHERE i.project.id = :projectId GROUP BY i.status")
     List<Object[]> countByStatusGroupedForProject(@Param("projectId") Long projectId);
+
+    @Modifying
+    @Query("UPDATE Issue i SET i.reporter = null WHERE i.reporter.id = :userId")
+    void detachReporter(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("UPDATE Issue i SET i.assignee = null WHERE i.assignee.id = :userId")
+    void detachAssignee(@Param("userId") Long userId);
 }

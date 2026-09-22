@@ -180,6 +180,22 @@ export class UserListComponent implements OnInit {
     });
   }
 
+  deleteUser(user: User): void {
+    if (this.authService.currentUser()?.id === user.id) {
+      this.toastService.error('You cannot delete your own account.');
+      return;
+    }
+    const confirmed = window.confirm(`Delete user "${user.fullName}" (${user.email})? This action cannot be undone.`);
+    if (!confirmed) return;
+    this.userService.deleteUser(user.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.toastService.success(`User "${user.fullName}" deleted successfully.`);
+        this.loadUsers();
+      },
+      error: (err) => this.toastService.error(err.error?.message || 'Failed to delete user')
+    });
+  }
+
   roleChips(roles: RoleType[]): string[] {
     return roles.map(r => r.replace('ROLE_', '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
   }

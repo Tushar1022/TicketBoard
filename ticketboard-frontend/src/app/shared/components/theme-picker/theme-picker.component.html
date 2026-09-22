@@ -1,0 +1,415 @@
+<div class="themes-grid-wrap">
+
+  <!-- ═══ Studio Nav Tabs ═══════════════════════════════════════════════ -->
+  <div class="studio-nav-tabs">
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="activeTab() === 'themes'"
+      (click)="activeTab.set('themes')"
+    >
+      <mat-icon>palette</mat-icon>
+      <span>Color Themes &amp; Sections</span>
+    </button>
+
+    <button
+      type="button"
+      class="tab-btn"
+      [class.active]="activeTab() === 'typography'"
+      (click)="activeTab.set('typography')"
+    >
+      <mat-icon>text_format</mat-icon>
+      <span>50 Google Fonts &amp; Sizing Studio</span>
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       TAB 1: COLOR THEMES & SECTION COMBINATIONS
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="activeTab() === 'themes'" class="tab-content">
+    <div class="section-title-row">
+      <h3>Preset Theme Collections</h3>
+      <span class="sub-label">Complete application palette presets</span>
+    </div>
+
+    <div *ngFor="let g of groups()" class="group-container">
+      <div class="theme-group-head">
+        <span class="group-label">{{ g.label }}</span>
+        <span class="group-count">{{ g.themes.length }} themes</span>
+      </div>
+
+      <div class="themes-grid">
+        <button
+          *ngFor="let t of g.themes"
+          type="button"
+          class="theme-card"
+          [class.selected]="isActive(t.id)"
+          (click)="select(t)"
+          [matTooltip]="t.description"
+        >
+          <div class="theme-preview" [class.dark-preview]="t.mode === 'dark'">
+            <span *ngFor="let sw of t.swatches" class="swatch" [style.background]="sw"></span>
+            <span class="mode-chip" [class.dark-chip]="t.mode === 'dark'">{{ t.mode === 'dark' ? 'Dark' : 'Light' }}</span>
+          </div>
+          <div class="theme-meta">
+            <div class="theme-name-row">
+              <span class="theme-name">{{ t.name }}</span>
+              <mat-icon class="check-badge" *ngIf="isActive(t.id)">check_circle</mat-icon>
+            </div>
+            <span class="theme-desc">{{ t.description }}</span>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <div class="section-title-row custom-studio-header">
+      <div class="header-with-badge">
+        <mat-icon>tune</mat-icon>
+        <div>
+          <h3>Section Combination Studio</h3>
+          <p class="sub-label">Mix &amp; match distinct themes across Dashboard Canvas, Header, Navigation Rail, and Footer.</p>
+        </div>
+      </div>
+      <button type="button" class="btn-reset" (click)="resetOverrides()">
+        <mat-icon>restart_alt</mat-icon>
+        <span>Reset Overrides</span>
+      </button>
+    </div>
+
+    <div class="studio-controls-grid">
+
+      <!-- 1. Dashboard & Canvas Style -->
+      <div class="studio-control-card">
+        <div class="card-head">
+          <mat-icon>dashboard</mat-icon>
+          <span class="card-title">Dashboard &amp; Canvas</span>
+        </div>
+        <div class="option-buttons">
+          <button type="button" class="option-chip" [class.active]="themeService.dashboardStyle() === 'default'" (click)="setDashboardStyle('default')">Default Theme</button>
+          <button type="button" class="option-chip dark-chip" [class.active]="themeService.dashboardStyle() === 'dark-obsidian'" (click)="setDashboardStyle('dark-obsidian')">Zoho Obsidian Black</button>
+          <button type="button" class="option-chip slate-chip" [class.active]="themeService.dashboardStyle() === 'slate-dark'" (click)="setDashboardStyle('slate-dark')">Midnight Slate Dark</button>
+          <button type="button" class="option-chip light-chip" [class.active]="themeService.dashboardStyle() === 'white'" (click)="setDashboardStyle('white')">Clean White Slate</button>
+        </div>
+      </div>
+
+      <!-- 2. Header Topbar Style -->
+      <div class="studio-control-card">
+        <div class="card-head">
+          <mat-icon>space_dashboard</mat-icon>
+          <span class="card-title">Header Topbar</span>
+        </div>
+        <div class="option-buttons">
+          <button type="button" class="option-chip" [class.active]="themeService.headerStyle() === 'default'" (click)="setHeaderStyle('default')">Default Theme</button>
+          <button type="button" class="option-chip dark-chip" [class.active]="themeService.headerStyle() === 'dark-obsidian'" (click)="setHeaderStyle('dark-obsidian')">Obsidian Black</button>
+          <button type="button" class="option-chip navy-chip" [class.active]="themeService.headerStyle() === 'navy'" (click)="setHeaderStyle('navy')">Corporate Navy</button>
+          <button type="button" class="option-chip forest-chip" [class.active]="themeService.headerStyle() === 'forest'" (click)="setHeaderStyle('forest')">Forest Dark</button>
+          <button type="button" class="option-chip light-chip" [class.active]="themeService.headerStyle() === 'white'" (click)="setHeaderStyle('white')">Pure White</button>
+        </div>
+      </div>
+
+      <!-- 3. Sidebar Rail Style -->
+      <div class="studio-control-card">
+        <div class="card-head">
+          <mat-icon>view_sidebar</mat-icon>
+          <span class="card-title">Navigation Rail Sidebar</span>
+        </div>
+        <div class="option-buttons">
+          <button type="button" class="option-chip" [class.active]="themeService.sidebarStyle() === 'default'" (click)="setSidebarStyle('default')">Default Theme</button>
+          <button type="button" class="option-chip dark-chip" [class.active]="themeService.sidebarStyle() === 'dark-obsidian'" (click)="setSidebarStyle('dark-obsidian')">Deep Black</button>
+          <button type="button" class="option-chip navy-chip" [class.active]="themeService.sidebarStyle() === 'navy'" (click)="setSidebarStyle('navy')">Deep Navy</button>
+          <button type="button" class="option-chip forest-chip" [class.active]="themeService.sidebarStyle() === 'forest'" (click)="setSidebarStyle('forest')">Forest Green</button>
+          <button type="button" class="option-chip light-chip" [class.active]="themeService.sidebarStyle() === 'white'" (click)="setSidebarStyle('white')">Clean White</button>
+        </div>
+      </div>
+
+      <!-- 4. Footer & System Status Bar -->
+      <div class="studio-control-card">
+        <div class="card-head">
+          <mat-icon>subtitles</mat-icon>
+          <span class="card-title">Footer &amp; System Bar</span>
+        </div>
+        <div class="option-buttons">
+          <button type="button" class="option-chip" [class.active]="themeService.footerStyle() === 'default'" (click)="setFooterStyle('default')">Default Theme</button>
+          <button type="button" class="option-chip dark-chip" [class.active]="themeService.footerStyle() === 'dark-obsidian'" (click)="setFooterStyle('dark-obsidian')">Obsidian Black</button>
+          <button type="button" class="option-chip navy-chip" [class.active]="themeService.footerStyle() === 'navy'" (click)="setFooterStyle('navy')">Navy Dark</button>
+          <button type="button" class="option-chip light-chip" [class.active]="themeService.footerStyle() === 'white'" (click)="setFooterStyle('white')">Pure White</button>
+        </div>
+      </div>
+
+      <!-- 5. Cards, Tables & Data Surfaces -->
+      <div class="studio-control-card">
+        <div class="card-head">
+          <mat-icon>table_view</mat-icon>
+          <span class="card-title">Cards, Tables &amp; Data Surfaces</span>
+        </div>
+        <div class="option-buttons">
+          <button type="button" class="option-chip" [class.active]="themeService.cardsStyle() === 'default'" (click)="setCardsStyle('default')">Default Theme</button>
+          <button type="button" class="option-chip elevated-chip" [class.active]="themeService.cardsStyle() === 'elevated'" (click)="setCardsStyle('elevated')">Elevated Float</button>
+          <button type="button" class="option-chip glass-chip" [class.active]="themeService.cardsStyle() === 'glass'" (click)="setCardsStyle('glass')">Frosted Glass</button>
+          <button type="button" class="option-chip flatmin-chip" [class.active]="themeService.cardsStyle() === 'flat-minimal'" (click)="setCardsStyle('flat-minimal')">Flat Minimal</button>
+          <button type="button" class="option-chip slatechip" [class.active]="themeService.cardsStyle() === 'dark-slate'" (click)="setCardsStyle('dark-slate')">Dark Slate</button>
+        </div>
+      </div>
+
+      <!-- 6. Charts & Status Accents -->
+      <div class="studio-control-card">
+        <div class="card-head">
+          <mat-icon>palette</mat-icon>
+          <span class="card-title">Charts &amp; Status Accents</span>
+        </div>
+        <div class="option-buttons">
+          <button type="button" class="option-chip" [class.active]="themeService.accentsStyle() === 'default'" (click)="setAccentsStyle('default')">Default Theme</button>
+          <button type="button" class="option-chip indigo-chip" [class.active]="themeService.accentsStyle() === 'indigo'" (click)="setAccentsStyle('indigo')">Indigo</button>
+          <button type="button" class="option-chip emerald-chip" [class.active]="themeService.accentsStyle() === 'emerald'" (click)="setAccentsStyle('emerald')">Emerald</button>
+          <button type="button" class="option-chip gold-chip" [class.active]="themeService.accentsStyle() === 'gold'" (click)="setAccentsStyle('gold')">Corporate Gold</button>
+          <button type="button" class="option-chip rose-chip" [class.active]="themeService.accentsStyle() === 'rose-qa'" (click)="setAccentsStyle('rose-qa')">Coral Rose QA</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       TAB 2: 50 GOOGLE FONTS, SIZING SCALE & COLOR PALETTES
+       ═══════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="activeTab() === 'typography'" class="tab-content">
+
+    <!-- Font Sizing & Font Color Controls -->
+    <div class="typography-top-grid">
+
+      <!-- Font Size Scale Selector -->
+      <div class="studio-control-card">
+        <div class="card-head">
+          <mat-icon>format_size</mat-icon>
+          <span class="card-title">Font Size &amp; Display Scale</span>
+        </div>
+        <div class="option-buttons">
+          <button
+            *ngFor="let s of fontSizes"
+            type="button"
+            class="option-chip"
+            [class.active]="typographyService.fontSize() === s.id"
+            (click)="selectFontSize(s.id)"
+          >
+            {{ s.name }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Font Color Intensity Preset Selector -->
+      <div class="studio-control-card">
+        <div class="card-head">
+          <mat-icon>format_color_fill</mat-icon>
+          <span class="card-title">Font Color &amp; Contrast Preset</span>
+        </div>
+        <div class="option-buttons">
+          <button
+            *ngFor="let c of fontColors"
+            type="button"
+            class="option-chip"
+            [class.active]="typographyService.fontColor() === c.id"
+            (click)="selectFontColor(c.id)"
+          >
+            {{ c.name }}
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         LIVE APPLICATION FONT SAMPLE & PREVIEW STUDIO CARD
+         ═══════════════════════════════════════════════════════════════════ -->
+    <div class="font-live-sample-card">
+      <div class="sample-card-header">
+        <div class="header-title-group">
+          <mat-icon class="icon-pulse">preview</mat-icon>
+          <div>
+            <h4>Live Application Font Sample Preview</h4>
+            <p class="sub-label">Real-time preview of active fonts applied dynamically across all UI components and pages.</p>
+          </div>
+        </div>
+
+        <div class="active-fonts-pills">
+          <div class="active-pill body">
+            <span class="pill-label">Active Body:</span>
+            <span class="pill-value" [style.font-family]="'\'' + typographyService.bodyFont() + '\', sans-serif'">{{ typographyService.bodyFont() }}</span>
+          </div>
+          <div class="active-pill heading">
+            <span class="pill-label">Active Heading:</span>
+            <span class="pill-value" [style.font-family]="'\'' + typographyService.headingFont() + '\', sans-serif'">{{ typographyService.headingFont() }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Interactive Custom Text Input -->
+      <div class="custom-tester-bar">
+        <mat-icon>edit_note</mat-icon>
+        <span class="tester-label">Live Custom Text Tester:</span>
+        <input
+          type="text"
+          [ngModel]="customPreviewText()"
+          (ngModelChange)="customPreviewText.set($event)"
+          placeholder="Type any text to test live font rendering..."
+        />
+      </div>
+
+      <!-- Live UI Showcase Matrix -->
+      <div class="sample-showcase-matrix">
+
+        <!-- 1. Heading Typography Showcase -->
+        <div class="showcase-box heading-box">
+          <div class="box-tag">Heading Font: {{ typographyService.headingFont() }}</div>
+          <h2 class="sample-h1" [style.font-family]="'\'' + typographyService.headingFont() + '\', sans-serif'">
+            {{ customPreviewText() }}
+          </h2>
+          <h3 class="sample-h2" [style.font-family]="'\'' + typographyService.headingFont() + '\', sans-serif'">
+            TB-1042: Real-time Executive Kanban Dashboard &amp; Analytics
+          </h3>
+        </div>
+
+        <!-- 2. Body Copy & Text Showcase -->
+        <div class="showcase-box body-box">
+          <div class="box-tag">Body Font: {{ typographyService.bodyFont() }}</div>
+          <p class="sample-paragraph" [style.font-family]="'\'' + typographyService.bodyFont() + '\', sans-serif'">
+            The quick brown fox jumps over the lazy dog. 1234567890. TicketBoard delivers high-performance enterprise agile management with instant font typography across all UI pages.
+          </p>
+        </div>
+
+        <!-- 3. UI Controls, Buttons & Badges Showcase -->
+        <div class="showcase-box controls-box">
+          <div class="box-tag">UI Controls, Buttons &amp; Badges</div>
+
+          <div class="sample-elements-row">
+            <button type="button" class="sample-btn primary" [style.font-family]="'\'' + typographyService.bodyFont() + '\', sans-serif'">
+              <mat-icon>add_task</mat-icon>
+              <span>+ Create Task</span>
+            </button>
+
+            <button type="button" class="sample-btn secondary" [style.font-family]="'\'' + typographyService.bodyFont() + '\', sans-serif'">
+              <span>View Subtasks</span>
+            </button>
+
+            <button type="button" class="sample-btn outline" [style.font-family]="'\'' + typographyService.bodyFont() + '\', sans-serif'">
+              <span>Export CSV</span>
+            </button>
+
+            <span class="sample-badge badge-green" [style.font-family]="'\'' + typographyService.bodyFont() + '\', sans-serif'">
+              ● IN PROGRESS
+            </span>
+
+            <span class="sample-badge badge-amber" [style.font-family]="'\'' + typographyService.bodyFont() + '\', sans-serif'">
+              ⚡ HIGH PRIORITY
+            </span>
+
+            <span class="sample-badge badge-blue" [style.font-family]="'\'' + typographyService.bodyFont() + '\', sans-serif'">
+              PROD RELEASE v2.4
+            </span>
+          </div>
+
+          <!-- Table Cell & Metric Data Preview -->
+          <div class="sample-table-row">
+            <span class="table-cell code" [style.font-family]="'\'' + typographyService.bodyFont() + '\', sans-serif'">#TB-9021</span>
+            <span class="table-cell title" [style.font-family]="'\'' + typographyService.headingFont() + '\', sans-serif'">Sprint Performance Analysis</span>
+            <span class="table-cell user" [style.font-family]="'\'' + typographyService.bodyFont() + '\', sans-serif'">Lead Architect</span>
+            <span class="table-cell stat" [style.font-family]="'\'' + typographyService.bodyFont() + '\', sans-serif'">99.8% SLA</span>
+            <span class="table-cell price" [style.font-family]="'\'' + typographyService.bodyFont() + '\', sans-serif'">$18,450.00</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 50 Google Fonts Explorer -->
+    <div class="font-explorer-container">
+      <div class="section-title-row font-header">
+        <div class="font-title-group">
+          <h3>50 Google Fonts Collection</h3>
+          <span class="sub-label">Click any font to apply instantly across the whole application</span>
+        </div>
+
+        <div class="font-search-and-filter">
+          <div class="font-search-box">
+            <mat-icon>search</mat-icon>
+            <input
+              type="text"
+              [ngModel]="fontSearch()"
+              (ngModelChange)="fontSearch.set($event)"
+              placeholder="Search 50 Google Fonts..."
+            />
+          </div>
+
+          <div class="font-cat-pills">
+            <button type="button" [class.active]="fontCategory() === 'ALL'" (click)="fontCategory.set('ALL')">All (50)</button>
+            <button type="button" [class.active]="fontCategory() === 'Modern Sans'" (click)="fontCategory.set('Modern Sans')">Sans-Serif</button>
+            <button type="button" [class.active]="fontCategory() === 'Corporate'" (click)="fontCategory.set('Corporate')">Corporate</button>
+            <button type="button" [class.active]="fontCategory() === 'Monospace'" (click)="fontCategory.set('Monospace')">Monospace</button>
+            <button type="button" [class.active]="fontCategory() === 'Serif Editorial'" (click)="fontCategory.set('Serif Editorial')">Serif</button>
+            <button type="button" [class.active]="fontCategory() === 'Display & Tech'" (click)="fontCategory.set('Display & Tech')">Display</button>
+          </div>
+
+          <button type="button" class="btn-reset" (click)="resetTypography()">
+            <mat-icon>restart_alt</mat-icon>
+            <span>Reset Fonts</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 50 Fonts Grid -->
+      <div class="fonts-grid">
+        <div
+          *ngFor="let font of filteredFonts()"
+          class="font-card"
+          [class.active-body]="typographyService.bodyFont() === font.name"
+          [class.active-heading]="typographyService.headingFont() === font.name"
+          (mouseenter)="previewFontOnHover(font.name)"
+        >
+          <div class="font-card-head">
+            <div class="font-meta">
+              <span class="font-name" [style.font-family]="'\'' + font.name + '\', sans-serif'">{{ font.name }}</span>
+              <span class="font-cat-badge">{{ font.category }}</span>
+            </div>
+            <div class="font-badges-row">
+              <span class="font-indicator body" *ngIf="typographyService.bodyFont() === font.name">Body Font</span>
+              <span class="font-indicator heading" *ngIf="typographyService.headingFont() === font.name">Heading Font</span>
+            </div>
+          </div>
+
+          <p class="font-preview-text" [style.font-family]="'\'' + font.name + '\', sans-serif'">
+            {{ font.sampleText }}
+          </p>
+
+          <div class="font-actions-row">
+            <button
+              type="button"
+              class="font-btn body-btn"
+              [class.active]="typographyService.bodyFont() === font.name"
+              (click)="selectBodyFont(font.name)"
+            >
+              Set Body
+            </button>
+            <button
+              type="button"
+              class="font-btn heading-btn"
+              [class.active]="typographyService.headingFont() === font.name"
+              (click)="selectHeadingFont(font.name)"
+            >
+              Set Heading
+            </button>
+            <button
+              type="button"
+              class="font-btn both-btn"
+              [class.active]="typographyService.bodyFont() === font.name && typographyService.headingFont() === font.name"
+              (click)="selectBothFonts(font.name)"
+            >
+              Apply Both
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>

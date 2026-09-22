@@ -5,6 +5,7 @@ import com.aurionpro.ticketboard.capacity.dto.ProjectForecastDto;
 import com.aurionpro.ticketboard.capacity.service.CapacityPlanningService;
 import com.aurionpro.ticketboard.common.exception.ResourceNotFoundException;
 import com.aurionpro.ticketboard.dashboard.dto.DeveloperDashboardDto;
+import com.aurionpro.ticketboard.dashboard.dto.DeveloperTelemetryDto;
 import com.aurionpro.ticketboard.dashboard.dto.ExecutiveDashboardDto;
 import com.aurionpro.ticketboard.dashboard.dto.QaDashboardDto;
 import com.aurionpro.ticketboard.project.entity.Project;
@@ -29,6 +30,7 @@ import com.aurionpro.ticketboard.workitem.enums.WorkItemType;
 import com.aurionpro.ticketboard.workitem.repository.WorkItemRepository;
 import com.aurionpro.ticketboard.workitem.service.WorkItemService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -54,6 +56,46 @@ public class DashboardService {
     private final TimeTrackingService timeTrackingService;
     private final WorkItemService workItemService;
     private final ReleaseService releaseService;
+    private final JdbcTemplate jdbcTemplate;
+
+    @Transactional(readOnly = true)
+    public DeveloperTelemetryDto getDeveloperTelemetry() {
+        String product = "MySQL";
+        String version = "—";
+        try {
+            version = jdbcTemplate.queryForObject("SELECT VERSION()", String.class);
+        } catch (Exception ignored) {
+            version = "—";
+        }
+        try {
+            String name = jdbcTemplate.execute((java.sql.Connection connection) ->
+                    connection.getMetaData() != null
+                            ? connection.getMetaData().getDatabaseProductName()
+                            : "MySQL");
+            if (name != null && !name.isBlank()) {
+                product = name;
+            }
+        } catch (Exception ignored) {
+            // keep default product name
+        }
+
+        long start = System.nanoTime();
+        try {
+            jdbcTemplate.queryForObject("SELECT 1", Long.class);
+        } catch (Exception ignored) {
+            // latency still reported even if probe fails
+        }
+        long end = System.nanoTime();
+        double latencyMs = Math.round(((end - start) / 1_000_000.0) * 100.0) / 100.0;
+
+        return DeveloperTelemetryDto.builder()
+                .dbProduct(product != null ? product : "MySQL")
+                .dbVersion(version)
+                .latencyMs(latencyMs)
+                .serverTime(java.time.LocalDateTime.now().toString())
+                .wsEndpointAvailable(true)
+                .build();
+    }
 
     @Transactional(readOnly = true)
     public ExecutiveDashboardDto getExecutiveDashboard() {

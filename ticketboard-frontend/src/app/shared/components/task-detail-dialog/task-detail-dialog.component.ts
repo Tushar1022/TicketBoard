@@ -54,6 +54,7 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
 
   @Output() close = new EventEmitter<void>();
   @Output() saved = new EventEmitter<void>();
+  @Output() openSubtask = new EventEmitter<WorkItem>();
 
   @ViewChild('descEditor') private descEditor?: ElementRef<HTMLDivElement>;
 
@@ -87,6 +88,10 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
   public newSubtaskAssigneeId = signal<number | null>(null);
   public newSubtaskDueDate = signal<string>('');
   public newSubtaskPriority = signal<string>('MEDIUM');
+  public showSubtaskForm = signal<boolean>(false);
+
+  // Time logging
+  public timeLogHours = signal<number>(1.0);
 
   // Dependency form
   public projectTasks = signal<WorkItem[]>([]);
@@ -430,6 +435,7 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
             this.newSubtaskAssigneeId.set(null);
             this.newSubtaskDueDate.set('');
             this.newSubtaskPriority.set('MEDIUM');
+            this.showSubtaskForm.set(false);
             this.refreshCurrentTask();
             this.saved.emit();
           }
@@ -440,6 +446,10 @@ export class TaskDetailDialogComponent implements OnDestroy, OnInit, AfterViewIn
           setTimeout(() => this.saveMessage.set(''), 6000);
         }
       });
+  }
+
+  public viewSubtask(st: WorkItem): void {
+    this.openSubtask.emit(st);
   }
 
   public depTypeLabel(type: string): string {

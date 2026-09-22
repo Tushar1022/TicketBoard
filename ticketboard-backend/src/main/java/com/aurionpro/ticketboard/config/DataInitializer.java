@@ -62,6 +62,9 @@ import com.aurionpro.ticketboard.support.entity.SupportTicket;
 import com.aurionpro.ticketboard.support.entity.TicketComment;
 import com.aurionpro.ticketboard.support.entity.TicketPriority;
 import com.aurionpro.ticketboard.support.entity.TicketStatus;
+import com.aurionpro.ticketboard.support.entity.AnnouncementType;
+import com.aurionpro.ticketboard.support.entity.SupportAnnouncement;
+import com.aurionpro.ticketboard.support.repository.SupportAnnouncementRepository;
 import com.aurionpro.ticketboard.support.repository.SupportTicketRepository;
 import com.aurionpro.ticketboard.workitem.repository.WorkItemBlockerRepository;
 import com.aurionpro.ticketboard.workitem.repository.WorkItemRepository;
@@ -104,6 +107,7 @@ public class DataInitializer implements CommandLineRunner {
     private final IssueRepository issueRepository;
     private final InvoiceRepository invoiceRepository;
     private final SupportTicketRepository supportTicketRepository;
+    private final SupportAnnouncementRepository supportAnnouncementRepository;
     private final PasswordEncoder passwordEncoder;
     private final ActivityLogService activityLogService;
 
@@ -959,7 +963,17 @@ public class DataInitializer implements CommandLineRunner {
                 .resolutionNotes("Verified baseline monthly capacity is set to 160 hours per BA. Over-allocation was caused by concurrent SBI & HDFC change request tasks.")
                 .build());
 
-        log.info("TicketBoard Data Initialization completed successfully! All sample users, projects, requirements, tasks, timesheets, releases, risks, and support tickets are seeded.");
+        // 14. Initialize Support Announcement
+        supportAnnouncementRepository.save(SupportAnnouncement.builder()
+                .title("Long-Term Support & Governance Notice (LTS v2.5)")
+                .message("TicketBoard platform version 2.5 is currently under Long-Term Support (LTS). Extended governance SLA active: Critical issues resolved within 4h. Regular maintenance window scheduled every Sunday 02:00-04:00 AM IST.")
+                .type(AnnouncementType.LONG_TERM_SUPPORT)
+                .active(true)
+                .postedByName("Tushar Shinde (Super Admin)")
+                .postedByEmail("admin@ticketboard.com")
+                .build());
+
+        log.info("TicketBoard Data Initialization completed successfully! All sample users, projects, requirements, tasks, timesheets, releases, risks, support tickets, and announcements are seeded.");
     }
 }
 

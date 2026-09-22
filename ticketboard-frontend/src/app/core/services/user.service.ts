@@ -34,6 +34,10 @@ export class UserService {
     return this.http.patch<ApiResponse<void>>(`${this.baseUrl}/users/${id}/status`, null, { params: new HttpParams().set('status', status) });
   }
 
+  deleteUser(id: number): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/users/${id}`);
+  }
+
   updateRoles(id: number, roles: RoleType[]): Observable<ApiResponse<User>> {
     return this.http.patch<ApiResponse<User>>(`${this.baseUrl}/users/${id}/roles`, roles);
   }

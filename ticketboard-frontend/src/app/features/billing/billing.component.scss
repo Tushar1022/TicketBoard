@@ -119,8 +119,8 @@
 }
 
 .summary-icon.violet { background: linear-gradient(135deg, var(--primary-500), var(--primary-800)); }
-.summary-icon.green { background: linear-gradient(135deg, #10b981, #047857); }
-.summary-icon.amber { background: linear-gradient(135deg, #f59e0b, #b45309); }
+.summary-icon.green { background: linear-gradient(135deg, var(--health-green-dot), var(--health-green-text)); }
+.summary-icon.amber { background: linear-gradient(135deg, var(--health-amber-dot), var(--health-amber-text)); }
 .summary-icon.blue { background: linear-gradient(135deg, var(--accent-500), var(--accent-600)); }
 
 .summary-value {
@@ -391,13 +391,13 @@
   letter-spacing: 0.02em;
 }
 
-.badge-slate { background: #f1f5f9; color: #334155; }
+.badge-slate { background: var(--surface-subtle); color: var(--text-muted); }
 .badge-blue { background: var(--status-blue-bg); color: var(--status-blue-text); }
 .badge-indigo { background: var(--primary-100); color: var(--primary-700); }
 .badge-amber { background: var(--health-amber-bg); color: var(--health-amber-text); }
 .badge-green { background: var(--health-green-bg); color: var(--health-green-text); }
 .badge-red { background: var(--health-red-bg); color: var(--health-red-text); }
-.badge-orange { background: #ffedd5; color: #9a3412; }
+.badge-orange { background: var(--badge-orange-bg); color: var(--badge-orange-text); }
 
 .actions-cell {
   white-space: nowrap;
